@@ -10,7 +10,7 @@ import (
 	"edict-go/store"
 )
 
-// SchedulerScan handles POST /api/scheduler-scan.
+// SchedulerScan 处理 POST /api/scheduler-scan。
 func SchedulerScan(c *gin.Context) {
 	var body struct {
 		ThresholdSec int `json:"thresholdSec"`
@@ -76,7 +76,7 @@ func SchedulerScan(c *gin.Context) {
 	})
 }
 
-// SchedulerRetry handles POST /api/scheduler-retry.
+// SchedulerRetry 处理 POST /api/scheduler-retry。
 func SchedulerRetry(c *gin.Context) {
 	var body struct {
 		TaskID string `json:"taskId"`
@@ -117,7 +117,7 @@ func SchedulerRetry(c *gin.Context) {
 	c.JSON(http.StatusOK, models.APIResp{OK: true, Message: resultMsg})
 }
 
-// SchedulerEscalate handles POST /api/scheduler-escalate.
+// SchedulerEscalate 处理 POST /api/scheduler-escalate。
 func SchedulerEscalate(c *gin.Context) {
 	var body struct {
 		TaskID string `json:"taskId"`
@@ -157,7 +157,7 @@ func SchedulerEscalate(c *gin.Context) {
 	c.JSON(http.StatusOK, models.APIResp{OK: true, Message: resultMsg})
 }
 
-// SchedulerRollback handles POST /api/scheduler-rollback.
+// SchedulerRollback 处理 POST /api/scheduler-rollback。
 func SchedulerRollback(c *gin.Context) {
 	var body struct {
 		TaskID string `json:"taskId"`
@@ -179,7 +179,7 @@ func SchedulerRollback(c *gin.Context) {
 		if !ok || snapshot == nil {
 			return nil, fmt.Errorf("任务 %s 没有可用的快照", body.TaskID)
 		}
-		// Restore from snapshot
+		// 从快照恢复
 		if v, ok := snapshot["state"].(string); ok && v != "" {
 			task.State = v
 		}

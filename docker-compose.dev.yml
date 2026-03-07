@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  # RAG 向量数据库
+  postgres-rag:
+    image: pgvector/pgvector:16-pg16
+    container_name: edict-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=edict
+      - POSTGRES_USER=edict
+      - POSTGRES_PASSWORD=edict_secret_change_me
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  # EventBus / WebSocket 消息队列
+  redis:
+    image: redis:7-alpine
+    container_name: edict-redis
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+volumes:
+  postgres_data:

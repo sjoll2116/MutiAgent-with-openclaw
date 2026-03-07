@@ -57,15 +57,15 @@ Most multi-agent frameworks let AI agents talk freely, producing opaque results 
 
 ```
 You (Emperor) → Crown Prince (Triage) → Planning Dept → Review Dept → Dispatch Dept → 6 Ministries → Report Back
-   皇上              太子               中书省          门下省         尚书省           六部          回奏
+   用户              协调中枢               任务编排引擎          安全审查引擎         任务调度引擎           执行智能体集群          回奏
 ```
 
 This isn't a cute metaphor. It's **real separation of powers** for AI:
 
-- **Crown Prince (太子)** triages messages — casual chat gets auto-replied, real commands become tasks
-- **Planning (中书省)** breaks your command into actionable sub-tasks
-- **Review (门下省)** audits the plan — can reject and force re-planning
-- **Dispatch (尚书省)** assigns approved tasks to specialist ministries
+- **Crown Prince (协调中枢)** triages messages — casual chat gets auto-replied, real commands become tasks
+- **Planning (任务编排引擎)** breaks your command into actionable sub-tasks
+- **Review (安全审查引擎)** audits the plan — can reject and force re-planning
+- **Dispatch (任务调度引擎)** assigns approved tasks to specialist ministries
 - **7 Ministries** execute in parallel, each with distinct expertise
 - **Data sanitization** auto-strips file paths, metadata, and junk from task titles
 - Everything flows through a **real-time dashboard** you can monitor and intervene
@@ -97,7 +97,7 @@ This isn't a cute metaphor. It's **real separation of powers** for AI:
 
 CrewAI and AutoGen agents work in a **"done, ship it"** mode — no one checks output quality. It's like a company with no QA department where engineers push code straight to production.
 
-Edict's **Review Department (门下省)** exists specifically for this:
+Edict's **Review Department (安全审查引擎)** exists specifically for this:
 
 - 📋 **Audit plan quality** — Is the Planning Department's decomposition complete and sound?
 - 🚫 **Veto subpar output** — Not a warning. A hard reject that forces re-planning.
@@ -114,7 +114,7 @@ This is why Edict produces reliable results on complex tasks: there's a mandator
 ## ✨ Features
 
 ### 🏛️ Twelve-Department Agent Architecture
-- **Crown Prince** (太子) message triage — auto-reply casual chat, create tasks for real commands
+- **Crown Prince** (协调中枢) message triage — auto-reply casual chat, create tasks for real commands
 - **Three Departments** (Planning · Review · Dispatch) for governance
 - **Seven Ministries** (Finance · Docs · Engineering · Compliance · Infrastructure · HR + Briefing) for execution
 - Strict permission matrix — who can message whom is enforced
@@ -232,32 +232,32 @@ open http://127.0.0.1:7891
                            └─────────────────┬─────────────────┘
                                              │ Issue edict
                            ┌─────────────────▼─────────────────┐
-                           │     👑 Crown Prince (太子)          │
+                           │     👑 Crown Prince (协调中枢)          │
                            │   Triage: chat → reply / cmd → task │
                            └─────────────────┬─────────────────┘
                                              │ Forward edict
                            ┌─────────────────▼─────────────────┐
-                           │      📜 Planning Dept (中书省)      │
+                           │      📜 Planning Dept (任务编排引擎)      │
                            │     Receive → Plan → Decompose      │
                            └─────────────────┬─────────────────┘
                                              │ Submit for review
                            ┌─────────────────▼─────────────────┐
-                           │       🔍 Review Dept (门下省)       │
+                           │       🔍 Review Dept (安全审查引擎)       │
                            │     Audit → Approve / Reject 🚫     │
                            └─────────────────┬─────────────────┘
                                              │ Approved ✅
                            ┌─────────────────▼─────────────────┐
-                           │      📮 Dispatch Dept (尚书省)      │
+                           │      📮 Dispatch Dept (任务调度引擎)      │
                            │   Assign → Coordinate → Collect     │
                            └───┬──────┬──────┬──────┬──────┬───┘
                                │      │      │      │      │
                          ┌─────▼┐ ┌───▼───┐ ┌▼─────┐ ┌───▼─┐ ┌▼─────┐
                          │💰 Fin.│ │📝 Docs│ │⚔️ Eng.│ │⚖️ Law│ │🔧 Ops│
-                         │ 户部  │ │ 礼部  │ │ 兵部  │ │ 刑部 │ │ 工部  │
+                         │ 数据分析师  │ │ 文档编写员  │ │ 代码架构师  │ │ 质量保证师 │ │ 代码架构师  │
                          └──────┘ └──────┘ └──────┘ └─────┘ └──────┘
                                                                ┌──────┐
                                                                │📋 HR  │
-                                                               │ 吏部  │
+                                                               │ 资源调配员  │
                                                                └──────┘
 ```
 

@@ -33,17 +33,15 @@ type AgentDept struct {
 }
 
 var agentDepts = []AgentDept{
-	{ID: "taizi", Label: "太子", Emoji: "🤴", Role: "太子", Rank: "储君"},
-	{ID: "zhongshu", Label: "中书省", Emoji: "📜", Role: "中书令", Rank: "正一品"},
-	{ID: "menxia", Label: "门下省", Emoji: "🔍", Role: "侍中", Rank: "正一品"},
-	{ID: "shangshu", Label: "尚书省", Emoji: "📮", Role: "尚书令", Rank: "正一品"},
-	{ID: "hubu", Label: "户部", Emoji: "💰", Role: "户部尚书", Rank: "正二品"},
-	{ID: "libu", Label: "礼部", Emoji: "📚", Role: "礼部尚书", Rank: "正二品"},
-	{ID: "gongbu", Label: "工部", Emoji: "🔧", Role: "工部尚书", Rank: "正二品"},
-	{ID: "xingbu", Label: "刑部", Emoji: "⚖️", Role: "刑部尚书", Rank: "正二品"},
-	{ID: "bingbu", Label: "兵部", Emoji: "🛡️", Role: "兵部尚书", Rank: "正二品"},
-	{ID: "libu_hr", Label: "吏部", Emoji: "👔", Role: "吏部尚书", Rank: "正二品"},
-	{ID: "zaochao", Label: "钦天监", Emoji: "📰", Role: "朝报官", Rank: "正三品"},
+	{ID: "coordinator", Label: "协调中枢", Emoji: "🤴", Role: "协调中枢", Rank: "核心"},
+	{ID: "planner", Label: "任务编排引擎", Emoji: "📜", Role: "规划引擎", Rank: "核心"},
+	{ID: "reviewer", Label: "安全审查引擎", Emoji: "🔍", Role: "审核引擎", Rank: "核心"},
+	{ID: "dispatcher", Label: "任务调度引擎", Emoji: "📮", Role: "调度引擎", Rank: "核心"},
+	{ID: "data_analyst", Label: "数据分析师", Emoji: "💰", Role: "数据分析", Rank: "执行"},
+	{ID: "doc_writer", Label: "文档编写员", Emoji: "📚", Role: "文档撰写", Rank: "执行"},
+	{ID: "software_engineer", Label: "代码架构师", Emoji: "🔧", Role: "软件研发", Rank: "执行"},
+	{ID: "qa_engineer", Label: "质量保证师", Emoji: "⚖️", Role: "质量保障", Rank: "执行"},
+	{ID: "monitor", Label: "情报监控员", Emoji: "📰", Role: "系统监控", Rank: "外围"},
 }
 
 func oclawHome() string {

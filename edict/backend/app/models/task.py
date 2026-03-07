@@ -1,8 +1,8 @@
-"""Task 模型 — 三省六部任务核心表。
+"""Task 模型 — 系统任务核心表。
 
 对应当前 tasks_source.json 中的每一条任务记录。
-state 对应三省六部流转状态机：
-  Taizi → Zhongshu → Menxia → Assigned → Doing → Review → Done
+state 对应状态机：
+  Queued → Planning → PlanReview → Dispatching → Executing → ResultReview → Completed
 """
 
 import enum
@@ -26,63 +26,65 @@ from ..db import Base
 
 
 class TaskState(str, enum.Enum):
-    """任务状态枚举 — 映射三省六部流程。"""
-    Taizi = "Taizi"           # 太子分拣
-    Zhongshu = "Zhongshu"     # 中书省起草
-    Menxia = "Menxia"         # 门下省审议
-    Assigned = "Assigned"     # 尚书省已将任务派发
+    """任务状态枚举。"""
+    Queued = "Queued"           # 等待路由
+    Planning = "Planning"     # 规划
+    PlanReview = "PlanReview"         # 安全审核
+    Dispatching = "Dispatching"     # 派发
     Next = "Next"             # 待执行
-    Doing = "Doing"           # 六部执行中
-    Review = "Review"         # 审查汇总
-    Done = "Done"             # 完成
+    Executing = "Executing"           # 执行中
+    ResultReview = "ResultReview"         # 审查汇总
+    Completed = "Completed"             # 完成
     Blocked = "Blocked"       # 阻塞
     Cancelled = "Cancelled"   # 取消
     Pending = "Pending"       # 待处理
 
 
 # 终态集合
-TERMINAL_STATES = {TaskState.Done, TaskState.Cancelled}
+TERMINAL_STATES = {TaskState.Completed, TaskState.Cancelled}
 
 # 状态流转合法路径
 STATE_TRANSITIONS = {
-    TaskState.Taizi: {TaskState.Zhongshu, TaskState.Cancelled},
-    TaskState.Zhongshu: {TaskState.Menxia, TaskState.Cancelled, TaskState.Blocked},
-    TaskState.Menxia: {TaskState.Assigned, TaskState.Zhongshu, TaskState.Cancelled},  # 封驳退回中书
-    TaskState.Assigned: {TaskState.Doing, TaskState.Next, TaskState.Cancelled, TaskState.Blocked},
-    TaskState.Next: {TaskState.Doing, TaskState.Cancelled},
-    TaskState.Doing: {TaskState.Review, TaskState.Done, TaskState.Blocked, TaskState.Cancelled},
-    TaskState.Review: {TaskState.Done, TaskState.Doing, TaskState.Cancelled},  # 审查不通过退回
-    TaskState.Blocked: {TaskState.Taizi, TaskState.Zhongshu, TaskState.Menxia, TaskState.Assigned, TaskState.Doing},
+    TaskState.Queued: {TaskState.Planning, TaskState.Cancelled},
+    TaskState.Planning: {TaskState.PlanReview, TaskState.Cancelled, TaskState.Blocked},
+    TaskState.PlanResultReview: {TaskState.Dispatching, TaskState.Planning, TaskState.Cancelled},  # 封驳退回
+    TaskState.Dispatching: {TaskState.Executing, TaskState.Next, TaskState.Cancelled, TaskState.Blocked},
+    TaskState.Next: {TaskState.Executing, TaskState.Cancelled},
+    TaskState.Executing: {TaskState.ResultReview, TaskState.Completed, TaskState.Blocked, TaskState.Cancelled},
+    TaskState.ResultResultReview: {TaskState.Completed, TaskState.Executing, TaskState.Cancelled},  # 审查不通过退回
+    TaskState.Blocked: {TaskState.Queued, TaskState.Planning, TaskState.PlanReview, TaskState.Dispatching, TaskState.Executing},
 }
 
 # 状态 → Agent 映射
 STATE_AGENT_MAP = {
-    TaskState.Taizi: "taizi",
-    TaskState.Zhongshu: "zhongshu",
-    TaskState.Menxia: "menxia",
-    TaskState.Assigned: "shangshu",
-    TaskState.Review: "shangshu",
+    TaskState.Queued: "coordinator",
+    TaskState.Planning: "planner",
+    TaskState.PlanResultReview: "reviewer",
+    TaskState.Dispatching: "dispatcher",
+    TaskState.ResultResultReview: "dispatcher",
 }
 
-# 组织 → Agent 映射（六部）
+# 组织 → Agent 映射
 ORG_AGENT_MAP = {
-    "户部": "hubu",
-    "礼部": "libu",
-    "兵部": "bingbu",
-    "刑部": "xingbu",
-    "工部": "gongbu",
-    "吏部": "libu_hr",
+    "文档编写员": "doc_writer",
+    "数据分析师": "data_analyst",
+    "代码架构师": "software_engineer",
+    "质量保证师": "qa_engineer",
+    "任务编排引擎": "planner",
+    "安全审查引擎": "reviewer",
+    "任务调度引擎": "dispatcher",
+    "协调中枢": "coordinator",
 }
 
 
 class Task(Base):
-    """三省六部任务表。"""
+    """任务表。"""
     __tablename__ = "tasks"
 
     id = Column(String(32), primary_key=True, comment="任务ID, e.g. JJC-20260301-001")
     title = Column(Text, nullable=False, comment="任务标题")
-    state = Column(Enum(TaskState, name="task_state"), nullable=False, default=TaskState.Taizi, index=True)
-    org = Column(String(32), nullable=False, default="太子", comment="当前执行部门")
+    state = Column(Enum(TaskState, name="task_state"), nullable=False, default=TaskState.Queued, index=True)
+    org = Column(String(32), nullable=False, default="协调中枢", comment="当前执行部门")
     official = Column(String(32), default="", comment="责任官员")
     now = Column(Text, default="", comment="当前进展描述")
     eta = Column(String(64), default="-", comment="预计完成时间")

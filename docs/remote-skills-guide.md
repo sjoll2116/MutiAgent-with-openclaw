@@ -2,7 +2,7 @@
 
 ## 概述
 
-三省六部现已支持从网上连接和增补 skills 资源，无需手动复制文件。支持从以下来源获取：
+三省执行智能体集群现已支持从网上连接和增补 skills 资源，无需手动复制文件。支持从以下来源获取：
 
 - **GitHub 仓库** (raw.githubusercontent.com)
 - **任何 HTTPS URL** (需返回有效的 skill 文件)
@@ -22,7 +22,7 @@
 **请求体：**
 ```json
 {
-  "agentId": "zhongshu",
+  "agentId": "planner",
   "skillName": "code_review",
   "sourceUrl": "https://raw.githubusercontent.com/org/skills-repo/main/code_review/SKILL.md",
   "description": "代码审查专项技能"
@@ -44,7 +44,7 @@
   "ok": true,
   "message": "技能 code_review 已添加到 zhongshu",
   "skillName": "code_review",
-  "agentId": "zhongshu",
+  "agentId": "planner",
   "source": "https://raw.githubusercontent.com/...",
   "localPath": "/Users/bingsen/.openclaw/workspace-zhongshu/skills/code_review/SKILL.md",
   "size": 2048,
@@ -72,7 +72,7 @@
   "remoteSkills": [
     {
       "skillName": "code_review",
-      "agentId": "zhongshu",
+      "agentId": "planner",
       "sourceUrl": "https://raw.githubusercontent.com/org/skills-repo/main/code_review/SKILL.md",
       "description": "代码审查专项技能",
       "localPath": "/Users/bingsen/.openclaw/workspace-zhongshu/skills/code_review/SKILL.md",
@@ -91,7 +91,7 @@
 **请求体：**
 ```json
 {
-  "agentId": "zhongshu",
+  "agentId": "planner",
   "skillName": "code_review"
 }
 ```
@@ -114,7 +114,7 @@
 **请求体：**
 ```json
 {
-  "agentId": "zhongshu",
+  "agentId": "planner",
   "skillName": "code_review"
 }
 ```
@@ -167,12 +167,12 @@ python3 scripts/skill_manager.py remove-remote \
 
 | Skill 名称 | 描述 | 适用 Agent | 源 URL |
 |-----------|------|----------|--------|
-| `code_review` | 代码审查（支持 Python/JS/Go） | 兵部/刑部 | https://raw.githubusercontent.com/openclaw-ai/skills-hub/main/code_review/SKILL.md |
-| `api_design` | API 设计审查 | 兵部/工部 | https://raw.githubusercontent.com/openclaw-ai/skills-hub/main/api_design/SKILL.md |
-| `security_audit` | 安全审计 | 刑部 | https://raw.githubusercontent.com/openclaw-ai/skills-hub/main/security_audit/SKILL.md |
-| `data_analysis` | 数据分析 | 户部 | https://raw.githubusercontent.com/openclaw-ai/skills-hub/main/data_analysis/SKILL.md |
-| `doc_generation` | 文档生成 | 礼部 | https://raw.githubusercontent.com/openclaw-ai/skills-hub/main/doc_generation/SKILL.md |
-| `test_framework` | 测试框架设计 | 工部/刑部 | https://raw.githubusercontent.com/openclaw-ai/skills-hub/main/test_framework/SKILL.md |
+| `code_review` | 代码审查（支持 Python/JS/Go） | 代码架构师/质量保证师 | https://raw.githubusercontent.com/openclaw-ai/skills-hub/main/code_review/SKILL.md |
+| `api_design` | API 设计审查 | 代码架构师/代码架构师 | https://raw.githubusercontent.com/openclaw-ai/skills-hub/main/api_design/SKILL.md |
+| `security_audit` | 安全审计 | 质量保证师 | https://raw.githubusercontent.com/openclaw-ai/skills-hub/main/security_audit/SKILL.md |
+| `data_analysis` | 数据分析 | 数据分析师 | https://raw.githubusercontent.com/openclaw-ai/skills-hub/main/data_analysis/SKILL.md |
+| `doc_generation` | 文档生成 | 文档编写员 | https://raw.githubusercontent.com/openclaw-ai/skills-hub/main/doc_generation/SKILL.md |
+| `test_framework` | 测试框架设计 | 代码架构师/质量保证师 | https://raw.githubusercontent.com/openclaw-ai/skills-hub/main/test_framework/SKILL.md |
 
 **一键导入官方 skills**
 
@@ -292,9 +292,9 @@ compatibleAgents: [bingbu, xingbu, menxia]
 
 ## 适用场景
 
-- 兵部（代码实现）的代码产出审查
-- 刑部（合规审计）的安全检查
-- 门下省（审议把关）的质量评估
+- 代码架构师（代码实现）的代码产出审查
+- 质量保证师（合规审计）的安全检查
+- 安全审查引擎（审议把关）的质量评估
 
 ## 依赖与限制
 

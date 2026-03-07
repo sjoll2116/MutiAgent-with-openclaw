@@ -1,5 +1,5 @@
-// Package store provides atomic JSON file I/O for tasks_source.json
-// and scheduler helper functions.
+// Package store 为 tasks_source.json 提供原子的 JSON 文件 I/O 操作
+// 及调度器辅助函数。
 package store
 
 import (
@@ -18,32 +18,32 @@ var (
 	mu      sync.Mutex
 )
 
-// Init sets the data directory (typically ../data relative to binary).
+// Init 设置数据目录 (通常为相对于二进制文件的 ../data)
 func Init(dir string) { dataDir = dir }
 
-// DataDir returns the configured data directory path.
+// DataDir 返回配置的数据目录路径。
 func DataDir() string { return dataDir }
 
-// NowISO returns the current UTC time in ISO 8601 format with Z suffix.
+// NowISO 以带 Z 后缀的 ISO 8601 格式返回当前的 UTC 时间。
 func NowISO() string {
 	return time.Now().UTC().Format("2006-01-02T15:04:05.000Z")
 }
 
-// ── JSON file helpers ──
+// ── JSON 文件辅助函数 ──
 
-// ReadJSONFile reads a JSON file into target. Returns nil on file-not-found.
+// ReadJSONFile 将一个 JSON 文件读取到 target 中。如果文件未找到则返回 nil。
 func ReadJSONFile(filename string, target any) error {
 	data, err := os.ReadFile(filepath.Join(dataDir, filename))
 	if err != nil {
 		if os.IsNotExist(err) {
-			return nil // caller should check target for zero-value
+			return nil // 调用者应该检查 target 是否有零值
 		}
 		return err
 	}
 	return json.Unmarshal(data, target)
 }
 
-// ReadJSONRaw reads a file as raw JSON bytes.
+// ReadJSONRaw 将一个文件按原始 JSON 字节读取。
 func ReadJSONRaw(filename string) (json.RawMessage, error) {
 	data, err := os.ReadFile(filepath.Join(dataDir, filename))
 	if err != nil {
@@ -55,7 +55,7 @@ func ReadJSONRaw(filename string) (json.RawMessage, error) {
 	return json.RawMessage(data), nil
 }
 
-// WriteJSONFile atomically writes data to filename inside dataDir.
+// WriteJSONFile 将数据原子写入 dataDir 目录下的 filename 文件中。
 func WriteJSONFile(filename string, data any) error {
 	path := filepath.Join(dataDir, filename)
 	content, err := json.MarshalIndent(data, "", "  ")
@@ -69,9 +69,9 @@ func WriteJSONFile(filename string, data any) error {
 	return os.Rename(tmpPath, path)
 }
 
-// ── Task CRUD ──
+// ── 任务 CRUD 操作 ──
 
-// LoadTasks reads tasks_source.json (mutex protected).
+// LoadTasks 读取 tasks_source.json (通过互斥锁保护)。
 func LoadTasks() ([]models.Task, error) {
 	mu.Lock()
 	defer mu.Unlock()
@@ -93,7 +93,7 @@ func loadTasksLocked() ([]models.Task, error) {
 	return tasks, nil
 }
 
-// SaveTasks writes tasks_source.json (mutex protected).
+// SaveTasks 写入 tasks_source.json (通过互斥锁保护)。
 func SaveTasks(tasks []models.Task) error {
 	mu.Lock()
 	defer mu.Unlock()
@@ -104,8 +104,8 @@ func saveTasksLocked(tasks []models.Task) error {
 	return WriteJSONFile("tasks_source.json", tasks)
 }
 
-// WithTasks performs an atomic load-modify-save cycle.
-// The callback receives the current tasks and returns the modified list.
+// WithTasks 执行一次原子的 读取-修改-保存 周期。
+// 回调函数接收当前的所有任务列表并返回修改后的列表。
 func WithTasks(fn func([]models.Task) ([]models.Task, error)) error {
 	mu.Lock()
 	defer mu.Unlock()
@@ -121,7 +121,7 @@ func WithTasks(fn func([]models.Task) ([]models.Task, error)) error {
 	return saveTasksLocked(modified)
 }
 
-// FindTask returns a pointer to the task with matching ID, or nil.
+// FindTask 返回一个指向拥有匹配 ID 的任务指针，如未找到则返回 nil。
 func FindTask(tasks []models.Task, id string) *models.Task {
 	for i := range tasks {
 		if tasks[i].ID == id {
@@ -131,9 +131,9 @@ func FindTask(tasks []models.Task, id string) *models.Task {
 	return nil
 }
 
-// ── Scheduler helpers ──
+// ── 调度器辅助函数 ──
 
-// EnsureScheduler initialises the _scheduler map with defaults if missing.
+// EnsureScheduler 初始化 _scheduler map, 若缺失则补充默认值。
 func EnsureScheduler(task *models.Task) map[string]any {
 	if task.Scheduler == nil {
 		task.Scheduler = map[string]any{}
@@ -176,7 +176,7 @@ func EnsureScheduler(task *models.Task) map[string]any {
 	return s
 }
 
-// SchedulerSnapshot saves the current state as a snapshot.
+// SchedulerSnapshot 将当前状态保存为快照。
 func SchedulerSnapshot(task *models.Task, note string) {
 	s := EnsureScheduler(task)
 	if note == "" {
@@ -191,7 +191,7 @@ func SchedulerSnapshot(task *models.Task, note string) {
 	}
 }
 
-// SchedulerMarkProgress resets stall counters and records progress.
+// SchedulerMarkProgress 重置停滞计数器并记录进度。
 func SchedulerMarkProgress(task *models.Task, note string) {
 	s := EnsureScheduler(task)
 	s["lastProgressAt"] = NowISO()
@@ -204,7 +204,7 @@ func SchedulerMarkProgress(task *models.Task, note string) {
 	}
 }
 
-// SchedulerAddFlow appends a scheduler-originated flow_log entry.
+// SchedulerAddFlow 追加一个源于调度器的 flow_log 条目。
 func SchedulerAddFlow(task *models.Task, remark string) {
 	to := task.Org
 	if to == "" {
@@ -212,7 +212,7 @@ func SchedulerAddFlow(task *models.Task, remark string) {
 	}
 	task.FlowLog = append(task.FlowLog, models.FlowEntry{
 		At:     NowISO(),
-		From:   "太子调度",
+		From:   "系统调度",
 		To:     to,
 		Remark: "🧭 " + remark,
 	})

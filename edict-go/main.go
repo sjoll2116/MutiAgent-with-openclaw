@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"edict-go/handlers"
+	"edict-go/services"
 	"edict-go/store"
 )
 
@@ -31,6 +32,7 @@ func main() {
 		log.Fatalf("invalid data dir: %v", err)
 	}
 	store.Init(abs)
+	store.InitRedis()
 	log.Printf("📂 Data directory: %s", abs)
 
 	// Resolve dist directory
@@ -42,6 +44,9 @@ func main() {
 	handlers.SetDistDir(distAbs)
 	log.Printf("📂 Dist directory: %s", distAbs)
 
+	// Start Go Events background orchestrator
+	services.StartOrchestrator()
+
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
@@ -49,6 +54,7 @@ func main() {
 
 	// ── GET routes ──
 	r.GET("/healthz", handlers.Healthz)
+	r.GET("/ws/live-status", services.WsLiveStatusHandler)
 	r.GET("/api/live-status", handlers.JSONFile("live_status.json"))
 	r.GET("/api/agent-config", handlers.JSONFile("agent_config.json"))
 	r.GET("/api/model-change-log", handlers.JSONFileArray("model_change_log.json"))

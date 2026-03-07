@@ -27,7 +27,7 @@ func TaskAction(c *gin.Context) {
 	}
 	reason := body.Reason
 	if reason == "" {
-		reason = "皇上从看板" + body.Action
+		reason = "用户从看板" + body.Action
 	}
 
 	var resultMsg string
@@ -52,7 +52,7 @@ func TaskAction(c *gin.Context) {
 		case "resume":
 			prev := task.PrevState
 			if prev == "" {
-				prev = "Doing"
+				prev = "Executing"
 			}
 			task.State = prev
 			task.Block = "无"
@@ -74,7 +74,7 @@ func TaskAction(c *gin.Context) {
 		}
 		task.FlowLog = append(task.FlowLog, models.FlowEntry{
 			At:     store.NowISO(),
-			From:   "皇上",
+			From:   "用户",
 			To:     task.Org,
 			Remark: remarkPrefix + "：" + reason,
 		})
@@ -82,7 +82,7 @@ func TaskAction(c *gin.Context) {
 		if body.Action == "resume" {
 			store.SchedulerMarkProgress(task, "恢复到 "+task.State)
 		} else {
-			store.SchedulerAddFlow(task, "皇上"+body.Action+"："+reason)
+			store.SchedulerAddFlow(task, "用户"+body.Action+"："+reason)
 		}
 		task.UpdatedAt = store.NowISO()
 
@@ -124,13 +124,13 @@ func ArchiveTask(c *gin.Context) {
 		if body.ArchiveAllDone {
 			for i := range tasks {
 				s := tasks[i].State
-				if (s == "Done" || s == "Cancelled") && !tasks[i].Archived {
+				if (s == "Completed" || s == "Cancelled") && !tasks[i].Archived {
 					tasks[i].Archived = true
 					tasks[i].ArchivedAt = store.NowISO()
 					count++
 				}
 			}
-			resultMsg = fmt.Sprintf("%d 道旨意已归档", count)
+			resultMsg = fmt.Sprintf("%d 个任务已归档", count)
 			return tasks, nil
 		}
 		task := store.FindTask(tasks, body.TaskID)
@@ -229,8 +229,8 @@ func ReviewAction(c *gin.Context) {
 		if task == nil {
 			return nil, fmt.Errorf("任务 %s 不存在", body.TaskID)
 		}
-		if task.State != "Review" && task.State != "Menxia" {
-			return nil, fmt.Errorf("任务 %s 当前状态为 %s，无法御批", body.TaskID, task.State)
+		if task.State != "ResultReview" && task.State != "PlanReview" {
+			return nil, fmt.Errorf("任务 %s 当前状态为 %s，无法审核", body.TaskID, task.State)
 		}
 
 		store.EnsureScheduler(task)
@@ -238,39 +238,39 @@ func ReviewAction(c *gin.Context) {
 
 		var remark, toDept, fromDept string
 		if body.Action == "approve" {
-			if task.State == "Menxia" {
-				task.State = "Assigned"
-				task.Now = "门下省准奏，移交尚书省派发"
+			if task.State == "PlanReview" {
+				task.State = "Dispatching"
+				task.Now = "安全审查通过，移交调度引擎派发"
 				comment := body.Comment
 				if comment == "" {
-					comment = "门下省审议通过"
+					comment = "安全审查通过"
 				}
-				remark = "✅ 准奏：" + comment
-				toDept = "尚书省"
-				fromDept = "门下省"
-			} else { // Review
-				task.State = "Done"
-				task.Now = "御批通过，任务完成"
+				remark = "✅ 批准：" + comment
+				toDept = "任务调度引擎"
+				fromDept = "安全审查引擎"
+			} else { // ResultReview
+				task.State = "Completed"
+				task.Now = "验收通过，任务完成"
 				comment := body.Comment
 				if comment == "" {
 					comment = "审查通过"
 				}
-				remark = "✅ 御批准奏：" + comment
-				toDept = "皇上"
-				fromDept = "皇上"
+				remark = "✅ 验收通过：" + comment
+				toDept = "用户"
+				fromDept = "系统"
 			}
 		} else { // reject
 			round := task.ReviewRound + 1
 			task.ReviewRound = round
-			task.State = "Zhongshu"
-			task.Now = fmt.Sprintf("封驳退回中书省修订（第%d轮）", round)
+			task.State = "Planning"
+			task.Now = fmt.Sprintf("被驳回，退回编排引擎修订（第%d轮）", round)
 			comment := body.Comment
 			if comment == "" {
 				comment = "需要修改"
 			}
-			remark = "🚫 封驳：" + comment
-			toDept = "中书省"
-			fromDept = "门下省"
+			remark = "🚫 驳回：" + comment
+			toDept = "任务编排引擎"
+			fromDept = task.Org
 		}
 
 		task.FlowLog = append(task.FlowLog, models.FlowEntry{
@@ -287,7 +287,7 @@ func ReviewAction(c *gin.Context) {
 			label = "已封驳"
 		}
 		dispatched := ""
-		if task.State != "Done" {
+		if task.State != "Completed" {
 			dispatched = " (已自动派发 Agent)"
 		}
 		resultMsg = body.TaskID + " " + label + dispatched
@@ -348,7 +348,7 @@ func AdvanceState(c *gin.Context) {
 		fromLabel := models.StateLabels[cur]
 		toLabel := models.StateLabels[flow.Next]
 		dispatched := ""
-		if flow.Next != "Done" {
+		if flow.Next != "Completed" {
 			dispatched = " (已自动派发 Agent)"
 		}
 		resultMsg = body.TaskID + " " + fromLabel + " → " + toLabel + dispatched

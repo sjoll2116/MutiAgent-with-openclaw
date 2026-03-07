@@ -9,7 +9,7 @@ from xml.etree import ElementTree as ET
 from file_lock import atomic_json_write
 from utils import validate_url
 
-log = logging.getLogger('朝报')
+log = logging.getLogger('每日简报')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(message)s', datefmt='%H:%M:%S')
 
 DATA = pathlib.Path(__file__).resolve().parent.parent / 'data'

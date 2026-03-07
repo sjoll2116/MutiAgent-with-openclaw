@@ -7,13 +7,13 @@
 ```bash
 # 确保你在项目根目录
 python3 dashboard/server.py
-# 输出: 三省六部看板启动 → http://127.0.0.1:7891
+# 输出: 三省执行智能体集群看板启动 → http://127.0.0.1:7891
 ```
 
 ### 2. 添加官方 Skill（CLI）
 
 ```bash
-# 为中书省添加代码审查 skill
+# 为任务编排引擎添加代码审查 skill
 python3 scripts/skill_manager.py add-remote \
   --agent zhongshu \
   --name code_review \
@@ -51,7 +51,7 @@ curl http://localhost:7891/api/remote-skills-list | jq .
 #   "remoteSkills": [
 #     {
 #       "skillName": "code_review",
-#       "agentId": "zhongshu",
+#       "agentId": "planner",
 #       "sourceUrl": "https://raw.githubusercontent.com/...",
 #       "description": "代码审查能力",
 #       "localPath": "/Users/xxx/.openclaw/workspace-zhongshu/skills/code_review/SKILL.md",
@@ -212,7 +212,7 @@ python3 scripts/skill_manager.py add-remote \
 curl -X POST http://localhost:7891/api/add-remote-skill \
   -H "Content-Type: application/json" \
   -d '{
-    "agentId": "zhongshu",
+    "agentId": "planner",
     "skillName": "code_review",
     "sourceUrl": "https://raw.githubusercontent.com/...",
     "description": "代码审查"
@@ -225,7 +225,7 @@ curl -X POST http://localhost:7891/api/add-remote-skill \
   "ok": true,
   "message": "技能 code_review 已从远程源添加到 zhongshu",
   "skillName": "code_review",
-  "agentId": "zhongshu",
+  "agentId": "planner",
   "source": "https://raw.githubusercontent.com/...",
   "localPath": "/Users/xxx/.openclaw/workspace-zhongshu/skills/code_review/SKILL.md",
   "size": 2048,
@@ -248,7 +248,7 @@ curl http://localhost:7891/api/remote-skills-list
   "remoteSkills": [
     {
       "skillName": "code_review",
-      "agentId": "zhongshu",
+      "agentId": "planner",
       "sourceUrl": "https://raw.githubusercontent.com/...",
       "description": "代码审查能力",
       "localPath": "/Users/xxx/.openclaw/workspace-zhongshu/skills/code_review/SKILL.md",
@@ -270,7 +270,7 @@ curl http://localhost:7891/api/remote-skills-list
 curl -X POST http://localhost:7891/api/update-remote-skill \
   -H "Content-Type: application/json" \
   -d '{
-    "agentId": "zhongshu",
+    "agentId": "planner",
     "skillName": "code_review"
   }'
 ```
@@ -283,7 +283,7 @@ curl -X POST http://localhost:7891/api/update-remote-skill \
 curl -X POST http://localhost:7891/api/remove-remote-skill \
   -H "Content-Type: application/json" \
   -d '{
-    "agentId": "zhongshu",
+    "agentId": "planner",
     "skillName": "code_review"
   }'
 ```

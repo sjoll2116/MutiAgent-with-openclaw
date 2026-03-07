@@ -34,28 +34,28 @@ def state_from_session(age_ms, aborted):
     if aborted:
         return 'Blocked'
     if age_ms <= 2 * 60 * 1000:
-        return 'Doing'
+        return 'Executing'
     if age_ms <= 60 * 60 * 1000:
-        return 'Review'
+        return 'ResultReview'
     return 'Next'
 
 
 def detect_official(agent_id):
     mapping = {
-        'main':    ('储君', '太子'),        # legacy id for taizi
-        'taizi':   ('储君', '太子'),
-        'zhongshu': ('中书令', '中书省'),
-        'menxia':  ('侍中', '门下省'),
-        'shangshu': ('尚书令', '尚书省'),
-        'hubu':    ('户部尚书', '户部'),
-        'libu':    ('礼部尚书', '礼部'),
-        'bingbu':  ('兵部尚书', '兵部'),
-        'xingbu':  ('刑部尚书', '刑部'),
-        'gongbu':  ('工部尚书', '工部'),
-        'libu_hr': ('吏部尚书', '吏部'),
-        'zaochao': ('钦天监', '朝报司'),
+        'main':    ('主协调', '协调中枢'),        # legacy id for taizi
+        'coordinator':   ('主协调', '协调中枢'),
+        'planner': ('编排指挥官', '任务编排引擎'),
+        'reviewer':  ('审查指挥官', '安全审查引擎'),
+        'dispatcher': ('调度指挥官', '任务调度引擎'),
+        'data_analyst':    ('数据分析师尚书', '数据分析师'),
+        'doc_writer':    ('文档编写员尚书', '文档编写员'),
+        'software_engineer':  ('代码架构师尚书', '代码架构师'),
+        'qa_engineer':  ('质量保证师尚书', '质量保证师'),
+        'software_engineer':  ('代码架构师尚书', '代码架构师'),
+        'libu_hr': ('资源调配员尚书', '资源调配员'),
+        'monitor': ('情报监控员', '监控组长'),
     }
-    return mapping.get(agent_id, ('尚书令', '尚书省'))
+    return mapping.get(agent_id, ('调度指挥官', '任务调度引擎'))
 
 
 def load_activity(session_file, limit=12):
@@ -295,7 +295,7 @@ def main():
             # 除非它是 Blocked (报错)，或者是今天新建的
             state = t.get('state')
             # state_from_session: < 2min = Doing, < 60min = Review, else = Next
-            if state not in ('Doing', 'Blocked'):
+            if state not in ('Executing', 'Blocked'):
                 # 如果不是正在进行或报错，就隐藏掉
                 # 特例: 如果是 mission control (mc-) 的心跳，可能也没必要显示，除非 Doing
                 continue
@@ -304,7 +304,7 @@ def main():
         
         tasks = filtered_tasks
         
-        # ── 保留已有的 JJC-* 旨意任务（不覆盖皇上下旨记录）──
+        # ── 保留已有的 JJC-* 任务任务（不覆盖用户下旨记录）──
         # JJC 任务的 now 字段由 Agent 自己通过 kanban_update.py progress 命令主动上报，
         # 不再从会话日志中被动抓取。这里只做合并，不做 activity 映射。
         existing_tasks_file = DATA / 'tasks_source.json'
@@ -313,7 +313,7 @@ def main():
                 existing = json.loads(existing_tasks_file.read_text())
                 jjc_existing = [t for t in existing if str(t.get('id', '')).startswith('JJC')]
                 
-                # 去掉 tasks 里已有的 JJC（以防重复），再把旨意放到最前面
+                # 去掉 tasks 里已有的 JJC（以防重复），再把任务放到最前面
                 tasks = [t for t in tasks if not str(t.get('id', '')).startswith('JJC')]
                 tasks = jjc_existing + tasks
             except Exception as e:

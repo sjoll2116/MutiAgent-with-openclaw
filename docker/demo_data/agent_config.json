@@ -75,9 +75,9 @@
   ],
   "agents": [
     {
-      "id": "shangshu",
-      "label": "尚书省",
-      "role": "尚书令",
+      "id": "dispatcher",
+      "label": "任务调度引擎",
+      "role": "调度指挥官",
       "duty": "派单与升级裁决",
       "emoji": "📮",
       "model": "anthropic/claude-sonnet-4-6",
@@ -105,19 +105,19 @@
         }
       ],
       "allowAgents": [
-        "zhongshu",
-        "menxia",
-        "hubu",
-        "libu",
-        "bingbu",
-        "xingbu",
-        "gongbu"
+        "planner",
+        "reviewer",
+        "data_analyst",
+        "doc_writer",
+        "software_engineer",
+        "qa_engineer",
+        "software_engineer"
       ]
     },
     {
-      "id": "zhongshu",
-      "label": "中书省",
-      "role": "中书令",
+      "id": "planner",
+      "label": "任务编排引擎",
+      "role": "编排指挥官",
       "duty": "起草任务令与优先级",
       "emoji": "📜",
       "model": "anthropic/claude-sonnet-4-6",
@@ -133,14 +133,14 @@
         }
       ],
       "allowAgents": [
-        "menxia",
-        "shangshu"
+        "reviewer",
+        "dispatcher"
       ]
     },
     {
-      "id": "menxia",
-      "label": "门下省",
-      "role": "侍中",
+      "id": "reviewer",
+      "label": "安全审查引擎",
+      "role": "审查指挥官",
       "duty": "审议与退回机制",
       "emoji": "🔍",
       "model": "anthropic/claude-sonnet-4-6",
@@ -156,14 +156,14 @@
         }
       ],
       "allowAgents": [
-        "shangshu",
-        "zhongshu"
+        "dispatcher",
+        "planner"
       ]
     },
     {
-      "id": "hubu",
-      "label": "户部",
-      "role": "户部尚书",
+      "id": "data_analyst",
+      "label": "数据分析师",
+      "role": "数据分析师尚书",
       "duty": "资源/预算/成本",
       "emoji": "💰",
       "model": "anthropic/claude-sonnet-4-6",
@@ -179,13 +179,13 @@
         }
       ],
       "allowAgents": [
-        "shangshu"
+        "dispatcher"
       ]
     },
     {
-      "id": "libu",
-      "label": "礼部",
-      "role": "礼部尚书",
+      "id": "doc_writer",
+      "label": "文档编写员",
+      "role": "文档编写员尚书",
       "duty": "文档/汇报/规范",
       "emoji": "📝",
       "model": "anthropic/claude-sonnet-4-6",
@@ -201,13 +201,13 @@
         }
       ],
       "allowAgents": [
-        "shangshu"
+        "dispatcher"
       ]
     },
     {
-      "id": "bingbu",
-      "label": "兵部",
-      "role": "兵部尚书",
+      "id": "software_engineer",
+      "label": "代码架构师",
+      "role": "代码架构师尚书",
       "duty": "应急与巡检",
       "emoji": "⚔️",
       "model": "anthropic/claude-sonnet-4-6",
@@ -223,13 +223,13 @@
         }
       ],
       "allowAgents": [
-        "shangshu"
+        "dispatcher"
       ]
     },
     {
-      "id": "xingbu",
-      "label": "刑部",
-      "role": "刑部尚书",
+      "id": "qa_engineer",
+      "label": "质量保证师",
+      "role": "质量保证师尚书",
       "duty": "合规/审计/红线",
       "emoji": "⚖️",
       "model": "anthropic/claude-sonnet-4-6",
@@ -245,13 +245,13 @@
         }
       ],
       "allowAgents": [
-        "shangshu"
+        "dispatcher"
       ]
     },
     {
-      "id": "gongbu",
-      "label": "工部",
-      "role": "工部尚书",
+      "id": "software_engineer",
+      "label": "代码架构师",
+      "role": "代码架构师尚书",
       "duty": "工程交付与自动化",
       "emoji": "🔧",
       "model": "anthropic/claude-sonnet-4-6",
@@ -267,7 +267,7 @@
         }
       ],
       "allowAgents": [
-        "shangshu"
+        "dispatcher"
       ]
     }
   ]

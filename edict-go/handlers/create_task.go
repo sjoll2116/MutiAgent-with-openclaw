@@ -17,7 +17,7 @@ import (
 var (
 	conversationInfoRe = regexp.MustCompile(`(?s)\n*Conversation info\s*\(.*`)
 	codeBlockRe        = regexp.MustCompile("(?s)\n*```.*")
-	prefixRe           = regexp.MustCompile(`^(传旨|下旨)[：:\x{ff1a}]\s*`)
+	prefixRe           = regexp.MustCompile(`^(任务|发起任务)[：:\x{ff1a}]\s*`)
 )
 
 // CreateTask handles POST /api/create-task.
@@ -50,14 +50,14 @@ func CreateTask(c *gin.Context) {
 	if utf8.RuneCountInString(title) < models.MinTitleLen {
 		c.JSON(http.StatusBadRequest, models.APIResp{
 			OK:    false,
-			Error: fmt.Sprintf("标题过短（%d<%d字），不像是旨意", utf8.RuneCountInString(title), models.MinTitleLen),
+			Error: fmt.Sprintf("标题过短（%d<%d字），不像是有效任务", utf8.RuneCountInString(title), models.MinTitleLen),
 		})
 		return
 	}
 	if models.JunkTitles[strings.ToLower(title)] {
 		c.JSON(http.StatusBadRequest, models.APIResp{
 			OK:    false,
-			Error: fmt.Sprintf("「%s」不是有效旨意，请输入具体工作指令", title),
+			Error: fmt.Sprintf("「%s」不是有效任务，请输入具体工作指令", title),
 		})
 		return
 	}
@@ -65,11 +65,11 @@ func CreateTask(c *gin.Context) {
 	// Defaults
 	org := req.Org
 	if org == "" {
-		org = "中书省"
+		org = "任务编排引擎"
 	}
 	official := req.Official
 	if official == "" {
-		official = "中书令"
+		official = "系统"
 	}
 	priority := req.Priority
 	if priority == "" {
@@ -101,9 +101,9 @@ func CreateTask(c *gin.Context) {
 			ID:       taskID,
 			Title:    title,
 			Official: official,
-			Org:      "太子",
-			State:    "Taizi",
-			Now:      "等待太子接旨分拣",
+			Org:      "协调中枢",
+			State:    "Queued",
+			Now:      "等待协调中枢路由分配",
 			ETA:      "-",
 			Block:    "无",
 			Output:   "",
@@ -111,9 +111,9 @@ func CreateTask(c *gin.Context) {
 			Priority: priority,
 			FlowLog: []models.FlowEntry{{
 				At:     now,
-				From:   "皇上",
-				To:     "太子",
-				Remark: "下旨：" + title,
+				From:   "用户",
+				To:     "协调中枢",
+				Remark: "发起任务：" + title,
 			}},
 			UpdatedAt: now,
 		}
@@ -144,6 +144,6 @@ func CreateTask(c *gin.Context) {
 	c.JSON(http.StatusOK, models.APIResp{
 		OK:      true,
 		TaskID:  taskID,
-		Message: fmt.Sprintf("旨意 %s 已下达，正在派发给太子", taskID),
+		Message: fmt.Sprintf("任务 %s 已创建，正交由协调中枢处理", taskID),
 	})
 }

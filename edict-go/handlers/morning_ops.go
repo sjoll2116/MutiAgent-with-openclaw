@@ -26,7 +26,7 @@ func SaveMorningConfig(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, models.APIResp{OK: false, Error: "保存配置失败: " + err.Error()})
 		return
 	}
-	c.JSON(http.StatusOK, models.APIResp{OK: true, Message: "朝报配置已保存"})
+	c.JSON(http.StatusOK, models.APIResp{OK: true, Message: "配置已保存"})
 }
 
 // ── POST /api/morning-brief/refresh ──
@@ -55,7 +55,7 @@ func RefreshMorningBrief(c *gin.Context) {
 		_ = exec.Command(python, args...).Run()
 	}()
 
-	c.JSON(http.StatusOK, models.APIResp{OK: true, Message: "朝报刷新任务已触发，预计1-2分钟完成"})
+	c.JSON(http.StatusOK, models.APIResp{OK: true, Message: "刷新任务已触发，预计1-2分钟完成"})
 }
 
 // ── POST /api/repair-flow-order ──
@@ -74,15 +74,15 @@ func RepairFlowOrder(c *gin.Context) {
 				continue
 			}
 			first := &t.FlowLog[0]
-			if first.From != "皇上" || first.To != "中书省" {
+			if first.From != "用户" || first.To != "任务编排引擎" {
 				continue
 			}
-			first.To = "太子"
+			first.To = "协调中枢"
 
-			if t.State == "Zhongshu" && t.Org == "中书省" && len(t.FlowLog) == 1 {
-				t.State = "Taizi"
-				t.Org = "太子"
-				t.Now = "等待太子接旨分拣"
+			if t.State == "Planning" && t.Org == "任务编排引擎" && len(t.FlowLog) == 1 {
+				t.State = "Queued"
+				t.Org = "协调中枢"
+				t.Now = "等待协调中枢路由分配"
 			}
 			t.UpdatedAt = store.NowISO()
 			fixed++

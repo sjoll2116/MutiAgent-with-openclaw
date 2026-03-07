@@ -3,6 +3,7 @@ version: '3.8'
 services:
   sansheng-demo:
     image: cft0808/sansheng-demo:latest
+    platform: linux/amd64
     ports:
       - "7891:7891"
     environment:

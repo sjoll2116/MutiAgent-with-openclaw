@@ -9,17 +9,17 @@ from fastapi import APIRouter
 log = logging.getLogger("edict.api.agents")
 router = APIRouter()
 
-# Agent 元信息（对应 agents/ 目录下的 SOUL.md）
+# Agent 元信息
 AGENT_META = {
-    "zaochao": {"name": "早朝（朝会主持）", "role": "朝会召集与议程管理", "icon": "🏛️"},
-    "shangshu": {"name": "尚书令", "role": "总协调与任务监督", "icon": "📜"},
-    "zhongshu": {"name": "中书省", "role": "起草诏令与方案规划", "icon": "✍️"},
-    "menxia": {"name": "门下省", "role": "审核与封驳", "icon": "🔍"},
-    "libu": {"name": "吏部", "role": "人事与组织管理", "icon": "👤"},
-    "hubu": {"name": "户部", "role": "财务与资源管理", "icon": "💰"},
-    "gongbu": {"name": "工部", "role": "工程与技术实施", "icon": "🔧"},
-    "xingbu": {"name": "刑部", "role": "规范与质量审查", "icon": "⚖️"},
-    "bingbu": {"name": "兵部", "role": "安全与应急响应", "icon": "🛡️"},
+    "coordinator": {"name": "协调中枢", "role": "协调中枢", "icon": "🤴"},
+    "planner": {"name": "任务编排引擎", "role": "规划引擎", "icon": "📜"},
+    "reviewer": {"name": "安全审查引擎", "role": "审核引擎", "icon": "🔍"},
+    "dispatcher": {"name": "任务调度引擎", "role": "调度引擎", "icon": "📮"},
+    "data_analyst": {"name": "数据分析师", "role": "数据分析", "icon": "💰"},
+    "doc_writer": {"name": "文档编写员", "role": "文档撰写", "icon": "📚"},
+    "software_engineer": {"name": "代码架构师", "role": "代码开发", "icon": "🔧"},
+    "qa_engineer": {"name": "质量保证师", "role": "质量保证", "icon": "⚖️"},
+    "monitor": {"name": "情报监控员", "role": "系统监控", "icon": "📰"},
 }
 
 

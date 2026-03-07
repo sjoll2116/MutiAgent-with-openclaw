@@ -1,12 +1,12 @@
 # 🚀 快速上手指南
 
-> 从零开始，5 分钟搭建你的三省六部 AI 协同系统
+> 从零开始，5 分钟搭建你的三省执行智能体集群 AI 协同系统
 
 ---
 
 ## 第一步：安装 OpenClaw
 
-三省六部基于 [OpenClaw](https://openclaw.ai) 运行，请先安装：
+三省执行智能体集群基于 [OpenClaw](https://openclaw.ai) 运行，请先安装：
 
 ```bash
 # macOS
@@ -22,7 +22,7 @@ brew install openclaw
 openclaw init
 ```
 
-## 第二步：克隆并安装三省六部
+## 第二步：克隆并安装三省执行智能体集群
 
 ```bash
 git clone https://github.com/cft0808/edict.git
@@ -34,7 +34,7 @@ chmod +x install.sh && ./install.sh
 - ✅ 创建 12 个 Agent Workspace（`~/.openclaw/workspace-*`）
 - ✅ 写入各省部 SOUL.md 人格文件
 - ✅ 注册 Agent 及权限矩阵到 `openclaw.json`
-- ✅ 配置旨意数据清洗规则
+- ✅ 配置任务数据清洗规则
 - ✅ 构建 React 前端到 `dashboard/dist/`（需 Node.js 18+）
 - ✅ 初始化数据目录
 - ✅ 执行首次数据同步
@@ -42,13 +42,13 @@ chmod +x install.sh && ./install.sh
 
 ## 第三步：配置消息渠道
 
-在 OpenClaw 中配置消息渠道（Feishu / Telegram / Signal），将 `taizi`（太子）Agent 设为旨意入口。太子会自动分拣闲聊与指令，指令类消息提炼标题后转发中书省。
+在 OpenClaw 中配置消息渠道（Feishu / Telegram / Signal），将 `taizi`（协调中枢）Agent 设为任务入口。协调中枢会自动分拣闲聊与指令，指令类消息提炼标题后转发任务编排引擎。
 
 ```bash
 # 查看当前渠道
 openclaw channels list
 
-# 添加飞书渠道（入口设为太子）
+# 添加飞书渠道（入口设为协调中枢）
 openclaw channels add --type feishu --agent taizi
 ```
 
@@ -75,9 +75,9 @@ open http://127.0.0.1:7891
 > ```
 > 访问 http://localhost:5173，Hot Module Replacement 自动刷新。修改完成后运行 `npm run build` 构建生产版本。
 
-## 第五步：发送第一道旨意
+## 第五步：发送第一道任务
 
-通过消息渠道发送任务（太子会自动识别并转发到中书省）：
+通过消息渠道发送任务（协调中枢会自动识别并转发到任务编排引擎）：
 
 ```
 请帮我用 Python 写一个文本分类器：
@@ -91,13 +91,13 @@ open http://127.0.0.1:7891
 
 打开看板 http://127.0.0.1:7891
 
-1. **📋 旨意看板** — 观察任务在各状态之间流转
+1. **📋 任务看板** — 观察任务在各状态之间流转
 2. **🔭 省部调度** — 查看各部门工作分布
-3. **📜 奏折阁** — 任务完成后自动归档为奏折
+3. **📜 报告阁** — 任务完成后自动归档为报告
 
 任务流转路径：
 ```
-收件 → 太子分拣 → 中书规划 → 门下审议 → 已派发 → 执行中 → 已完成
+收件 → 协调中枢分拣 → 中书规划 → 门下审议 → 已派发 → 执行中 → 已完成
 ```
 
 ---
@@ -122,7 +122,7 @@ open http://127.0.0.1:7891
 
 ### 叫停 / 取消任务
 
-> 在旨意看板或任务详情中，点击 **⏸ 叫停** 或 **🚫 取消** 按钮
+> 在任务看板或任务详情中，点击 **⏸ 叫停** 或 **🚫 取消** 按钮
 
 ### 订阅天下要闻
 

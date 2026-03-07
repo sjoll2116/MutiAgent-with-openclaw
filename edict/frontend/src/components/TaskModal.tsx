@@ -93,18 +93,15 @@ export default function TaskModal() {
 
     const isDone = ['Done', 'Cancelled'].includes(task.state);
     if (!isDone) {
-      laTimerRef.current = setInterval(() => {
+      const handleWs = () => {
         fetchActivity();
         fetchSched();
-      }, 4000);
+      };
+      window.addEventListener('ws_message', handleWs);
+      return () => {
+        window.removeEventListener('ws_message', handleWs);
+      };
     }
-
-    return () => {
-      if (laTimerRef.current) {
-        clearInterval(laTimerRef.current);
-        laTimerRef.current = null;
-      }
-    };
   }, [modalTaskId, task?.state, fetchActivity, fetchSched]);
 
   // scroll log on new entries
