@@ -7,20 +7,41 @@ const API_BASE = import.meta.env.VITE_API_URL || '';
 
 // ── 通用请求 ──
 
+const AUTH_TOKEN_KEY = 'edict_token';
+
 async function fetchJ<T>(url: string): Promise<T> {
-  const res = await fetch(url, { cache: 'no-store' });
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const headers: Record<string, string> = {};
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  const res = await fetch(url, { headers, cache: 'no-store' });
+  if (res.status === 401) {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    window.dispatchEvent(new Event('auth_required'));
+    throw new Error('401');
+  }
   if (!res.ok) throw new Error(String(res.status));
   return res.json();
 }
 
 async function postJ<T>(url: string, data: unknown): Promise<T> {
+  const token = localStorage.getItem(AUTH_TOKEN_KEY);
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
   const res = await fetch(url, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers,
     body: JSON.stringify(data),
   });
+  if (res.status === 401) {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    window.dispatchEvent(new Event('auth_required'));
+    throw new Error('401');
+  }
   return res.json();
 }
+
 
 // ── API 接口 ──
 
@@ -93,7 +114,30 @@ export const api = {
 
   createTask: (data: CreateTaskPayload) =>
     postJ<ActionResult & { taskId?: string }>(`${API_BASE}/api/create-task`, data),
+
+  // 认证
+  login: async (password: string) => {
+    const formData = new URLSearchParams();
+    formData.append('username', 'admin');
+    formData.append('password', password);
+    const res = await fetch(`${API_BASE}/api/auth/login`, {
+      method: 'POST',
+      body: formData,
+    });
+    const data = await res.json();
+    if (res.ok && data.access_token) {
+      localStorage.setItem(AUTH_TOKEN_KEY, data.access_token);
+      return { ok: true };
+    }
+    return { ok: false, error: data.detail || '登录失败' };
+  },
+  logout: () => {
+    localStorage.removeItem(AUTH_TOKEN_KEY);
+    window.dispatchEvent(new Event('auth_required'));
+  },
+  isAuthenticated: () => !!localStorage.getItem(AUTH_TOKEN_KEY),
 };
+
 
 // ── Types ──
 

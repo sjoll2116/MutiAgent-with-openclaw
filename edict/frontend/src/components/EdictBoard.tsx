@@ -44,7 +44,7 @@ function EdictCard({ task }: { task: Task }) {
   const handleAction = async (action: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (action === 'stop' || action === 'cancel') {
-      // Use confirm dialog via store (will implement with ConfirmDialog)
+      // 确认对话框
       const reason = prompt(action === 'stop' ? '请输入叫停原因：' : '请输入取消原因：');
       if (reason === null) return;
       try {

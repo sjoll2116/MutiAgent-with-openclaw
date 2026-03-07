@@ -171,7 +171,7 @@ class EventBus:
         results = await self.redis.xautoclaim(
             stream_key, group, consumer, min_idle_time=min_idle_ms, start_id="0-0", count=count
         )
-        # xautoclaim returns (next_id, [(id, data), ...], [deleted_ids])
+        # xautoclaim 返回 (next_id, [(id, data), ...], [deleted_ids])
         if results and len(results) >= 2:
             events = []
             for entry_id, data in results[1]:

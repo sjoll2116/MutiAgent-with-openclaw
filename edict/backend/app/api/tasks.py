@@ -12,9 +12,11 @@ from ..db import get_db
 from ..models.task import TaskState
 from ..services.event_bus import EventBus, get_event_bus
 from ..services.task_service import TaskService
+from ..auth import get_current_user
 
 log = logging.getLogger("edict.api.tasks")
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
+
 
 
 # ── Schemas ──

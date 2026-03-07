@@ -74,8 +74,12 @@ while true; do
   SCAN_COUNTER=$((SCAN_COUNTER + INTERVAL))
   if (( SCAN_COUNTER >= SCAN_INTERVAL )); then
     SCAN_COUNTER=0
+    # 从 .env 读取 SERVICE_TOKEN (简单实现)
+    S_TOKEN=$(grep SERVICE_TOKEN "$SCRIPT_DIR/../.env" | cut -d'=' -f2 | tr -d '\r')
     curl -s -X POST http://127.0.0.1:7891/api/scheduler-scan \
+      -H "X-Service-Token: $S_TOKEN" \
       -H 'Content-Type: application/json' -d '{"thresholdSec":180}' >> "$LOG" 2>&1 || true
+
   fi
 
   sleep "$INTERVAL"

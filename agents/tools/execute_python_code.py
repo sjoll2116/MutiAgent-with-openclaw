@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 """
-Execute Python Code Sandbox Tool for OpenClaw Agents.
-Usage: python3 execute_python_code.py "your python code here"
+为 OpenClaw Agent 提供的 Python 代码沙盒执行工具。
+用法: python3 execute_python_code.py "您的 python 代码"
 
-This tool runs the provided Python code in a temporary subprocess
-and returns the captured stdout and stderr.
+该工具在临时子进程中运行提供的 Python 代码，
+并捕获返回的 stdout 和 stderr。
 """
 import sys
 import subprocess
@@ -12,16 +12,16 @@ import tempfile
 import textwrap
 
 def execute_code(code: str, timeout: int = 15):
-    """Executes python code in a temporary file and captures the output."""
-    # Note: For genuine production security, this should run inside a restricted Docker
-    # container or gVisor sandbox. Here we use a basic subprocess for demonstration.
+    """在临时文件中执行 python 代码并捕获输出。"""
+    # 注意：为了生产环境的真实安全，这应该在受限的 Docker 容器或 gVisor 沙盒中运行。
+    # 这里我们使用基础的子进程进行演示。
     with tempfile.NamedTemporaryFile(mode='w', suffix='.py', delete=False) as tmp:
         tmp.write(code)
         tmp_path = tmp.name
 
-    print("--- Execution Results ---")
+    print("--- 执行结果 ---")
     try:
-        # Run the temporary Python script
+        # 运行临时 Python 脚本
         result = subprocess.run(
             [sys.executable, tmp_path],
             capture_output=True,
@@ -30,22 +30,22 @@ def execute_code(code: str, timeout: int = 15):
         )
         
         if result.stdout:
-            print("[STDOUT]")
+            print("[标准输出 STDOUT]")
             print(result.stdout)
             
         if result.stderr:
-            print("[STDERR]")
+            print("[标准错误 STDERR]")
             print(result.stderr)
             
         if result.returncode == 0:
-            print(f"\n✅ Execution completed successfully (Return Code: 0)")
+            print(f"\n✅ 执行成功 (返回码: 0)")
         else:
-            print(f"\n❌ Execution failed (Return Code: {result.returncode})")
+            print(f"\n❌ 执行失败 (返回码: {result.returncode})")
             
     except subprocess.TimeoutExpired:
-        print(f"❌ Execution timed out after {timeout} seconds.")
+        print(f"❌ 执行超时，超过了 {timeout} 秒限制。")
     except Exception as e:
-        print(f"❌ Failed to execute code: {e}")
+        print(f"❌ 无法执行代码: {e}")
     finally:
         import os
         if os.path.exists(tmp_path):
@@ -53,16 +53,16 @@ def execute_code(code: str, timeout: int = 15):
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python3 execute_python_code.py '<code>'")
+        print("用法: python3 execute_python_code.py '<code>'")
         sys.exit(1)
         
     code_input = sys.argv[1]
     
-    # Try to clean up markdown code block syntax if the agent included it
+    # 如果 Agent 包含了 markdown 代码块语法，尝试进行清理
     if code_input.startswith("```"):
         lines = code_input.split('\n')
         if len(lines) > 1:
-            # Remove the first line (e.g., ```python) and the last line (```)
+            # 移除第一行 (例如 ```python) 和最后一行 (```)
             code_input = '\n'.join(lines[1:-1])
 
     code_input = textwrap.dedent(code_input)

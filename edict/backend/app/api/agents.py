@@ -4,10 +4,12 @@ import json
 import logging
 from pathlib import Path
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends
+from ..auth import get_current_user
 
 log = logging.getLogger("edict.api.agents")
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
+
 
 # Agent 元信息
 AGENT_META = {

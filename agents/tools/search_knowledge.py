@@ -9,16 +9,51 @@ import urllib.request
 import urllib.parse
 from pathlib import Path
 
-# Adjust API URL if calling from within the docker network
-API_URL = "http://backend:8000/api/rag/search"
+import os
+
+# 从 .env 加载配置
+def load_env():
+    env_path = Path(__file__).parents[2] / ".env"
+    if not env_path.exists():
+        return {}
+    
+    # 注意: .env 可能是 UTF-16LE 编码 (Windows) 或 UTF-8
+    try:
+        content = env_path.read_text(encoding='utf-16')
+    except:
+        content = env_path.read_text(encoding='utf-8')
+        
+    env = {}
+    for line in content.splitlines():
+        if "=" in line and not line.startswith("#"):
+            k, v = line.split("=", 1)
+            env[k.strip()] = v.strip()
+    return env
+
+ENV = load_env()
+SERVICE_TOKEN = os.getenv("EDICT_SERVICE_TOKEN") or ENV.get("SERVICE_TOKEN", "")
+
+# Adjust API URL
+API_PORT = ENV.get("PORT", "7891")
+API_URL = os.getenv("EDICT_API_URL", f"http://127.0.0.1:{API_PORT}")
+if not API_URL.endswith("/api/rag/search"):
+    API_URL = f"{API_URL.rstrip('/')}/api/rag/search"
 
 def search(query: str, top_k: int = 5):
+
     data = json.dumps({"query": query, "top_k": top_k, "use_hyde": True}).encode('utf-8')
+    headers = {
+        'Content-Type': 'application/json'
+    }
+    if SERVICE_TOKEN:
+        headers['X-Service-Token'] = SERVICE_TOKEN
+
     req = urllib.request.Request(
         API_URL, 
         data=data, 
-        headers={'Content-Type': 'application/json'}
+        headers=headers
     )
+
     
     try:
         with urllib.request.urlopen(req) as response:

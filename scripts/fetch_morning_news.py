@@ -211,7 +211,7 @@ def main():
     for category, feeds in merged_feeds.items():
         log.info(f'  采集 {category}...')
         items = fetch_category(category, feeds)
-        # Boost items matching user keywords
+        # 提升匹配用户关键词的新闻权重
         if user_keywords:
             for item in items:
                 text = (item.get('title', '') + ' ' + item.get('summary', '')).lower()

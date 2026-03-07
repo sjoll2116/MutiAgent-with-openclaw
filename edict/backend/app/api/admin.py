@@ -10,9 +10,10 @@ from sqlalchemy import text
 
 from ..db import get_db
 from ..services.event_bus import get_event_bus
+from ..auth import get_current_user
 
 log = logging.getLogger("edict.api.admin")
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
 
 
 @router.get("/health/deep")
@@ -20,14 +21,14 @@ async def deep_health(db: AsyncSession = Depends(get_db)):
     """深度健康检查：Postgres + Redis 连通性。"""
     checks = {"postgres": False, "redis": False}
 
-    # Postgres
+    # Postgres 连通性测试
     try:
         result = await db.execute(text("SELECT 1"))
         checks["postgres"] = result.scalar() == 1
     except Exception as e:
         checks["postgres_error"] = str(e)
 
-    # Redis
+    # Redis 连通性测试
     try:
         bus = await get_event_bus()
         pong = await bus.redis.ping()

@@ -11,9 +11,11 @@ from fastapi import Depends
 from ..db import get_db
 from ..models.event import Event
 from ..services.event_bus import get_event_bus
+from ..auth import get_current_user
 
 log = logging.getLogger("edict.api.events")
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(get_current_user)])
+
 
 
 @router.get("")

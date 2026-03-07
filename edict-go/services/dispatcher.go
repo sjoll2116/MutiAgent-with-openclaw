@@ -169,6 +169,10 @@ func callOpenClaw(ctx context.Context, agent, message, taskID, traceID string) o
 		port = "7891"
 	}
 	env = append(env, fmt.Sprintf("EDICT_API_URL=http://localhost:%s", port))
+	serviceToken := os.Getenv("SERVICE_TOKEN")
+	if serviceToken != "" {
+		env = append(env, fmt.Sprintf("EDICT_SERVICE_TOKEN=%s", serviceToken))
+	}
 	cmd.Env = env
 
 	openclawDir := os.Getenv("OPENCLAW_PROJECT_DIR")

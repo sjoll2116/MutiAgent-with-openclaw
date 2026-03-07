@@ -20,7 +20,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .services.event_bus import get_event_bus
-from .api import tasks, agents, events, admin, websocket, rag
+from .api import tasks, agents, events, admin, websocket, rag, auth
+
 
 logging.basicConfig(
     level=logging.INFO,
@@ -63,7 +64,9 @@ app.add_middleware(
 )
 
 # 注册路由
+app.include_router(auth.router, prefix="/api", tags=["auth"])
 app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
+
 app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
 app.include_router(events.router, prefix="/api/events", tags=["events"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])

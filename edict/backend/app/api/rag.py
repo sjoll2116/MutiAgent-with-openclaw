@@ -3,8 +3,10 @@ from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..db import get_db
 from ..services.rag_service import RAGService
+from ..auth import get_current_user
 
-router = APIRouter(prefix="/rag", tags=["RAG"])
+router = APIRouter(prefix="/rag", tags=["RAG"], dependencies=[Depends(get_current_user)])
+
 
 class SearchRequest(BaseModel):
     query: str

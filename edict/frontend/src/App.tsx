@@ -1,5 +1,8 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore, TAB_DEFS, startPolling, stopPolling, isEdict, isArchived } from './store';
+import { api } from './api';
+
+// ── 组件 ──
 import EdictBoard from './components/EdictBoard';
 import MonitorPanel from './components/MonitorPanel';
 import OfficialPanel from './components/OfficialPanel';
@@ -10,21 +13,35 @@ import MemorialPanel from './components/MemorialPanel';
 import TemplatePanel from './components/TemplatePanel';
 import MorningPanel from './components/MorningPanel';
 import TaskModal from './components/TaskModal';
-// ConfirmDialog is used inside TaskModal as needed
 import Toaster from './components/Toaster';
 import CourtCeremony from './components/CourtCeremony';
+import LoginPage from './components/LoginPage';
 
 export default function App() {
+  const [authed, setAuthed] = useState(api.isAuthenticated());
   const activeTab = useStore((s) => s.activeTab);
   const setActiveTab = useStore((s) => s.setActiveTab);
   const liveStatus = useStore((s) => s.liveStatus);
   const countdown = useStore((s) => s.countdown);
   const loadAll = useStore((s) => s.loadAll);
 
+  // 监听登录态失效事件
   useEffect(() => {
-    startPolling();
-    return () => stopPolling();
+    const handleAuth = () => setAuthed(false);
+    window.addEventListener('auth_required', handleAuth);
+    return () => window.removeEventListener('auth_required', handleAuth);
   }, []);
+
+  useEffect(() => {
+    if (authed) {
+      startPolling();
+      const timer = setInterval(loadAll, 15000);
+      return () => {
+        stopPolling();
+        clearInterval(timer);
+      };
+    }
+  }, [authed, loadAll]);
 
   // Compute header chips
   const tasks = liveStatus?.tasks || [];
@@ -45,6 +62,10 @@ export default function App() {
     return '';
   };
 
+  if (!authed) {
+    return <LoginPage onLogin={() => setAuthed(true)} />;
+  }
+
   return (
     <div className="wrap">
       {/* ── Header ── */}
@@ -53,7 +74,7 @@ export default function App() {
           <div className="logo">OpenClaw MAS · 总控台</div>
           <div className="sub-text">OpenClaw Sansheng-Liubu Dashboard</div>
         </div>
-        <div className="hdr-r">
+        <div className="hdr-r" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className={`chip ${syncOk ? 'ok' : syncOk === false ? 'err' : ''}`}>
             {syncOk ? '✅ 同步正常' : syncOk === false ? '❌ 服务器未启动' : '⏳ 连接中…'}
           </span>
@@ -62,6 +83,13 @@ export default function App() {
             ⟳ 刷新
           </button>
           <span style={{ fontSize: 11, color: 'var(--muted)' }}>⟳ {countdown}s</span>
+          <button
+            className="btn-refresh"
+            style={{ marginLeft: '12px', background: 'rgba(255,255,255,0.05)' }}
+            onClick={() => api.logout()}
+          >
+            退出
+          </button>
         </div>
       </div>
 

@@ -4,11 +4,11 @@
 
 ## 执行步骤（每次运行必须全部完成）
 
-1. 用 web_search 分四类搜索新闻，每类搜 5 条：
-   - 政治: "world political news" freshness=pd
-   - 军事: "military conflict war news" freshness=pd  
-   - 经济: "global economy markets" freshness=pd
-   - AI大模型: "AI LLM large language model breakthrough" freshness=pd
+1. 用 `python3 ../tools/search_web.py` 分四类搜索新闻，每类搜 5 条：
+   - 政治: "world political news"
+   - 军事: "military conflict war news"
+   - 经济: "global economy markets"
+   - AI大模型: "AI LLM large language model breakthrough"
 
 2. 整理成 JSON，保存到项目 `data/morning_brief.json`
    路径自动定位：`REPO = pathlib.Path(__file__).resolve().parent.parent`
