@@ -5,9 +5,9 @@
 保持与旧版完全相同的 CLI 接口，内部改为调用 Edict REST API。
 如果 API 不可用，降级回写 JSON 文件（过渡期保障）。
 
-用法（与旧版 100% 兼容）:
-  python3 kanban_update.py create JJC-20260223-012 "任务标题" Zhongshu 任务编排引擎 编排指挥官
-  python3 kanban_update.py state JJC-20260223-012 Menxia "规划方案已提交安全审查引擎"
+用法:
+  python3 kanban_update.py create JJC-20260223-012 "任务标题" planner 任务编排引擎 编排指挥官
+  python3 kanban_update.py state JJC-20260223-012 reviewer "规划方案已提交安全审查引擎"
   python3 kanban_update.py flow JJC-20260223-012 "任务编排引擎" "安全审查引擎" "规划方案提交审核"
   python3 kanban_update.py done JJC-20260223-012 "/path/to/output" "任务完成摘要"
   python3 kanban_update.py todo JJC-20260223-012 1 "实现API接口" in-progress
@@ -59,7 +59,7 @@ def _sanitize_text(raw, max_len=80):
     t = re.split(r'\n*```', t, maxsplit=1)[0].strip()
     t = re.sub(r'[/\\.~][A-Za-z0-9_\-./]+(?:\.(?:py|js|ts|json|md|sh|yaml|yml|txt|csv|html|css|log))?', '', t)
     t = re.sub(r'https?://\S+', '', t)
-    t = re.sub(r'^(传旨|下旨)([（(][^)）]*[)）])?[：:\uff1a]\s*', '', t)
+    t = re.sub(r'^(传旨|下发任务)([（(][^)）]*[)）])?[：:\uff1a]\s*', '', t)
     t = re.sub(r'(message_id|session_id|chat_id|open_id|user_id|tenant_key)\s*[:=]\s*\S+', '', t)
     t = re.sub(r'\s+', ' ', t).strip()
     if len(t) > max_len:
@@ -199,7 +199,7 @@ def cmd_create(task_id, title, state, org, official, remark=None):
         edict_state = _STATE_TO_EDICT.get(state, state.lower())
         result = _api_post('/api/tasks', {
             'title': title,
-            'description': remark or f'下旨：{title}',
+            'description': remark or f'下发任务：{title}',
             'priority': '中',
             'assignee_org': org,
             'creator': official,

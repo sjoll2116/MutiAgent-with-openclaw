@@ -282,9 +282,9 @@ func ReviewAction(c *gin.Context) {
 		store.SchedulerMarkProgress(task, "审议动作 "+body.Action+" -> "+task.State)
 		task.UpdatedAt = store.NowISO()
 
-		label := "已准奏"
+		label := "已审查通过"
 		if body.Action == "reject" {
-			label = "已封驳"
+			label = "已审查驳回"
 		}
 		dispatched := ""
 		if task.State != "Completed" {

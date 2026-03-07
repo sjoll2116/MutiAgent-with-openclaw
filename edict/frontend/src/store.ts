@@ -1,5 +1,5 @@
 /**
- * Zustand Store — 三省六部看板状态管理
+ * Zustand Store — OpenClaw MAS看板状态管理
  * HTTP 5s 轮询，无 WebSocket
  */
 
@@ -19,30 +19,30 @@ import {
 // ── Pipeline Definition (PIPE) ──
 
 export const PIPE = [
-  { key: 'Inbox', dept: '皇上', icon: '👑', action: '下旨' },
-  { key: 'Taizi', dept: '太子', icon: '🤴', action: '分拣' },
-  { key: 'Zhongshu', dept: '中书省', icon: '📜', action: '起草' },
-  { key: 'Menxia', dept: '门下省', icon: '🔍', action: '审议' },
-  { key: 'Assigned', dept: '尚书省', icon: '📮', action: '派发' },
-  { key: 'Doing', dept: '六部', icon: '⚙️', action: '执行' },
-  { key: 'Review', dept: '尚书省', icon: '🔎', action: '汇总' },
-  { key: 'Done', dept: '回奏', icon: '✅', action: '完成' },
+  { key: 'Inbox', dept: '用户', icon: '👑', action: '下发任务' },
+  { key: 'Taizi', dept: '协调中枢', icon: '🤴', action: '分拣' },
+  { key: 'planner', dept: '任务编排引擎', icon: '📜', action: '起草' },
+  { key: 'reviewer', dept: '安全审查引擎', icon: '🔍', action: '审议' },
+  { key: 'Assigned', dept: '任务调度引擎', icon: '📮', action: '派发' },
+  { key: 'Doing', dept: '执行部门', icon: '⚙️', action: '执行' },
+  { key: 'Review', dept: '任务调度引擎', icon: '🔎', action: '汇总' },
+  { key: 'Done', dept: '任务汇报', icon: '✅', action: '完成' },
 ] as const;
 
 export const PIPE_STATE_IDX: Record<string, number> = {
-  Inbox: 0, Pending: 0, Taizi: 1, Zhongshu: 2, Menxia: 3,
+  Inbox: 0, Pending: 0, Taizi: 1, planner: 2, reviewer: 3,
   Assigned: 4, Doing: 5, Review: 6, Done: 7, Blocked: 5, Cancelled: 5, Next: 4,
 };
 
 export const DEPT_COLOR: Record<string, string> = {
-  '太子': '#e8a040', '中书省': '#a07aff', '门下省': '#6a9eff', '尚书省': '#6aef9a',
-  '礼部': '#f5c842', '户部': '#ff9a6a', '兵部': '#ff5270', '刑部': '#cc4444',
-  '工部': '#44aaff', '吏部': '#9b59b6', '皇上': '#ffd700', '回奏': '#2ecc8a',
+  '协调中枢': '#e8a040', '任务编排引擎': '#a07aff', '安全审查引擎': '#6a9eff', '任务调度引擎': '#6aef9a',
+  '文档编写员': '#f5c842', '数据分析师': '#ff9a6a', '代码架构师': '#ff5270', '质量保证师': '#cc4444',
+  '部署运维师': '#44aaff', '资源调配员': '#9b59b6', '用户': '#ffd700', '任务汇报': '#2ecc8a',
 };
 
 export const STATE_LABEL: Record<string, string> = {
-  Inbox: '收件', Pending: '待处理', Taizi: '太子分拣', Zhongshu: '中书起草',
-  Menxia: '门下审议', Assigned: '已派发', Doing: '执行中', Review: '待审查',
+  Inbox: '收件', Pending: '待处理', Taizi: '中枢分拣', planner: '编排起草',
+  reviewer: '安全审查', Assigned: '已派发', Doing: '执行中', Review: '待审查',
   Done: '已完成', Blocked: '阻塞', Cancelled: '已取消', Next: '待执行',
 };
 
@@ -52,8 +52,8 @@ export function deptColor(d: string): string {
 
 export function stateLabel(t: Task): string {
   const r = t.review_round || 0;
-  if (t.state === 'Menxia' && r > 1) return `门下审议（第${r}轮）`;
-  if (t.state === 'Zhongshu' && r > 0) return `中书修订（第${r}轮）`;
+  if (t.state === 'reviewer' && r > 1) return `安全审查（第${r}轮）`;
+  if (t.state === 'planner' && r > 0) return `编排修订（第${r}轮）`;
   return STATE_LABEL[t.state] || t.state;
 }
 
@@ -100,17 +100,17 @@ export const TAB_DEFS: { key: TabKey; label: string; icon: string }[] = [
 // ── DEPTS for monitor ──
 
 export const DEPTS = [
-  { id: 'taizi', label: '太子', emoji: '🤴', role: '太子', rank: '储君' },
-  { id: 'zhongshu', label: '中书省', emoji: '📜', role: '中书令', rank: '正一品' },
-  { id: 'menxia', label: '门下省', emoji: '🔍', role: '侍中', rank: '正一品' },
-  { id: 'shangshu', label: '尚书省', emoji: '📮', role: '尚书令', rank: '正一品' },
-  { id: 'libu', label: '礼部', emoji: '📝', role: '礼部尚书', rank: '正二品' },
-  { id: 'hubu', label: '户部', emoji: '💰', role: '户部尚书', rank: '正二品' },
-  { id: 'bingbu', label: '兵部', emoji: '⚔️', role: '兵部尚书', rank: '正二品' },
-  { id: 'xingbu', label: '刑部', emoji: '⚖️', role: '刑部尚书', rank: '正二品' },
-  { id: 'gongbu', label: '工部', emoji: '🔧', role: '工部尚书', rank: '正二品' },
-  { id: 'libu_hr', label: '吏部', emoji: '👔', role: '吏部尚书', rank: '正二品' },
-  { id: 'zaochao', label: '钦天监', emoji: '🌟', role: '朝报官', rank: '正三品' },
+  { id: 'taizi', label: '协调中枢', emoji: '🤴', role: '协调中枢', rank: '中枢系统' },
+  { id: 'zhongshu', label: '任务编排引擎', emoji: '📜', role: '编排指挥官', rank: 'P10' },
+  { id: 'menxia', label: '安全审查引擎', emoji: '🔍', role: '侍中', rank: 'P10' },
+  { id: 'shangshu', label: '任务调度引擎', emoji: '📮', role: '调度总管', rank: 'P10' },
+  { id: 'libu', label: '文档编写员', emoji: '📝', role: '文档编写员', rank: 'P8' },
+  { id: 'hubu', label: '数据分析师', emoji: '💰', role: '数据分析师', rank: 'P8' },
+  { id: 'bingbu', label: '代码架构师', emoji: '⚔️', role: '代码架构师', rank: 'P8' },
+  { id: 'xingbu', label: '质量保证师', emoji: '⚖️', role: '质量保证师', rank: 'P8' },
+  { id: 'gongbu', label: '部署运维师', emoji: '🔧', role: '部署运维师', rank: 'P8' },
+  { id: 'libu_hr', label: '资源调配员', emoji: '👔', role: '资源调配员', rank: 'P8' },
+  { id: 'zaochao', label: '情报监控员', emoji: '🌟', role: '朝报官', rank: 'P7' },
 ];
 
 // ── Templates ──
@@ -141,7 +141,7 @@ export const TEMPLATES: Template[] = [
   {
     id: 'tpl-weekly-report', cat: '日常办公', icon: '📝', name: '周报生成',
     desc: '基于本周看板数据和各部产出，自动生成结构化周报',
-    depts: ['户部', '礼部'], est: '~10分钟', cost: '¥0.5',
+    depts: ['数据分析师', '文档编写员'], est: '~10分钟', cost: '¥0.5',
     params: [
       { key: 'date_range', label: '报告周期', type: 'text', default: '本周', required: true },
       { key: 'focus', label: '重点关注（逗号分隔）', type: 'text', default: '项目进展,下周计划' },
@@ -152,7 +152,7 @@ export const TEMPLATES: Template[] = [
   {
     id: 'tpl-code-review', cat: '工程开发', icon: '🔍', name: '代码审查',
     desc: '对指定代码仓库/文件进行质量审查，输出问题清单和改进建议',
-    depts: ['兵部', '刑部'], est: '~20分钟', cost: '¥2',
+    depts: ['代码架构师', '质量保证师'], est: '~20分钟', cost: '¥2',
     params: [
       { key: 'repo', label: '仓库/文件路径', type: 'text', required: true },
       { key: 'scope', label: '审查范围', type: 'select', options: ['全量', '增量(最近commit)', '指定文件'], default: '增量(最近commit)' },
@@ -163,7 +163,7 @@ export const TEMPLATES: Template[] = [
   {
     id: 'tpl-api-design', cat: '工程开发', icon: '⚡', name: 'API 设计与实现',
     desc: '从需求描述到 RESTful API 设计、实现、测试一条龙',
-    depts: ['中书省', '兵部'], est: '~45分钟', cost: '¥3',
+    depts: ['任务编排引擎', '代码架构师'], est: '~45分钟', cost: '¥3',
     params: [
       { key: 'requirement', label: '需求描述', type: 'textarea', required: true },
       { key: 'tech', label: '技术栈', type: 'select', options: ['Python/FastAPI', 'Node/Express', 'Go/Gin'], default: 'Python/FastAPI' },
@@ -174,7 +174,7 @@ export const TEMPLATES: Template[] = [
   {
     id: 'tpl-competitor', cat: '数据分析', icon: '📊', name: '竞品分析',
     desc: '爬取竞品网站数据，分析对比，生成结构化报告',
-    depts: ['兵部', '户部', '礼部'], est: '~60分钟', cost: '¥5',
+    depts: ['代码架构师', '数据分析师', '文档编写员'], est: '~60分钟', cost: '¥5',
     params: [
       { key: 'targets', label: '竞品名称/URL（每行一个）', type: 'textarea', required: true },
       { key: 'dimensions', label: '分析维度', type: 'text', default: '产品功能,定价策略,用户评价' },
@@ -185,7 +185,7 @@ export const TEMPLATES: Template[] = [
   {
     id: 'tpl-data-report', cat: '数据分析', icon: '📈', name: '数据报告',
     desc: '对给定数据集进行清洗、分析、可视化，输出分析报告',
-    depts: ['户部', '礼部'], est: '~30分钟', cost: '¥2',
+    depts: ['数据分析师', '文档编写员'], est: '~30分钟', cost: '¥2',
     params: [
       { key: 'data_source', label: '数据源描述/路径', type: 'text', required: true },
       { key: 'questions', label: '分析问题（每行一个）', type: 'textarea' },
@@ -196,7 +196,7 @@ export const TEMPLATES: Template[] = [
   {
     id: 'tpl-blog', cat: '内容创作', icon: '✍️', name: '博客文章',
     desc: '给定主题和要求，生成高质量博客文章',
-    depts: ['礼部'], est: '~15分钟', cost: '¥1',
+    depts: ['文档编写员'], est: '~15分钟', cost: '¥1',
     params: [
       { key: 'topic', label: '文章主题', type: 'text', required: true },
       { key: 'audience', label: '目标读者', type: 'text', default: '技术人员' },
@@ -208,7 +208,7 @@ export const TEMPLATES: Template[] = [
   {
     id: 'tpl-deploy', cat: '工程开发', icon: '🚀', name: '部署方案',
     desc: '生成完整的部署检查单、Docker配置、CI/CD流程',
-    depts: ['兵部', '工部'], est: '~25分钟', cost: '¥2',
+    depts: ['代码架构师', '部署运维师'], est: '~25分钟', cost: '¥2',
     params: [
       { key: 'project', label: '项目名称/描述', type: 'text', required: true },
       { key: 'env', label: '部署环境', type: 'select', options: ['Docker', 'K8s', 'VPS', 'Serverless'], default: 'Docker' },
@@ -219,7 +219,7 @@ export const TEMPLATES: Template[] = [
   {
     id: 'tpl-email', cat: '内容创作', icon: '📧', name: '邮件/通知文案',
     desc: '根据场景和目的，生成专业邮件或通知文案',
-    depts: ['礼部'], est: '~5分钟', cost: '¥0.3',
+    depts: ['文档编写员'], est: '~5分钟', cost: '¥0.3',
     params: [
       { key: 'scenario', label: '使用场景', type: 'select', options: ['商务邮件', '产品发布', '客户通知', '内部公告'], default: '商务邮件' },
       { key: 'purpose', label: '目的/内容', type: 'textarea', required: true },
@@ -230,7 +230,7 @@ export const TEMPLATES: Template[] = [
   {
     id: 'tpl-standup', cat: '日常办公', icon: '🗓️', name: '每日站会摘要',
     desc: '汇总各部今日进展和明日计划，生成站会摘要',
-    depts: ['尚书省'], est: '~5分钟', cost: '¥0.3',
+    depts: ['任务调度引擎'], est: '~5分钟', cost: '¥0.3',
     params: [
       { key: 'range', label: '汇总范围', type: 'select', options: ['今天', '最近24小时', '昨天+今天'], default: '今天' },
     ],

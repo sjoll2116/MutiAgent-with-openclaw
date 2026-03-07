@@ -57,7 +57,7 @@ Most multi-agent frameworks let AI agents talk freely, producing opaque results 
 
 ```
 You (Emperor) → Crown Prince (Triage) → Planning Dept → Review Dept → Dispatch Dept → 6 Ministries → Report Back
-   用户              协调中枢               任务编排引擎          安全审查引擎         任务调度引擎           执行智能体集群          回奏
+   用户              协调中枢               任务编排引擎          安全审查引擎         任务调度引擎           执行智能体集群          任务汇报
 ```
 
 This isn't a cute metaphor. It's **real separation of powers** for AI:

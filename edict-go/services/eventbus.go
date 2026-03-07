@@ -13,11 +13,13 @@ import (
 )
 
 const (
-	TopicTaskCreated   = "openclaw:agent:events:task.created"
-	TopicTaskStatus    = "openclaw:agent:events:task.status"
-	TopicTaskDispatch  = "openclaw:agent:events:task.dispatch"
-	TopicTaskCompleted = "openclaw:agent:events:task.completed"
-	TopicTaskStalled   = "openclaw:agent:events:task.stalled"
+	TopicTaskCreated    = "openclaw:agent:events:task.created"
+	TopicTaskStatus     = "openclaw:agent:events:task.status"
+	TopicTaskDispatch   = "openclaw:agent:events:task.dispatch"
+	TopicTaskCompleted  = "openclaw:agent:events:task.completed"
+	TopicTaskStalled    = "openclaw:agent:events:task.stalled"
+	TopicAgentHeartbeat = "openclaw:agent:events:agent.heartbeat"
+	TopicAgentThoughts  = "openclaw:agent:events:agent.thoughts"
 
 	OrchestratorGroup    = "orchestrator"
 	OrchestratorConsumer = "orch-go-1"
@@ -80,6 +82,7 @@ func StartOrchestrator() {
 
 	go runRecoverPending()
 	go runPollCycle()
+	go StartDispatchWorker(store.Ctx)
 
 	log.Println("🏛️ Go Orchestrator worker started")
 }

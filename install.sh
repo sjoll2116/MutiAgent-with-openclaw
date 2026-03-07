@@ -191,8 +191,8 @@ tasks = [
     {
         "id": "JJC-DEMO-001",
         "title": "🎉 系统初始化完成",
-        "official": "工部",
-        "org": "工部尚书",
+        "official": "部署运维师",
+        "org": "部署运维师",
         "state": "Done",
         "now": "系统已就绪",
         "eta": "-",

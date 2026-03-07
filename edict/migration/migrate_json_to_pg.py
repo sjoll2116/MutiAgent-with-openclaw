@@ -36,8 +36,8 @@ log = logging.getLogger("migrate")
 # 旧版状态 → Edict TaskState
 STATE_MAP = {
     "Taizi": TaskState.TAIZI,
-    "Zhongshu": TaskState.ZHONGSHU,
-    "Menxia": TaskState.MENXIA,
+    "planner": TaskState.ZHONGSHU,
+    "reviewer": TaskState.MENXIA,
     "Assigned": TaskState.ASSIGNED,
     "Next": TaskState.NEXT,
     "Doing": TaskState.DOING,

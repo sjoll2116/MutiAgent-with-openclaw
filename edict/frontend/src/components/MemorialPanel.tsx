@@ -62,7 +62,7 @@ export default function MemorialPanel() {
         ) : (
           mems.map((t) => {
             const fl = t.flow_log || [];
-            const depts = [...new Set(fl.map((f) => f.from).concat(fl.map((f) => f.to)).filter((x) => x && x !== '皇上'))];
+            const depts = [...new Set(fl.map((f) => f.from).concat(fl.map((f) => f.to)).filter((x) => x && x !== '用户'))];
             const firstAt = fl.length ? (fl[0].at || '').substring(0, 16).replace('T', ' ') : '';
             const lastAt = fl.length ? (fl[fl.length - 1].at || '').substring(0, 16).replace('T', ' ') : '';
             const stIcon = t.state === 'Done' ? '✅' : '🚫';
@@ -112,7 +112,7 @@ function MemorialDetailModal({
   const fl = t.flow_log || [];
   const st = t.state || 'Unknown';
   const stIcon = st === 'Done' ? '✅' : st === 'Cancelled' ? '🚫' : '🔄';
-  const depts = [...new Set(fl.map((f) => f.from).concat(fl.map((f) => f.to)).filter((x) => x && x !== '皇上'))];
+  const depts = [...new Set(fl.map((f) => f.from).concat(fl.map((f) => f.to)).filter((x) => x && x !== '用户'))];
 
   // Reconstruct phases
   const originLog: FlowEntry[] = [];
@@ -121,10 +121,10 @@ function MemorialDetailModal({
   const execLog: FlowEntry[] = [];
   const resultLog: FlowEntry[] = [];
   for (const f of fl) {
-    if (f.from === '皇上') originLog.push(f);
-    else if (f.to === '中书省' || f.from === '中书省') planLog.push(f);
-    else if (f.to === '门下省' || f.from === '门下省') reviewLog.push(f);
-    else if (f.remark && (f.remark.includes('完成') || f.remark.includes('回奏'))) resultLog.push(f);
+    if (f.from === '用户') originLog.push(f);
+    else if (f.to === '任务编排引擎' || f.from === '任务编排引擎') planLog.push(f);
+    else if (f.to === '安全审查引擎' || f.from === '安全审查引擎') reviewLog.push(f);
+    else if (f.remark && (f.remark.includes('完成') || f.remark.includes('任务汇报'))) resultLog.push(f);
     else execLog.push(f);
   }
 
@@ -177,11 +177,11 @@ function MemorialDetailModal({
             </div>
           )}
 
-          {renderPhase('圣旨原文', '👑', originLog)}
-          {renderPhase('中书规划', '📋', planLog)}
-          {renderPhase('门下审议', '🔍', reviewLog)}
-          {renderPhase('六部执行', '⚔️', execLog)}
-          {renderPhase('汇总回奏', '📨', resultLog)}
+          {renderPhase('指令原文', '👑', originLog)}
+          {renderPhase('编排规划', '📋', planLog)}
+          {renderPhase('安全审查', '🔍', reviewLog)}
+          {renderPhase('执行部门执行', '⚔️', execLog)}
+          {renderPhase('汇总任务汇报', '📨', resultLog)}
 
           {t.output && t.output !== '-' && (
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>

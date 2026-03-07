@@ -280,7 +280,7 @@ def import_official_hub(agent_ids: list) -> bool:
 
 
 def main():
-    parser = argparse.ArgumentParser(description='三省执行智能体集群 Skill 管理工具', 
+    parser = argparse.ArgumentParser(description='OpenClaw MAS Skill 管理工具', 
                                      formatter_class=argparse.RawDescriptionHelpFormatter)
     subparsers = parser.add_subparsers(dest='cmd', help='命令')
     

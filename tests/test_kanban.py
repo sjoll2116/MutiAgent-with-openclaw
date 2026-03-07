@@ -17,7 +17,7 @@ def test_create_and_get(tmp_path):
     original = kb.TASKS_FILE
     kb.TASKS_FILE = tasks_file
     try:
-        kb.cmd_create('TEST-001', '测试任务创建和查询功能验证', 'Inbox', '代码架构师', '代码架构师尚书')
+        kb.cmd_create('TEST-001', '测试任务创建和查询功能验证', 'Inbox', '代码架构师', '代码架构师调度')
         tasks = json.loads(tasks_file.read_text())
         assert any(t.get('id') == 'TEST-001' for t in tasks)
         t = next(t for t in tasks if t['id'] == 'TEST-001')

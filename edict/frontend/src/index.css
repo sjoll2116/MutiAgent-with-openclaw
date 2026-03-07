@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ══ 三省六部总控台 · CSS 变量 ══ */
+/* ══ OpenClaw MAS总控台 · CSS 变量 ══ */
 :root {
   --bg: #07090f;
   --panel: #0f1219;
@@ -76,8 +76,8 @@ body {
 /* state colors */
 .st-Inbox { border-color: #3a4a7a44; color: #7a9aff; background: #0a1028; }
 .st-Taizi { border-color: #e8a04044; color: #e8a040; background: #281a08; }
-.st-Zhongshu { border-color: #a07aff44; color: #a07aff; background: #110a28; }
-.st-Menxia { border-color: #ff9a6a44; color: #ff9a6a; background: #280f0a; }
+.st-planner { border-color: #a07aff44; color: #a07aff; background: #110a28; }
+.st-reviewer { border-color: #ff9a6a44; color: #ff9a6a; background: #280f0a; }
 .st-Assigned, .st-Doing { border-color: #6a9eff44; color: #6a9eff; background: #0a1428; }
 .st-Review { border-color: #f5c84244; color: #f5c842; background: #201a08; }
 .st-Done { border-color: #2ecc8a44; color: var(--ok); background: #0a2018; }
@@ -87,14 +87,14 @@ body {
 .st-Pending { border-color: #3a4a7a44; color: #7a9aff; background: #0a1028; }
 
 /* dept colors */
-.dt-中书省 { border-color: #a07aff44; color: #a07aff; background: #1a0f38; }
-.dt-门下省 { border-color: #6a9eff44; color: #6a9eff; background: #0f1a38; }
-.dt-尚书省 { border-color: #6aef9a44; color: #6aef9a; background: #0a2018; }
-.dt-礼部 { border-color: #f5c84244; color: #f5c842; background: #201a08; }
-.dt-户部 { border-color: #ff9a6a44; color: #ff9a6a; background: #28100a; }
-.dt-兵部 { border-color: #ff527044; color: #ff5270; background: #280a10; }
-.dt-刑部 { border-color: #cc444444; color: #cc4444; background: #280808; }
-.dt-工部 { border-color: #44aaff44; color: #44aaff; background: #081828; }
+.dt-任务编排引擎 { border-color: #a07aff44; color: #a07aff; background: #1a0f38; }
+.dt-安全审查引擎 { border-color: #6a9eff44; color: #6a9eff; background: #0f1a38; }
+.dt-任务调度引擎 { border-color: #6aef9a44; color: #6aef9a; background: #0a2018; }
+.dt-文档编写员 { border-color: #f5c84244; color: #f5c842; background: #201a08; }
+.dt-数据分析师 { border-color: #ff9a6a44; color: #ff9a6a; background: #28100a; }
+.dt-代码架构师 { border-color: #ff527044; color: #ff5270; background: #280a10; }
+.dt-质量保证师 { border-color: #cc444444; color: #cc4444; background: #280808; }
+.dt-部署运维师 { border-color: #44aaff44; color: #44aaff; background: #081828; }
 
 .ec-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 10px; flex-wrap: wrap; gap: 6px; }
 .hb { font-size: 10px; padding: 2px 7px; border-radius: 999px; border: 1px solid var(--line); }

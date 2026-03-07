@@ -7,7 +7,7 @@
 ```bash
 # 确保你在项目根目录
 python3 dashboard/server.py
-# 输出: 三省执行智能体集群看板启动 → http://127.0.0.1:7891
+# 输出: OpenClaw MAS看板启动 → http://127.0.0.1:7891
 ```
 
 ### 2. 添加官方 Skill（CLI）

@@ -47,7 +47,7 @@ TERMINAL_STATES = {TaskState.Completed, TaskState.Cancelled}
 STATE_TRANSITIONS = {
     TaskState.Queued: {TaskState.Planning, TaskState.Cancelled},
     TaskState.Planning: {TaskState.PlanReview, TaskState.Cancelled, TaskState.Blocked},
-    TaskState.PlanResultReview: {TaskState.Dispatching, TaskState.Planning, TaskState.Cancelled},  # 封驳退回
+    TaskState.PlanResultReview: {TaskState.Dispatching, TaskState.Planning, TaskState.Cancelled},  # 审查驳回退回
     TaskState.Dispatching: {TaskState.Executing, TaskState.Next, TaskState.Cancelled, TaskState.Blocked},
     TaskState.Next: {TaskState.Executing, TaskState.Cancelled},
     TaskState.Executing: {TaskState.ResultReview, TaskState.Completed, TaskState.Blocked, TaskState.Cancelled},

@@ -1,4 +1,4 @@
-# ⚔️ 三省六部 · Demo Dashboard
+# ⚔️ OpenClaw MAS · Demo Dashboard
 # docker run -p 7891:7891 cft0808/sansheng-demo
 # Then open: http://localhost:7891
 
@@ -28,7 +28,7 @@ COPY docker/demo_data/ ./data/
 
 # 非 root 用户运行
 RUN groupadd -r appuser && useradd -r -g appuser -d /app appuser \
-    && chown -R appuser:appuser /app
+  && chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 7891

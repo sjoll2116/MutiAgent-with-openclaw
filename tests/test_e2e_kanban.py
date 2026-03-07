@@ -44,7 +44,7 @@ def test_dirty_title_cleaned():
     cmd_create('JJC-TEST-E2E-01',
         '全面审查/Users/bingsen/clawd/openclaw-sansheng-liubu/这个项目\nConversation info (xxx)',
         'Planning', '任务编排引擎', '编排指挥官',
-        '下旨（自动预建）：全面审查/Users/bingsen/clawd/项目')
+        '下发任务（自动预建）：全面审查/Users/bingsen/clawd/项目')
     t = _get_task('JJC-TEST-E2E-01')
     assert t is not None, "任务应被创建"
     assert '/Users' not in t['title'], f"标题不应含路径: {t['title']}"

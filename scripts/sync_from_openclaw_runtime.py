@@ -47,12 +47,12 @@ def detect_official(agent_id):
         'planner': ('编排指挥官', '任务编排引擎'),
         'reviewer':  ('审查指挥官', '安全审查引擎'),
         'dispatcher': ('调度指挥官', '任务调度引擎'),
-        'data_analyst':    ('数据分析师尚书', '数据分析师'),
-        'doc_writer':    ('文档编写员尚书', '文档编写员'),
-        'software_engineer':  ('代码架构师尚书', '代码架构师'),
-        'qa_engineer':  ('质量保证师尚书', '质量保证师'),
-        'software_engineer':  ('代码架构师尚书', '代码架构师'),
-        'libu_hr': ('资源调配员尚书', '资源调配员'),
+        'data_analyst':    ('数据分析师调度', '数据分析师'),
+        'doc_writer':    ('文档编写员调度', '文档编写员'),
+        'software_engineer':  ('代码架构师调度', '代码架构师'),
+        'qa_engineer':  ('质量保证师调度', '质量保证师'),
+        'software_engineer':  ('代码架构师调度', '代码架构师'),
+        'libu_hr': ('资源调配员调度', '资源调配员'),
         'monitor': ('情报监控员', '监控组长'),
     }
     return mapping.get(agent_id, ('调度指挥官', '任务调度引擎'))
@@ -304,7 +304,7 @@ def main():
         
         tasks = filtered_tasks
         
-        # ── 保留已有的 JJC-* 任务任务（不覆盖用户下旨记录）──
+        # ── 保留已有的 JJC-* 任务任务（不覆盖用户下发任务记录）──
         # JJC 任务的 now 字段由 Agent 自己通过 kanban_update.py progress 命令主动上报，
         # 不再从会话日志中被动抓取。这里只做合并，不做 activity 映射。
         existing_tasks_file = DATA / 'tasks_source.json'

@@ -96,7 +96,7 @@ func main() {
 	r.NoRoute(handlers.ServeStaticOrSPA)
 
 	addr := fmt.Sprintf("%s:%d", *host, *port)
-	log.Printf("三省六部看板(Go) 启动 → http://%s", addr)
+	log.Printf("OpenClaw MAS看板(Go) 启动 → http://%s", addr)
 	if err := http.ListenAndServe(addr, r); err != nil {
 		log.Fatalf("Server failed: %v", err)
 	}

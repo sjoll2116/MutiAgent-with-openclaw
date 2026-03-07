@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-早朝简报采集脚本
+简报采集脚本
 每日 06:00 自动运行，抓取全球新闻 RSS → data/morning_brief_YYYYMMDD.json
 覆盖: 政治 | 军事 | 经济 | AI大模型
 """

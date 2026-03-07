@@ -2,7 +2,7 @@
 
 ## 概述
 
-三省执行智能体集群现已支持从网上连接和增补 skills 资源，无需手动复制文件。支持从以下来源获取：
+OpenClaw MAS现已支持从网上连接和增补 skills 资源，无需手动复制文件。支持从以下来源获取：
 
 - **GitHub 仓库** (raw.githubusercontent.com)
 - **任何 HTTPS URL** (需返回有效的 skill 文件)

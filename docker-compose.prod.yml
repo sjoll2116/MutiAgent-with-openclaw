@@ -1,0 +1,69 @@
+version: '3.8'
+
+services:
+  # ── Infrastructure ──
+  postgres-rag:
+    image: pgvector/pgvector:16-pg16
+    container_name: edict-postgres-prod
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_DB=edict
+      - POSTGRES_USER=edict
+      - POSTGRES_PASSWORD=edict_secret_change_me
+    volumes:
+      - postgres_data_prod:/var/lib/postgresql/data
+    restart: always
+
+  redis:
+    image: redis:7-alpine
+    container_name: edict-redis-prod
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # ── Go Orchestrator & Static SPA Fast Server ──
+  go-scheduler:
+    build:
+      context: .
+      dockerfile: edict-go/Dockerfile
+    container_name: edict-go-prod
+    ports:
+      - "7891:7891"
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+      - PORT=7891
+      - OPENCLAW_PROJECT_DIR=/app
+    volumes:
+      - ./data:/app/data
+      # 挂载 Agents 目录以便 openclaw 读取人格
+      - ./agents:/app/agents:ro
+      # 由于 docker 内还没有系统级 openclaw cli，如果要在该容器内执行 agent
+      # 必须在 Dockerfile 中打包安装 openclaw。
+      - ~/.openclaw:/root/.openclaw
+    depends_on:
+      - redis
+    restart: always
+
+  # ── Python RAG API ──
+  python-api:
+    build:
+      context: ./edict/backend
+      dockerfile: Dockerfile
+    container_name: edict-python-api-prod
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://edict:edict_secret_change_me@postgres-rag:5432/edict
+      - REDIS_URL=redis://redis:6379/0
+      - PORT=8000
+    env_file:
+      - ./edict/backend/app/.env # 挂载线上大模型 API Key 密钥
+    depends_on:
+      - postgres-rag
+      - redis
+    restart: always
+
+volumes:
+  postgres_data_prod:

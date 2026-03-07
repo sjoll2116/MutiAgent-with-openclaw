@@ -20,12 +20,12 @@ ID_LABEL = {
     'planner': {'label': '任务编排引擎', 'role': '编排指挥官',   'duty': '起草任务令与优先级',  'emoji': '📜'},
     'reviewer':   {'label': '安全审查引擎', 'role': '审查指挥官',     'duty': '审议与退回机制',      'emoji': '🔍'},
     'dispatcher': {'label': '任务调度引擎', 'role': '调度指挥官',   'duty': '派单与升级裁决',      'emoji': '📮'},
-    'doc_writer':     {'label': '文档编写员',   'role': '文档编写员尚书', 'duty': '文档/汇报/规范',      'emoji': '📝'},
-    'data_analyst':     {'label': '数据分析师',   'role': '数据分析师尚书', 'duty': '资源/预算/成本',      'emoji': '💰'},
-    'software_engineer':   {'label': '代码架构师',   'role': '代码架构师尚书', 'duty': '应急与巡检',          'emoji': '⚔️'},
-    'qa_engineer':   {'label': '质量保证师',   'role': '质量保证师尚书', 'duty': '合规/审计/红线',      'emoji': '⚖️'},
-    'software_engineer':   {'label': '代码架构师',   'role': '代码架构师尚书', 'duty': '工程交付与自动化',    'emoji': '🔧'},
-    'libu_hr':  {'label': '资源调配员',   'role': '资源调配员尚书', 'duty': '人事/培训/Agent管理',  'emoji': '👔'},
+    'doc_writer':     {'label': '文档编写员',   'role': '文档编写员调度', 'duty': '文档/汇报/规范',      'emoji': '📝'},
+    'data_analyst':     {'label': '数据分析师',   'role': '数据分析师调度', 'duty': '资源/预算/成本',      'emoji': '💰'},
+    'software_engineer':   {'label': '代码架构师',   'role': '代码架构师调度', 'duty': '应急与巡检',          'emoji': '⚔️'},
+    'qa_engineer':   {'label': '质量保证师',   'role': '质量保证师调度', 'duty': '合规/审计/红线',      'emoji': '⚖️'},
+    'software_engineer':   {'label': '代码架构师',   'role': '代码架构师调度', 'duty': '工程交付与自动化',    'emoji': '🔧'},
+    'libu_hr':  {'label': '资源调配员',   'role': '资源调配员调度', 'duty': '人事/培训/Agent管理',  'emoji': '👔'},
     'monitor':  {'label': '情报监控员', 'role': '监控组长',   'duty': '每日新闻采集与简报',  'emoji': '📰'},
 }
 

@@ -4,10 +4,10 @@
 
 用法:
   # 新建任务（收旨时）
-  python3 kanban_update.py create JJC-20260223-012 "任务标题" Zhongshu 任务编排引擎 编排指挥官
+  python3 kanban_update.py create JJC-20260223-012 "任务标题" planner 任务编排引擎 编排指挥官
 
   # 更新状态
-  python3 kanban_update.py state JJC-20260223-012 Menxia "规划方案已提交安全审查引擎"
+  python3 kanban_update.py state JJC-20260223-012 reviewer "规划方案已提交安全审查引擎"
 
   # 添加流转记录
   python3 kanban_update.py flow JJC-20260223-012 "任务编排引擎" "安全审查引擎" "规划方案提交审核"
@@ -101,8 +101,8 @@ def _sanitize_text(raw, max_len=80):
     t = re.sub(r'[/\\.~][A-Za-z0-9_\-./]+(?:\.(?:py|js|ts|json|md|sh|yaml|yml|txt|csv|html|css|log))?', '', t)
     # 4) 剥离 URL
     t = re.sub(r'https?://\S+', '', t)
-    # 5) 清理常见前缀: "传旨:" "下旨:" "下旨（xxx）:" 等
-    t = re.sub(r'^(传旨|下旨)([（(][^)）]*[)）])?[：:\uff1a]\s*', '', t)
+    # 5) 清理常见前缀: "传旨:" "下发任务:" "下发任务（xxx）:" 等
+    t = re.sub(r'^(传旨|下发任务)([（(][^)）]*[)）])?[：:\uff1a]\s*', '', t)
     # 6) 剥离系统元数据关键词
     t = re.sub(r'(message_id|session_id|chat_id|open_id|user_id|tenant_key)\s*[:=]\s*\S+', '', t)
     # 7) 合并多余空白
@@ -181,7 +181,7 @@ def cmd_create(task_id, title, state, org, official, remark=None):
         print(f'[看板] 拒绝创建：{reason}', flush=True)
         return
     actual_org = STATE_ORG_MAP.get(state, org)
-    clean_remark = _sanitize_remark(remark) if remark else f"下旨：{title}"
+    clean_remark = _sanitize_remark(remark) if remark else f"下发任务：{title}"
     def modifier(tasks):
         existing = next((t for t in tasks if t.get('id') == task_id), None)
         if existing:
@@ -194,7 +194,7 @@ def cmd_create(task_id, title, state, org, official, remark=None):
         tasks.insert(0, {
             "id": task_id, "title": title, "official": official,
             "org": actual_org, "state": state,
-            "now": clean_remark[:60] if remark else f"已下旨，等待{actual_org}接旨",
+            "now": clean_remark[:60] if remark else f"已下发任务，等待{actual_org}接收任务",
             "eta": "-", "block": "无", "output": "", "ac": "",
             "flow_log": [{"at": now_iso(), "from": "用户", "to": actual_org, "remark": clean_remark}],
             "updatedAt": now_iso()

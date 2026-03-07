@@ -59,7 +59,7 @@ export default function TemplatePanel() {
       /* ignore */
     }
 
-    if (!confirm(`确认下旨？\n\n${cmd.substring(0, 200)}${cmd.length > 200 ? '…' : ''}`)) return;
+    if (!confirm(`确认下发任务？\n\n${cmd.substring(0, 200)}${cmd.length > 200 ? '…' : ''}`)) return;
 
     try {
       const params: Record<string, string> = {};
@@ -68,7 +68,7 @@ export default function TemplatePanel() {
       }
       const r = await api.createTask({
         title: cmd.substring(0, 120),
-        org: '中书省',
+        org: '任务编排引擎',
         targetDept: formTpl.depts[0] || '',
         priority: 'normal',
         templateId: formTpl.id,
@@ -79,7 +79,7 @@ export default function TemplatePanel() {
         setFormTpl(null);
         loadAll();
       } else {
-        toast(r.error || '下旨失败', 'err');
+        toast(r.error || '下发任务失败', 'err');
       }
     } catch {
       toast('⚠️ 服务器连接失败', 'err');
@@ -118,7 +118,7 @@ export default function TemplatePanel() {
                 {t.est} · {t.cost}
               </span>
               <button className="tpl-go" onClick={() => openForm(t)}>
-                下旨
+                下发任务
               </button>
             </div>
           </div>
@@ -132,7 +132,7 @@ export default function TemplatePanel() {
             <button className="modal-close" onClick={() => setFormTpl(null)}>✕</button>
             <div className="modal-body">
               <div style={{ fontSize: 11, color: 'var(--acc)', fontWeight: 700, letterSpacing: '.04em', marginBottom: 4 }}>
-                圣旨模板
+                指令模板
               </div>
               <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>
                 {formTpl.icon} {formTpl.name}
@@ -197,7 +197,7 @@ export default function TemplatePanel() {
                     }}
                   >
                     <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
-                      📜 将发送给中书省的旨意：
+                      📜 将发送给任务编排引擎的旨意：
                     </div>
                     <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{previewCmd}</div>
                   </div>
@@ -208,7 +208,7 @@ export default function TemplatePanel() {
                     👁 预览旨意
                   </button>
                   <button type="submit" className="tpl-go" style={{ padding: '8px 20px', fontSize: 13 }}>
-                    📜 下旨
+                    📜 下发任务
                   </button>
                 </div>
               </form>

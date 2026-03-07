@@ -14,7 +14,7 @@
 | `06-official-overview.png` | 官员总览（12 位 Agent） | 👥 官员总览 |
 | `07-sessions.png` | 小任务 / 会话 | 💬 小任务 |
 | `08-memorials.png` | 报告阁 | 📜 报告阁 |
-| `09-templates.png` | 旨库（圣旨模板） | 📜 旨库 |
+| `09-templates.png` | 旨库（指令模板） | 📜 旨库 |
 | `10-morning-briefing.png` | 天下要闻 | 📰 天下要闻 |
 | `11-ceremony.png` | 上朝仪式动画 | 开场动画 |
 

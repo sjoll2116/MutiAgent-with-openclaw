@@ -21,7 +21,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from .config import get_settings
 from .services.event_bus import get_event_bus
 from .api import tasks, agents, events, admin, websocket, rag
-from .api import legacy
 
 logging.basicConfig(
     level=logging.INFO,
@@ -48,7 +47,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Edict 三省执行智能体集群",
+    title="Edict OpenClaw MAS",
     description="事件驱动的 AI Agent 协作平台",
     version="2.0.0",
     lifespan=lifespan,
@@ -69,7 +68,6 @@ app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
 app.include_router(events.router, prefix="/api/events", tags=["events"])
 app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
 app.include_router(websocket.router, tags=["websocket"])
-app.include_router(legacy.router, prefix="/api/tasks", tags=["legacy"])
 app.include_router(rag.router, prefix="/api", tags=["rag"])
 
 
@@ -81,7 +79,7 @@ async def health():
 @app.get("/api")
 async def api_root():
     return {
-        "name": "Edict 三省执行智能体集群 API",
+        "name": "Edict OpenClaw MAS API",
         "version": "2.0.0",
         "endpoints": {
             "tasks": "/api/tasks",

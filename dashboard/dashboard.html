@@ -3865,7 +3865,7 @@
     <!-- HEADER -->
     <div class="hdr">
       <div>
-        <div class="logo">⚔️ 军机处 · 三省执行智能体集群总控台</div>
+        <div class="logo">⚔️ 军机处 · OpenClaw MAS总控台</div>
         <div class="sub">用户视角 · 实时任务追踪</div>
       </div>
       <div class="hdr-r">
@@ -3951,7 +3951,7 @@
 
     <!-- ══ 小任务/会话监控 ══ -->
     <div class="panel" id="panel-sessions">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">飞书/Telegram 中的日常对话与小任务 · 非JJC圣旨类任务</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">飞书/Telegram 中的日常对话与小任务 · 非JJC指令类任务</div>
       <div class="sess-filters">
         <span style="font-size:11px;color:var(--muted)">筛选：</span>
         <span class="sess-filter active" data-sf="all" onclick="filterSessions('all',this)">全部</span>
@@ -3977,7 +3977,7 @@
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
         <div style="flex:1">
           <div class="sec-title" style="margin-bottom:2px">📜 报告阁 · 任务存档</div>
-          <div style="font-size:11px;color:var(--muted)">任务完成后自动生成报告，记录从下旨到完成的完整过程</div>
+          <div style="font-size:11px;color:var(--muted)">任务完成后自动生成报告，记录从下发任务到完成的完整过程</div>
         </div>
         <select id="mem-filter" onchange="renderMemorials()"
           style="font-size:11px;padding:4px 10px;background:var(--panel2);border:1px solid var(--line);border-radius:6px;color:var(--text);outline:none">
@@ -3989,12 +3989,12 @@
       <div id="mem-list" class="mem-list"></div>
     </div>
 
-    <!-- ══ 圣旨模板库 ══ -->
+    <!-- ══ 指令模板库 ══ -->
     <div class="panel" id="panel-templates">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
         <div style="flex:1">
-          <div class="sec-title" style="margin-bottom:2px">📜 旨库 · 圣旨模板</div>
-          <div style="font-size:11px;color:var(--muted)">选择模板、填写参数、一键下旨 — 降低使用门槛，快速启动任务</div>
+          <div class="sec-title" style="margin-bottom:2px">📜 旨库 · 指令模板</div>
+          <div style="font-size:11px;color:var(--muted)">选择模板、填写参数、一键下发任务 — 降低使用门槛，快速启动任务</div>
         </div>
       </div>
       <div class="tpl-cats" id="tpl-cats"></div>
@@ -4135,19 +4135,19 @@
 
     /* ══ PIPELINE DEFINITION ══ */
     const PIPE = [
-      { key: 'Inbox', dept: '用户', icon: '👑', action: '下旨' },
+      { key: 'Inbox', dept: '用户', icon: '👑', action: '下发任务' },
       { key: 'Queued', dept: '协调中枢', icon: '🤴', action: '分拣' },
       { key: 'Planning', dept: '任务编排引擎', icon: '📜', action: '起草' },
       { key: 'PlanReview', dept: '安全审查引擎', icon: '🔍', action: '审议' },
       { key: 'Dispatching', dept: '任务调度引擎', icon: '📮', action: '派发' },
       { key: 'Executing', dept: '执行智能体集群', icon: '⚙️', action: '执行' },
       { key: 'ResultReview', dept: '任务调度引擎', icon: '🔎', action: '汇总' },
-      { key: 'Completed', dept: '回奏', icon: '✅', action: '完成' },
+      { key: 'Completed', dept: '任务汇报', icon: '✅', action: '完成' },
     ];
     const PIPE_STATE_IDX = { Inbox: 0, Pending: 0, Queued: 1, Planning: 2, PlanResultReview: 3, Dispatching: 4, Executing: 5, ResultReview: 6, Completed: 7, Blocked: 5, Cancelled: 5, Next: 4 };
 
     /* ══ DEPT COLORS ══ */
-    const DEPT_COLOR = { '协调中枢': '#e8a040', '任务编排引擎': '#a07aff', '安全审查引擎': '#6a9eff', '任务调度引擎': '#6aef9a', '文档编写员': '#f5c842', '数据分析师': '#ff9a6a', '代码架构师': '#ff5270', '质量保证师': '#cc4444', '代码架构师': '#44aaff', '资源调配员': '#9b59b6', '用户': '#ffd700', '回奏': '#2ecc8a' };
+    const DEPT_COLOR = { '协调中枢': '#e8a040', '任务编排引擎': '#a07aff', '安全审查引擎': '#6a9eff', '任务调度引擎': '#6aef9a', '文档编写员': '#f5c842', '数据分析师': '#ff9a6a', '代码架构师': '#ff5270', '质量保证师': '#cc4444', '代码架构师': '#44aaff', '资源调配员': '#9b59b6', '用户': '#ffd700', '任务汇报': '#2ecc8a' };
     function deptColor(d) { return DEPT_COLOR[d] || '#6a9eff' }
 
     /* ══ UTILS ══ */
@@ -4155,12 +4155,12 @@
     async function fetchJ(u) { const r = await fetch(u, { cache: 'no-store' }); if (!r.ok) throw Error(r.status); return r.json() }
     async function postJ(u, d) { const r = await fetch(u, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(d) }); return r.json() }
     function toast(msg, type = 'ok', ms = 3000) { const el = document.createElement('div'); el.className = `toast ${type}`; el.textContent = msg; document.getElementById('toaster').appendChild(el); setTimeout(() => el.remove(), ms) }
-    const STATE_LABEL = { Inbox: '收件', Pending: '待处理', Queued: '协调中枢分拣', Planning: '中书起草', PlanResultReview: '门下审议', Dispatching: '已派发', Executing: '执行中', ResultReview: '待审查', Completed: '已完成', Blocked: '阻塞', Cancelled: '已取消', Next: '待执行' };
+    const STATE_LABEL = { Inbox: '收件', Pending: '待处理', Queued: '协调中枢分拣', Planning: '编排起草', PlanResultReview: '安全审查', Dispatching: '已派发', Executing: '执行中', ResultReview: '待审查', Completed: '已完成', Blocked: '阻塞', Cancelled: '已取消', Next: '待执行' };
     // 根据轮次动态生成状态标签
     function stateLabel(t) {
       const r = t.review_round || 0;
-      if (t.state === 'PlanReview' && r > 1) return `门下审议（第${r}轮）`;
-      if (t.state === 'Planning' && r > 0) return `中书修订（第${r}轮）`;
+      if (t.state === 'PlanReview' && r > 1) return `安全审查（第${r}轮）`;
+      if (t.state === 'Planning' && r > 0) return `编排修订（第${r}轮）`;
       return STATE_LABEL[t.state] || t.state;
     }
 
@@ -4369,17 +4369,17 @@
     /* ══ DEPT MONITOR ══ */
     function renderMonitor(tasks) {
       const DEPTS = [
-        { id: 'coordinator', label: '协调中枢', emoji: '🤴', role: '协调中枢', rank: '储君' },
-        { id: 'planner', label: '任务编排引擎', emoji: '📜', role: '中书令', rank: '正一品' },
-        { id: 'reviewer', label: '安全审查引擎', emoji: '🔍', role: '侍中', rank: '正一品' },
-        { id: 'dispatcher', label: '任务调度引擎', emoji: '📮', role: '尚书令', rank: '正一品' },
-        { id: 'doc_writer', label: '文档编写员', emoji: '📝', role: '文档编写员尚书', rank: '正二品' },
-        { id: 'data_analyst', label: '数据分析师', emoji: '💰', role: '数据分析师尚书', rank: '正二品' },
-        { id: 'software_engineer', label: '代码架构师', emoji: '⚔️', role: '代码架构师尚书', rank: '正二品' },
-        { id: 'qa_engineer', label: '质量保证师', emoji: '⚖️', role: '质量保证师尚书', rank: '正二品' },
-        { id: 'software_engineer', label: '代码架构师', emoji: '🔧', role: '代码架构师尚书', rank: '正二品' },
-        { id: 'libu_hr', label: '资源调配员', emoji: '👔', role: '资源调配员尚书', rank: '正二品' },
-        { id: 'monitor', label: '情报监控员', emoji: '🌟', role: '每日简报官', rank: '正三品' },
+        { id: 'coordinator', label: '协调中枢', emoji: '🤴', role: '协调中枢', rank: '中枢系统' },
+        { id: 'planner', label: '任务编排引擎', emoji: '📜', role: '编排指挥官', rank: 'P10' },
+        { id: 'reviewer', label: '安全审查引擎', emoji: '🔍', role: '侍中', rank: 'P10' },
+        { id: 'dispatcher', label: '任务调度引擎', emoji: '📮', role: '调度总管', rank: 'P10' },
+        { id: 'doc_writer', label: '文档编写员', emoji: '📝', role: '文档编写员调度', rank: 'P8' },
+        { id: 'data_analyst', label: '数据分析师', emoji: '💰', role: '数据分析师调度', rank: 'P8' },
+        { id: 'software_engineer', label: '代码架构师', emoji: '⚔️', role: '代码架构师调度', rank: 'P8' },
+        { id: 'qa_engineer', label: '质量保证师', emoji: '⚖️', role: '质量保证师调度', rank: 'P8' },
+        { id: 'software_engineer', label: '代码架构师', emoji: '🔧', role: '代码架构师调度', rank: 'P8' },
+        { id: 'libu_hr', label: '资源调配员', emoji: '👔', role: '资源调配员调度', rank: 'P8' },
+        { id: 'monitor', label: '情报监控员', emoji: '🌟', role: '每日简报官', rank: 'P7' },
       ];
 
       // 每个部门当前承接的任务：从 JJC 任务里找 org 匹配且非 Done 的
@@ -4497,8 +4497,8 @@
       ${canStop ? `<button class="btn-action btn-stop" onclick="confirmAction('${esc(t.id)}','stop')">⏸ 叫停任务</button>
       <button class="btn-action btn-cancel" onclick="confirmAction('${esc(t.id)}','cancel')">🚫 取消任务</button>` : ''}
       ${canResume ? `<button class="btn-action btn-resume" onclick="taskAction('${esc(t.id)}','resume','恢复执行')">▶️ 恢复执行</button>` : ''}
-      ${['ResultReview', 'PlanReview'].includes(t.state) ? `<button class="btn-action" style="background:#2ecc8a22;color:#2ecc8a;border:1px solid #2ecc8a44" onclick="reviewAction('${esc(t.id)}','approve')">✅ 准奏</button>
-      <button class="btn-action" style="background:#ff527022;color:#ff5270;border:1px solid #ff527044" onclick="reviewAction('${esc(t.id)}','reject')">🚫 封驳</button>` : ''}
+      ${['ResultReview', 'PlanReview'].includes(t.state) ? `<button class="btn-action" style="background:#2ecc8a22;color:#2ecc8a;border:1px solid #2ecc8a44" onclick="reviewAction('${esc(t.id)}','approve')">✅ 审查通过</button>
+      <button class="btn-action" style="background:#ff527022;color:#ff5270;border:1px solid #ff527044" onclick="reviewAction('${esc(t.id)}','reject')">🚫 审查驳回</button>` : ''}
       ${['Pending', 'Queued', 'Planning', 'PlanReview', 'Dispatching', 'Executing', 'ResultReview', 'Next'].includes(t.state) ? `<button class="btn-action" style="background:#7c5cfc18;color:#7c5cfc;border:1px solid #7c5cfc44" onclick="advanceState('${esc(t.id)}','${esc(t.state)}')">⏩ 推进到下一步</button>` : ''}
     </div>
 
@@ -5792,9 +5792,9 @@
       } catch (e) { toast('服务器连接失败', 'err'); }
     }
 
-    /* ══ REVIEW ACTION (御批 准奏/封驳) ══ */
+    /* ══ REVIEW ACTION (御批 审查通过/审查驳回) ══ */
     async function reviewAction(taskId, action) {
-      const labels = { approve: '准奏', reject: '封驳' };
+      const labels = { approve: '审查通过', reject: '审查驳回' };
       const comment = prompt(`${labels[action]} ${taskId}\n\n请输入批注（可留空）：`);
       if (comment === null) return; // cancelled
       try {
@@ -6095,7 +6095,7 @@
         if (f.from === '用户') originLog.push(f);
         else if (f.to === '任务编排引擎' || f.from === '任务编排引擎') planLog.push(f);
         else if (f.to === '安全审查引擎' || f.from === '安全审查引擎') reviewLog.push(f);
-        else if (f.remark && (f.remark.includes('完成') || f.remark.includes('回奏'))) resultLog.push(f);
+        else if (f.remark && (f.remark.includes('完成') || f.remark.includes('任务汇报'))) resultLog.push(f);
         else execLog.push(f);
       }
 
@@ -6130,11 +6130,11 @@
 
     ${t.now ? `<div style="background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:10px 14px;margin-bottom:18px;font-size:12px;color:var(--muted)">${esc(t.now)}</div>` : ''}
 
-    ${renderPhase('圣旨原文', '👑', originLog)}
-    ${renderPhase('中书规划', '📋', planLog)}
-    ${renderPhase('门下审议', '🔍', reviewLog)}
+    ${renderPhase('指令原文', '👑', originLog)}
+    ${renderPhase('编排规划', '📋', planLog)}
+    ${renderPhase('安全审查', '🔍', reviewLog)}
     ${renderPhase('执行智能体集群执行', '⚔️', execLog)}
-    ${renderPhase('汇总回奏', '📨', resultLog)}
+    ${renderPhase('汇总任务汇报', '📨', resultLog)}
 
     ${t.output && t.output !== '-' ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">
       <div style="font-size:11px;font-weight:600;margin-bottom:4px">📦 产出物</div>
@@ -6182,7 +6182,7 @@
       navigator.clipboard.writeText(md).then(() => toast('✅ 报告已复制为 Markdown', 'ok')).catch(() => toast('复制失败', 'err'));
     }
 
-    /* ══ TEMPLATES (圣旨模板库) ══ */
+    /* ══ TEMPLATES (指令模板库) ══ */
     const TEMPLATES = [
       {
         id: 'tpl-weekly-report', cat: '日常办公', icon: '📝', name: '周报生成',
@@ -6311,7 +6311,7 @@
       <div class="tpl-footer">
         ${t.depts.map(d => `<span class="tpl-dept">${esc(d)}</span>`).join('')}
         <span class="tpl-est">${esc(t.est)} · ${esc(t.cost)}</span>
-        <button class="tpl-go" onclick="openTemplateForm('${t.id}')">下旨</button>
+        <button class="tpl-go" onclick="openTemplateForm('${t.id}')">下发任务</button>
       </div>
     </div>
   `).join('');
@@ -6321,7 +6321,7 @@
       const t = TEMPLATES.find(x => x.id === tplId);
       if (!t) return;
       document.getElementById('modal-body').innerHTML = `
-    <div style="font-size:11px;color:var(--acc);font-weight:700;letter-spacing:.04em;margin-bottom:4px">圣旨模板</div>
+    <div style="font-size:11px;color:var(--acc);font-weight:700;letter-spacing:.04em;margin-bottom:4px">指令模板</div>
     <div style="font-size:20px;font-weight:800;margin-bottom:6px">${t.icon} ${esc(t.name)}</div>
     <div style="font-size:12px;color:var(--muted);margin-bottom:18px">${esc(t.desc)}</div>
     <div style="display:flex;gap:6px;margin-bottom:18px;flex-wrap:wrap">${t.depts.map(d => `<span class="tpl-dept">${esc(d)}</span>`).join('')}<span style="font-size:11px;color:var(--muted);margin-left:auto">${esc(t.est)} · ${esc(t.cost)}</span></div>
@@ -6338,7 +6338,7 @@
       <div id="tpl-preview" style="background:var(--panel2);border:1px solid var(--line);border-radius:8px;padding:12px;margin-bottom:14px;font-size:12px;color:var(--muted);display:none"></div>
       <div style="display:flex;gap:10px;justify-content:flex-end">
         <button type="button" class="btn btn-g" onclick="previewTemplate('${t.id}')" style="padding:8px 16px;font-size:12px">👁 预览任务</button>
-        <button type="submit" class="tpl-go" style="padding:8px 20px;font-size:13px">📜 下旨</button>
+        <button type="submit" class="tpl-go" style="padding:8px 20px;font-size:13px">📜 下发任务</button>
       </div>
     </form>
   `;
@@ -6380,7 +6380,7 @@
       } catch (ex) {/* 检测失败不阻塞创建 */ }
 
       // Show the generated command in a confirmation
-      if (!confirm(`确认下旨？\n\n${cmd.substring(0, 200)}${cmd.length > 200 ? '…' : ''}`)) return;
+      if (!confirm(`确认下发任务？\n\n${cmd.substring(0, 200)}${cmd.length > 200 ? '…' : ''}`)) return;
       // 通过 API 创建真实任务
       try {
         const params = {};
@@ -6401,7 +6401,7 @@
           closeModal();
           loadAll();
         } else {
-          toast(r.error || '下旨失败', 'err');
+          toast(r.error || '下发任务失败', 'err');
         }
       } catch (err) {
         // 降级：复制到剪贴板

@@ -1,18 +1,18 @@
-# 三省执行智能体集群任务分发流转体系 · 业务与技术架构
+# OpenClaw MAS任务分发流转体系 · 业务与技术架构
 
-> 本文档详细阐述「三省执行智能体集群」项目如何从**业务制度设计**到**代码实现细节**，完整处理复杂多Agent协作的任务分发与流转。这是一个**制度化的AI多Agent框架**，而非传统的自由讨论式协作系统。
+> 本文档详细阐述「OpenClaw MAS」项目如何从**业务制度设计**到**代码实现细节**，完整处理复杂多Agent协作的任务分发与流转。这是一个**制度化的AI多Agent框架**，而非传统的自由讨论式协作系统。
 
 **文档概览图**
 
 ```
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 业务层：帝国制度 (Imperial Governance Model)
-  ├─ 分权制衡：用户 → 协调中枢 → 中书 → 门下 → 尚书 → 执行智能体集群
-  ├─ 制度约束：不可越级、状态严格递进、门下必审议
-  └─ 质量保障：可封驳反工、实时可观测、紧急可干预
+  ├─ 分权制衡：用户 → 协调中枢 → 编排 → 审查 → 调度 → 执行智能体集群
+  ├─ 制度约束：不可越级、状态严格递进、审查必审议
+  └─ 质量保障：可审查驳回反工、实时可观测、紧急可干预
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 技术层：OpenClaw多Agent编排 (Multi-Agent Orchestration)
-  ├─ 状态机：9个状态（Pending → Taizi → Zhongshu → Menxia → Assigned → Doing/Next → Review → Done/Cancelled）
+  ├─ 状态机：9个状态（Pending → Taizi → planner → reviewer → Assigned → Doing/Next → Review → Done/Cancelled）
   ├─ 数据融合：flow_log + progress_log + session JSONL → unified activity stream
   ├─ 权限矩阵：严格的subagent调用权限控制
   └─ 调度层：自动派发、超时重试、停滞升级、自动回滚
@@ -38,7 +38,7 @@
 - 质量控制完全依赖Agent智能
 - **问题**：容易出现Agent相互制造假数据、重复工作、方案质量无保障
 
-**三省执行智能体集群**采用**"制度化协作"模式**，模仿古代帝国官僚体系：
+**OpenClaw MAS**采用**"制度化协作"模式**，模仿古代帝国官僚体系：
 
 ```
               用户
@@ -48,35 +48,35 @@
              协调中枢 (Taizi)
         [分拣官、消息接入总负责]
       ├─ 识别：这是任务还是闲聊？
-      ├─ 执行：直接回复闲聊 || 建立任务→转中书
+      ├─ 执行：直接回复闲聊 || 建立任务→转编排
       └─ 权限：只能调用 任务编排引擎
                │
                ↓
-           任务编排引擎 (Zhongshu)
+           任务编排引擎 (planner)
       [规划官、方案起草总负责]
-      ├─ 接旨后分析需求
+      ├─ 接收任务后分析需求
       ├─ 拆解为子任务（todos）
       ├─ 调用安全审查引擎审议 OR 任务调度引擎咨询
-      └─ 权限：只能调用 门下 + 尚书
+      └─ 权限：只能调用 审查 + 调度
                │
                ↓
-           安全审查引擎 (Menxia)
+           安全审查引擎 (reviewer)
         [审议官、质量把握人]
-      ├─ 审查中书方案（可行性、完整性、风险）
-      ├─ 准奏 OR 封驳（含修改建议）
-      ├─ 若封驳 → 返回中书修改 → 重新审议（最多3轮）
-      └─ 权限：只能调用 尚书 + 回调中书
+      ├─ 审查编排方案（可行性、完整性、风险）
+      ├─ 审查通过 OR 审查驳回（含修改建议）
+      ├─ 若审查驳回 → 返回编排修改 → 重新审议（最多3轮）
+      └─ 权限：只能调用 调度 + 回调编排
                │
-         (✅ 准奏)
+         (✅ 审查通过)
                │
                ↓
            任务调度引擎 (Shangshu)
         [派发官、执行总指挥]
-      ├─ 接到准奏方案
+      ├─ 接到审查通过方案
       ├─ 分析派发给哪个部门
       ├─ 调用执行智能体集群（礼/户/兵/刑/工/吏）执行
       ├─ 监控各部进度 → 汇总结果
-      └─ 权限：只能调用 执行智能体集群（不能越权调中书）
+      └─ 权限：只能调用 执行智能体集群（不能越权调编排）
                │
                ├─ 文档编写员 (Libu)      - 文档编制官
                ├─ 数据分析师 (Hubu)      - 数据分析官
@@ -93,7 +93,7 @@
       ├─ 回调任务编排引擎转报用户
                │
                ↓
-           任务编排引擎·回奏
+           任务编排引擎·任务汇报
       ├─ 汇总现象、结论、建议
       ├─ 状态转为 Done
       └─ 回复飞书消息给用户
@@ -103,8 +103,8 @@
 
 | 保障机制 | 实现细节 | 防护效果 |
 |---------|---------|---------|
-| **制度性审核** | 安全审查引擎必审议所有中书方案，不可跳过 | 防止Agent胡乱执行，确保方案具有可行性 |
-| **分权制衡** | 权限矩阵：谁能调谁严格定义 | 防止权力滥用（如尚书越权调中书改方案） |
+| **制度性审核** | 安全审查引擎必审议所有编排方案，不可跳过 | 防止Agent胡乱执行，确保方案具有可行性 |
+| **分权制衡** | 权限矩阵：谁能调谁严格定义 | 防止权力滥用（如调度越权调编排改方案） |
 | **完全可观测** | 任务看板10个面板 + 59条活动/任务 | 实时看到任务卡在哪、谁在工作、工作状态如何 |
 | **实时可干预** | 看板内一键 stop/cancel/resume/advance | 紧急情况（如发现Agent走错方向）能立即纠正 |
 
@@ -116,13 +116,13 @@
 
 ```mermaid
 stateDiagram-v2
-[*] --> Pending: 用户下旨
-Pending --> Queued: 协调中枢接旨
-Taizi --> Planning: 协调中枢转交中书
-Zhongshu --> PlanResultReview: 中书提交审议
-Menxia --> Planning: 门下封驳(可多次)
-Menxia --> Dispatching: 门下准奏
-Assigned --> Executing: 尚书派发执行
+[*] --> Pending: 用户下发任务
+Pending --> Queued: 协调中枢接收任务
+Taizi --> Planning: 协调中枢转交编排
+planner --> PlanResultReview: 编排提交审议
+reviewer --> Planning: 审查审查驳回(可多次)
+reviewer --> Dispatching: 安全审查引擎审查通过
+Assigned --> Executing: 调度派发执行
 Doing --> ResultReview: 各部完成
 Review --> Completed: 用户御批通过
 Review --> PlanResultReview: 用户要求修改
@@ -137,25 +137,25 @@ Review --> [*]: 业务终止
 
 ```
 DAY 1:
-  10:00 - 用户飞书："为三省执行智能体集群编写完整自动化测试方案"
-          协调中枢接旨。state = Taizi, org = 协调中枢
+  10:00 - 用户飞书："为OpenClaw MAS编写完整自动化测试方案"
+          协调中枢接收任务。state = Taizi, org = 协调中枢
           自动派发 taizi agent → 处理此任务
   
   10:30 - 协调中枢分拣完毕。判定为「工作任务」（非闲聊）
           建任务 JJC-20260228-E2E
-          flow_log 记录："用户 → 协调中枢：下旨"
-          state: Taizi → Zhongshu, org: 协调中枢 → 任务编排引擎
+          flow_log 记录："用户 → 协调中枢：下发任务"
+          state: Taizi → planner, org: 协调中枢 → 任务编排引擎
           自动派发 zhongshu agent
 
 DAY 2:
-  09:00 - 任务编排引擎接旨。开始规划
+  09:00 - 任务编排引擎接收任务。开始规划
           汇报进展："分析测试需求，拆解为单元/集成/E2E三层"
           progress_log 记录："任务编排引擎 张三：分需求"
           
   15:00 - 任务编排引擎完成方案
           todos 快照：需求分析✅、方案设计✅、待审议🔄
           flow_log 记录："任务编排引擎 → 安全审查引擎：方案提交审议"
-          state: Zhongshu → Menxia, org: 任务编排引擎 → 安全审查引擎
+          state: planner → reviewer, org: 任务编排引擎 → 安全审查引擎
           自动派发 menxia agent
 
 DAY 3:
@@ -164,14 +164,14 @@ DAY 3:
           
   14:00 - 安全审查引擎审议完毕
           判定："方案可行，但缺失 _infer_agent_id_from_runtime 函数的测试"
-          行为：✅ 准奏 (带修改建议)
-          flow_log 记录："安全审查引擎 → 任务调度引擎：✅ 准奏通过（5条建议）"
-          state: Menxia → Assigned, org: 安全审查引擎 → 任务调度引擎
+          行为：✅ 审查通过 (带修改建议)
+          flow_log 记录："安全审查引擎 → 任务调度引擎：✅ 审查通过通过（5条建议）"
+          state: reviewer → Assigned, org: 安全审查引擎 → 任务调度引擎
           OPTIONAL：任务编排引擎收到建议，主动优化方案
           自动派发 shangshu agent
 
 DAY 4:
-  10:00 - 任务调度引擎接到准奏
+  10:00 - 任务调度引擎接到审查通过
           分析："该测试方案应派给代码架构师+质量保证师+文档编写员协力完成"
           flow_log 记录："任务调度引擎 → 执行智能体集群：派发执行（兵吏合作）"
           state: Assigned → Doing, org: 任务调度引擎 → 代码架构师+质量保证师+文档编写员
@@ -194,37 +194,37 @@ DAY 5:
           任务调度引擎汇总："所有测试已完成，通过率 98.5%"
           转回任务编排引擎
           
-  15:00 - 任务编排引擎回奏用户
+  15:00 - 任务编排引擎任务汇报用户
           state: Review → Done
           模板回复飞书，含最终成果链接和总结
 ```
 
-**❌ 挫折路径**（含封驳和重试，6-7天）
+**❌ 挫折路径**（含审查驳回和重试，6-7天）
 
 ```
 DAY 2 同上
 
-DAY 3 [封驳场景]：
+DAY 3 [审查驳回场景]：
   14:00 - 安全审查引擎审议完毕
           判定："方案不完整，缺少性能测试 + 压力测试"
-          行为：🚫 封驳
+          行为：🚫 审查驳回
           review_round += 1
-          flow_log 记录："安全审查引擎 → 任务编排引擎：🚫 封驳（需补充性能测试）"
-          state: Menxia → Zhongshu  # 返回中书修改
+          flow_log 记录："安全审查引擎 → 任务编排引擎：🚫 审查驳回（需补充性能测试）"
+          state: reviewer → planner  # 返回编排修改
           自动派发 zhongshu agent（重新规划）
 
 DAY 3-4：
-  16:00 - 任务编排引擎收到封驳通知（唤醒agent）
+  16:00 - 任务编排引擎收到审查驳回通知（唤醒agent）
           分析改进意见，补充性能测试方案
           progress："已整合性能测试需求，修正方案如下..."
           flow_log 记录："任务编排引擎 → 安全审查引擎：修订方案（第2轮审议）"
-          state: Zhongshu → Menxia
+          state: planner → reviewer
           自动派发 menxia agent
 
   18:00 - 安全审查引擎重新审议
           判定："✅ 本次通过"
-          flow_log 记录："安全审查引擎 → 任务调度引擎：✅ 准奏通过（第2轮）"
-          state: Menxia → Assigned → Doing
+          flow_log 记录："安全审查引擎 → 任务调度引擎：✅ 审查通过通过（第2轮）"
+          state: reviewer → Assigned → Doing
           后续同理想路径...
 
 DAY 7：全部完成（比理想路径晚1-2天）
@@ -239,7 +239,7 @@ DAY 7：全部完成（比理想路径晚1-2天）
 ```json
 {
   "id": "JJC-20260228-E2E",          // 任务全局唯一ID (JJC-日期-序号)
-  "title": "为三省执行智能体集群编写完整自动化测试方案",
+  "title": "为OpenClaw MAS编写完整自动化测试方案",
   "official": "编排指挥官",              // 负责官职
   "org": "任务编排引擎",                   // 当前负责部门
   "state": "Dispatching",               // 当前状态（见 _STATE_FLOW）
@@ -247,7 +247,7 @@ DAY 7：全部完成（比理想路径晚1-2天）
   // ──── 质量与约束 ────
   "priority": "normal",              // 优先级：critical/high/normal/low
   "block": "无",                     // 当前阻滞原因（如"等待代码架构师反馈"）
-  "reviewRound": 2,                  // 门下审议第几轮
+  "reviewRound": 2,                  // 安全审查第几轮
   "_prev_state": "PlanReview",           // 若被 stop，记录之前状态用于 resume
   
   // ──── 业务产出 ────
@@ -261,7 +261,7 @@ DAY 7：全部完成（比理想路径晚1-2天）
       "at": "2026-02-28T10:00:00Z",
       "from": "用户",
       "to": "协调中枢",
-      "remark": "下旨：为三省执行智能体集群编写完整自动化测试方案"
+      "remark": "下发任务：为OpenClaw MAS编写完整自动化测试方案"
     },
     {
       "at": "2026-02-28T10:30:00Z",
@@ -279,7 +279,7 @@ DAY 7：全部完成（比理想路径晚1-2天）
       "at": "2026-03-01T09:00:00Z",
       "from": "安全审查引擎",
       "to": "任务编排引擎",
-      "remark": "🚫 封驳：需补充性能测试"
+      "remark": "🚫 审查驳回：需补充性能测试"
     },
     {
       "at": "2026-03-01T15:00:00Z",
@@ -291,7 +291,7 @@ DAY 7：全部完成（比理想路径晚1-2天）
       "at": "2026-03-01T20:00:00Z",
       "from": "安全审查引擎",
       "to": "任务调度引擎",
-      "remark": "✅ 准奏通过（第2轮，5条建议已采纳）"
+      "remark": "✅ 审查通过通过（第2轮，5条建议已采纳）"
     }
   ],
   
@@ -301,7 +301,7 @@ DAY 7：全部完成（比理想路径晚1-2天）
       "at": "2026-02-28T10:35:00Z",
       "agent": "planner",              // 汇报agent
       "agentLabel": "任务编排引擎",
-      "text": "已接旨。分析测试需求，拟定三层测试方案...",
+      "text": "已接收任务。分析测试需求，拟定三层测试方案...",
       "state": "Planning",              // 汇报时的状态快照
       "org": "任务编排引擎",
       "tokens": 4500,                   // 资源消耗
@@ -322,7 +322,7 @@ DAY 7：全部完成（比理想路径晚1-2天）
     "stallThresholdSec": 180,         // 停滞超过180秒自动升级
     "maxRetry": 1,                    // 自动重试最多1次
     "retryCount": 0,
-    "escalationLevel": 0,             // 0=无升级 1=门下协调 2=尚书协调
+    "escalationLevel": 0,             // 0=无升级 1=审查协调 2=调度协调
     "lastProgressAt": "2026-03-01T20:00:00Z",
     "stallSince": null,               // 何时开始停滞
     "lastDispatchStatus": "success",  // queued|success|failed|timeout|error
@@ -335,7 +335,7 @@ DAY 7：全部完成（比理想路径晚1-2天）
   
   // ──── 生命周期 ────
   "archived": false,                 // 是否归档
-  "now": "安全审查引擎准奏，移交任务调度引擎派发",  // 当前实时状态描述
+  "now": "安全审查引擎审查通过，移交任务调度引擎派发",  // 当前实时状态描述
   "updatedAt": "2026-03-01T20:00:00Z"
 }
 ```
@@ -344,9 +344,9 @@ DAY 7：全部完成（比理想路径晚1-2天）
 
 | 契约 | 含义 | 违反后果 |
 |------|------|---------|
-| **不可越级** | 协调中枢只能调中书，中书只能调门下/尚书，执行智能体集群不能对外调用 | 超权调用被拒绝，系统自动拦截 |
-| **状态单向递进** | Pending → Taizi → Zhongshu → ... → Done，不能跳过或倒退 | 只能通过 review_action(reject) 返回上一步 |
-| **门下必审** | 所有中书提出的方案都要安全审查引擎审议，无法跳过 | 中书不能直接转尚书，门下必入 |
+| **不可越级** | 协调中枢只能调编排，编排只能调审查/调度，执行智能体集群不能对外调用 | 超权调用被拒绝，系统自动拦截 |
+| **状态单向递进** | Pending → Taizi → planner → ... → Done，不能跳过或倒退 | 只能通过 review_action(reject) 返回上一步 |
+| **审查必审** | 所有编排提出的方案都要安全审查引擎审议，无法跳过 | 编排不能直接转调度引擎，审查必入 |
 | **一旦Done无改** | 任务进入Done/Cancelled后不能再修改状态 | 若需修改需要创建新任务或取消后重新建 |
 | **task_id唯一性** | JJC-日期-序号 全局唯一，同一天同一任务不重复建 | 看板防重，自动去重 |
 | **资源消耗透明** | 每次进展汇报都要上报 tokens/cost/elapsed | 便于成本核算和性能优化 |
@@ -364,11 +364,11 @@ _STATE_FLOW = {
     'Pending':  ('Queued',   '用户',    '协调中枢',    '待处理任务转交协调中枢分拣'),
     'Queued':    ('Planning','协调中枢',    '任务编排引擎',  '协调中枢分拣完毕，转任务编排引擎起草'),
     'Planning': ('PlanReview',  '任务编排引擎',  '安全审查引擎',  '任务编排引擎方案提交安全审查引擎审议'),
-    'PlanReview':   ('Dispatching','安全审查引擎',  '任务调度引擎',  '安全审查引擎准奏，转任务调度引擎派发'),
+    'PlanReview':   ('Dispatching','安全审查引擎',  '任务调度引擎',  '安全审查引擎审查通过，转任务调度引擎派发'),
     'Dispatching': ('Executing',   '任务调度引擎',  '执行智能体集群',    '任务调度引擎开始派发执行'),
     'Next':     ('Executing',   '任务调度引擎',  '执行智能体集群',    '待执行任务开始执行'),
     'Executing':    ('ResultReview',  '执行智能体集群',    '任务调度引擎',  '各部完成，进入汇总'),
-    'ResultReview':   ('Completed',    '任务调度引擎',  '协调中枢',    '全流程完成，回奏协调中枢转报用户'),
+    'ResultReview':   ('Completed',    '任务调度引擎',  '协调中枢',    '全流程完成，任务汇报协调中枢转报用户'),
 }
 ```
 
@@ -401,7 +401,7 @@ _STATE_AGENT_MAP = {
    ├─ taizi: "📜 用户任务需要你处理..."
    ├─ zhongshu: "📜 任务已到任务编排引擎，请起草方案..."
    ├─ menxia: "📋 任务编排引擎方案提交审议..."
-   ├─ shangshu: "📮 安全审查引擎已准奏，请派发执行..."
+   ├─ shangshu: "📮 安全审查引擎已审查通过，请派发执行..."
    └─ 执行智能体集群: "📌 请处理任务..."
 
 3. 后台异步派发（非阻塞）
@@ -490,10 +490,10 @@ def can_dispatch_to(from_agent, to_agent):
 
 | 场景 | 请求 | 结果 | 理由 |
 |------|------|------|------|
-| **正常** | 任务编排引擎 → 安全审查引擎审议 | ✅ 允许 | 门下在中书的 allowAgents 中 |
-| **违反** | 任务编排引擎 → 任务调度引擎改方案 | ❌ 拒绝 | 中书只能调门下/尚书，不能手工改尚书工作 |
+| **正常** | 任务编排引擎 → 安全审查引擎审议 | ✅ 允许 | 审查在编排的 allowAgents 中 |
+| **违反** | 任务编排引擎 → 任务调度引擎改方案 | ❌ 拒绝 | 编排只能调审查/调度，不能手工改调度工作 |
 | **违反** | 代码架构师 → 任务调度引擎 "我完成了" | ✅ 改状态 | 通过 flow_log 和 progress_log（不是跨Agent调用） |
-| **违反** | 任务调度引擎 → 任务编排引擎 "重新改方案" | ❌ 拒绝 | 尚书不在门下/中书的 allowAgents 中 |
+| **违反** | 任务调度引擎 → 任务编排引擎 "重新改方案" | ❌ 拒绝 | 调度不在审查/编排的 allowAgents 中 |
 | **防控** | Agent 伪造其他agent派发 | ❌ 拦截 | API 层验证 HTTP 请求来源/签名 |
 
 ---
@@ -506,7 +506,7 @@ def can_dispatch_to(from_agent, to_agent):
 
 ```
 1️⃣ flow_log
-   └─ 纯粹记录状态转移（Zhongshu → Menxia）
+   └─ 纯粹记录状态转移（planner → reviewer）
    └─ 数据源：任务 JSON 的 flow_log 字段
    └─ 来自：Agent 通过 kanban_update.py flow 命令上报
 
@@ -643,7 +643,7 @@ def _parse_activity_entry(item):
 ```
 kind    count  代表事件
 ────────────────────────────────────────────────
-flow      10   状态转移链（Pending→Taizi→Zhongshu→...）
+flow      10   状态转移链（Pending→Taizi→planner→...）
 progress  11   Agent工作汇报（"正在分析"、"已完成"）
 todos     11   待办任务快照（进度更新时每条）
 user       1   用户反馈（如"需要补充性能测试"）
@@ -677,7 +677,7 @@ _scheduler = {
     
     # 运行时状态
     'retryCount': 0,                  # 当前已重试几次
-    'escalationLevel': 0,             # 0=无升级 1=门下协调 2=尚书协调
+    'escalationLevel': 0,             # 0=无升级 1=审查协调 2=调度协调
     'stallSince': None,               # 何时开始停滞的时间戳
     'lastProgressAt': '2026-03-01T...',  # 最后一次获得进展的时间
     'lastEscalatedAt': '2026-03-01T...',
@@ -741,7 +741,7 @@ FOR EACH 任务:
 
 #### 示例场景
 
-**场景：任务编排引擎Agent进程崩溃，任务卡在 Zhongshu**
+**场景：任务编排引擎Agent进程崩溃，任务卡在 planner**
 
 ```
 T+0:
@@ -787,7 +787,7 @@ T+360 (若仍未恢复):
   安全审查引擎Agent被唤醒，可以：
   - 检查任务编排引擎是否在线
   - 若在线，询问进度
-  - 若离线，可能启动应急流程（如由门下暂代起草）
+  - 若离线，可能启动应急流程（如由审查暂代起草）
 
 T+540 (若仍未解决):
   scheduler_scan 再次扫，发现：
@@ -804,7 +804,7 @@ T+720 (若仍未解决):
   
   ✅ 阶段4：自动回滚
   - snapshot.state = 'Dispatching' (前一个稳定状态)
-  - task.state: Zhongshu → Assigned
+  - task.state: planner → Assigned
   - dispatch_for_state('JJC-20260228-E2E', 'Dispatching', trigger='taizi-auto-rollback')
   - flow_log: "连续停滞，自动回滚到Assigned，由任务调度引擎重新派发"
   
@@ -825,7 +825,7 @@ T+720 (若仍未解决):
 ```
 请求：
 {
-  "title": "为三省执行智能体集群编写完整自动化测试方案",
+  "title": "为OpenClaw MAS编写完整自动化测试方案",
   "org": "任务编排引擎",           // 可选，默认协调中枢
   "official": "编排指挥官",      // 可选
   "priority": "normal",
@@ -853,7 +853,7 @@ GET /api/task-activity/JJC-20260228-E2E
   "ok": true,
   "taskId": "JJC-20260228-E2E",
   "taskMeta": {
-    "title": "为三省执行智能体集群编写完整自动化测试方案",
+    "title": "为OpenClaw MAS编写完整自动化测试方案",
     "state": "Dispatching",
     "org": "任务调度引擎",
     "output": "",
@@ -871,13 +871,13 @@ GET /api/task-activity/JJC-20260228-E2E
       "kind": "flow",
       "from": "用户",
       "to": "协调中枢",
-      "remark": "下旨：为三省执行智能体集群编写完整自动化测试方案"
+      "remark": "下发任务：为OpenClaw MAS编写完整自动化测试方案"
     },
     // progress_log (11条)
     {
       "at": "2026-02-28T10:35:00Z",
       "kind": "progress",
-      "text": "已接旨。分析测试需求，拟定三层测试方案...",
+      "text": "已接收任务。分析测试需求，拟定三层测试方案...",
       "agent": "planner",
       "agentLabel": "任务编排引擎",
       "state": "Planning",
@@ -986,13 +986,13 @@ GET /api/task-activity/JJC-20260228-E2E
 #### 审批操作：`POST /api/review-action/{task_id}`
 
 ```
-请求（准奏）：
+请求（审查通过）：
 {
   "action": "approve",
   "comment": "方案可行，已采纳改进建议"
 }
 
-OR 请求（封驳）：
+OR 请求（审查驳回）：
 {
   "action": "reject",
   "comment": "需补充性能测试，第N轮审议"
@@ -1001,7 +1001,7 @@ OR 请求（封驳）：
 响应：
 {
   "ok": true,
-  "message": "JJC-20260228-E2E 已准奏 (已自动派发 Agent)",
+  "message": "JJC-20260228-E2E 已审查通过 (已自动派发 Agent)",
   "state": "Dispatching",
   "reviewRound": 1
 }
@@ -1013,13 +1013,13 @@ OR 请求（封驳）：
 
 Agent 通过此工具与看板交互，共7个命令：
 
-#### 命令1：创建任务（协调中枢或中书手工）
+#### 命令1：创建任务（协调中枢或编排手工）
 
 ```bash
 python3 scripts/kanban_update.py create \
   JJC-20260228-E2E \
-  "为三省执行智能体集群编写完整自动化测试方案" \
-  Zhongshu \
+  "为OpenClaw MAS编写完整自动化测试方案" \
+  planner \
   任务编排引擎 \
   编排指挥官
 
@@ -1031,16 +1031,16 @@ python3 scripts/kanban_update.py create \
 ```bash
 python3 scripts/kanban_update.py state \
   JJC-20260228-E2E \
-  Menxia \
+  reviewer \
   "方案提交安全审查引擎审议"
 
 # 说明：
 # - 第一个参数：task_id
-# - 第二个参数：新状态（Pending/Taizi/Zhongshu/...）
+# - 第二个参数：新状态（Pending/Taizi/planner/...）
 # - 第三个参数：可选，描述信息（会记录到 now 字段）
 # 
 # 效果：
-# - task.state = Menxia
+# - task.state = reviewer
 # - task.org 自动推断为 "安全审查引擎"
 # - 触发派发 menxia agent
 # - flow_log 记录转移
@@ -1071,7 +1071,7 @@ python3 scripts/kanban_update.py flow \
 python3 scripts/kanban_update.py progress \
   JJC-20260228-E2E \
   "已完成需求分析和方案初稿，现正征询代码架构师意见" \
-  "1.需求分析✅|2.方案设计✅|3.代码架构师咨询🔄|4.待门下审议"
+  "1.需求分析✅|2.方案设计✅|3.代码架构师咨询🔄|4.待安全审查"
 
 # 说明：
 # - 参数1：task_id
@@ -1090,7 +1090,7 @@ python3 scripts/kanban_update.py progress \
 #       {"id": "1", "title": "需求分析", "status": "completed"},
 #       {"id": "2", "title": "方案设计", "status": "completed"},
 #       {"id": "3", "title": "代码架构师咨询", "status": "in-progress"},
-#       {"id": "4", "title": "待门下审议", "status": "not-started"}
+#       {"id": "4", "title": "待安全审查", "status": "not-started"}
 #     ],
 #     "tokens": (自动从 openclaw 会话数据读取),
 #     "cost": (自动计算),
@@ -1157,9 +1157,9 @@ python3 scripts/kanban_update.py cancel \
 
 ## 💡 第四部分：对标与对比
 
-### CrewAI / AutoGen 的传统方式 vs 三省执行智能体集群的制度化方式
+### CrewAI / AutoGen 的传统方式 vs OpenClaw MAS的制度化方式
 
-| 维度 | CrewAI | AutoGen | **三省执行智能体集群** |
+| 维度 | CrewAI | AutoGen | **OpenClaw MAS** |
 |------|--------|---------|----------|
 | **协作模式** | 自由讨论（Agent自主选择协作对象） | 面板+回调（Human-in-the-loop） | **制度化协作（权限矩阵+状态机）** |
 | **质量保障** | 依赖Agent智能（无审核）| Human审核（频繁中断） | **自动审核（安全审查引擎必审）+可干预** |
@@ -1181,17 +1181,17 @@ if task_seems_done:
     send_message_to_someone()  # 可能发错人，可能重复
 ```
 
-**三省执行智能体集群的"严格"方式**
+**OpenClaw MAS的"严格"方式**
 ```python
 # 任务状态严格受限，下一步由系统决定
 if task.state == 'Planning' and agent_id == 'planner':
-    # 只能做Zhongshu该做的事（起草方案）
+    # 只能做planner该做的事（起草方案）
     deliver_plan_to_menxia()
     
     # 状态转移只能通过API，不能绕过
-    # 中书不能直接转尚书，必须经过门下审议
+    # 编排不能直接转调度引擎，必须经过安全审查
     
-    # 若想绕过门下审议
+    # 若想绕过安全审查
     try:
         dispatch_to(shangshu)  # ❌ 权限检查拦截
     except PermissionError:
@@ -1219,7 +1219,7 @@ if task.state == 'Planning' and agent_id == 'planner':
     ✅ 第2阶段：升级协调
        - 唤醒安全审查引擎agent
        - 汇报："任务编排引擎无响应，请介入"
-       - 门下可能接管或代理工作
+       - 审查可能接管或代理工作
   
   T+540: 若仍未恢复
     ✅ 第3阶段：再次升级
@@ -1238,11 +1238,11 @@ if task.state == 'Planning' and agent_id == 'planner':
 假设 `zhongshu` agent 想骗过系统：
 
 ```python
-# 尝试伪造安全审查引擎的准奏（直接改JSON）
+# 尝试伪造安全审查引擎的审查通过（直接改JSON）
 task['flow_log'].append({
     'from': '安全审查引擎',      # ❌ 假冒身份
     'to': '任务调度引擎',
-    'remark': '✅ 准奏'
+    'remark': '✅ 审查通过'
 })
 
 # 系统防御：
@@ -1251,17 +1251,17 @@ task['flow_log'].append({
 #    ├─ 必须通过 flow_log 记录，且签名验证
 #    └─ 签名不匹配则拒绝
 # 2. 状态机验证：状态转移受控
-#    ├─ 即使 flow_log 被篡改，state 仍然是 Zhongshu
+#    ├─ 即使 flow_log 被篡改，state 仍然是 planner
 #    ├─ 下一步只能由 gate-keeper 系统转移
 #    └─ zhongshu 无权自己改 state
 
 # 结果：❌ Agent 的伪造被系统拦截
 ```
 
-### 场景3：业务流程违反（如中书越权调尚书改方案）
+### 场景3：业务流程违反（如编排越权调调度改方案）
 
 ```python
-# 任务编排引擎想绕过门下审议，直接咨询任务调度引擎
+# 任务编排引擎想绕过安全审查，直接咨询任务调度引擎
 try:
     result = dispatch_to_agent('dispatcher', '请帮我审查一下这个方案')
 except PermissionError:
@@ -1285,16 +1285,16 @@ except PermissionError:
 ```
 1. 全任务列表
    └─ 所有任务的汇总视图（按创建时间倒序）
-   └─ 快速过滤：活跃/完成/已封驳
+   └─ 快速过滤：活跃/完成/已审查驳回
 
 2. 按状态分类
    ├─ Pending（待处理）
    ├─ Taizi（协调中枢分拣中）
-   ├─ Zhongshu（中书规划中）
-   ├─ Menxia（门下审议中）
-   ├─ Assigned（尚书派发中）
+   ├─ planner（编排规划中）
+   ├─ reviewer（安全审查中）
+   ├─ Assigned（调度派发中）
    ├─ Doing（执行智能体集群执行中）
-   ├─ Review（尚书汇总中）
+   ├─ Review（调度汇总中）
    └─ Done/Cancelled（已完成/已取消）
 
 3. 按部门分类
@@ -1331,9 +1331,9 @@ except PermissionError:
    ├─ 快速操作：重试/升级/回滚
 
 8. 审批工单池
-   ├─ 清单所有在 Menxia 等待审批的任务
+   ├─ 清单所有在 reviewer 等待审批的任务
    ├─ 按停留时长排序
-   ├─ 一键准奏/封驳
+   ├─ 一键审查通过/审查驳回
 
 9. 今日概览
    ├─ 今日新建任务数
@@ -1385,13 +1385,13 @@ GET /api/agents-status
 
 ```bash
 # ═══════════════════════════════════════════════════════════
-# 第1步：用户下旨（飞书消息或看板API）
+# 第1步：用户下发任务（飞书消息或看板API）
 # ═══════════════════════════════════════════════════════════
 
 curl -X POST http://127.0.0.1:7891/api/create-task \
   -H "Content-Type: application/json" \
   -d '{
-    "title": "编写三省执行智能体集群协议文档",
+    "title": "编写OpenClaw MAS协议文档",
     "priority": "high"
   }'
 
@@ -1399,23 +1399,23 @@ curl -X POST http://127.0.0.1:7891/api/create-task \
 # 协调中枢Agent 收到通知："📜 用户任务..."
 
 # ═══════════════════════════════════════════════════════════
-# 第2步：协调中枢接旨分拣（Agent自动）
+# 第2步：协调中枢接收任务分拣（Agent自动）
 # ═══════════════════════════════════════════════════════════
 
 # 协调中枢Agent 判定：这是"工作任务"（非闲聊）
 # 自动运行：
 python3 scripts/kanban_update.py state \
   JJC-20260302-001 \
-  Zhongshu \
+  planner \
   "分拣完毕，转任务编排引擎起草"
 
 # 任务编排引擎Agent 收到派发通知
 
 # ═══════════════════════════════════════════════════════════
-# 第3步：中书起草（Agent工作）
+# 第3步：编排起草（Agent工作）
 # ═══════════════════════════════════════════════════════════
 
-# 中书Agent 分析需求、拆解任务
+# 编排Agent 分析需求、拆解任务
 
 # 第一次汇报（30分钟后）：
 python3 scripts/kanban_update.py progress \
@@ -1442,50 +1442,50 @@ python3 scripts/kanban_update.py flow \
 
 python3 scripts/kanban_update.py state \
   JJC-20260302-001 \
-  Menxia \
+  reviewer \
   "方案提交安全审查引擎审议"
 
 # 安全审查引擎Agent 收到派发通知，开始审议
 
 # ═══════════════════════════════════════════════════════════
-# 第4步：门下审议（Agent工作）
+# 第4步：安全审查（Agent工作）
 # ═══════════════════════════════════════════════════════════
 
-# 门下Agent 审查文档质量
+# 审查Agent 审查文档质量
 
 # 审议结果（30分钟后）：
 
-# 情景A：准奏
+# 情景A：审查通过
 python3 scripts/kanban_update.py state \
   JJC-20260302-001 \
   Assigned \
-  "✅ 准奏，已采纳改进建议"
+  "✅ 审查通过，已采纳改进建议"
 
 python3 scripts/kanban_update.py flow \
   JJC-20260302-001 \
   "安全审查引擎" \
   "任务调度引擎" \
-  "✅ 准奏：文档质量良好，建议补充代码示例"
+  "✅ 审查通过：文档质量良好，建议补充代码示例"
 
 # 任务调度引擎Agent 收到派发
 
-# 情景B：封驳
+# 情景B：审查驳回
 python3 scripts/kanban_update.py state \
   JJC-20260302-001 \
-  Zhongshu \
-  "🚫 封驳：需补充协议规范部分"
+  planner \
+  "🚫 审查驳回：需补充协议规范部分"
 
 python3 scripts/kanban_update.py flow \
   JJC-20260302-001 \
   "安全审查引擎" \
   "任务编排引擎" \
-  "🚫 封驳：协议部分过于简略，需补充权限矩阵示例"
+  "🚫 审查驳回：协议部分过于简略，需补充权限矩阵示例"
 
 # 任务编排引擎Agent 收到唤醒，重新修改方案
-# （3小时后 → 重新提交门下审议）
+# （3小时后 → 重新提交安全审查）
 
 # ═══════════════════════════════════════════════════════════
-# 第5步：尚书派发（Agent工作）
+# 第5步：调度派发（Agent工作）
 # ═══════════════════════════════════════════════════════════
 
 # 任务调度引擎Agent 分析文档应派给谁：
@@ -1529,7 +1529,7 @@ python3 scripts/kanban_update.py progress \
   "1.Docker编写✅|2.K8s配置✅|3.一键部署脚本🔄|4.部署文档待完成"
 
 # ═══════════════════════════════════════════════════════════
-# 第7步：尚书汇总（Agent工作）
+# 第7步：调度汇总（Agent工作）
 # ═══════════════════════════════════════════════════════════
 
 # 等所有部门汇报完成后，任务调度引擎汇总所有成果
@@ -1553,7 +1553,7 @@ python3 scripts/kanban_update.py state \
 python3 scripts/kanban_update.py done \
   JJC-20260302-001 \
   "https://github.com/org/repo/docs/architecture.md" \
-  "三省执行智能体集群协议文档已完成，包含89页，5个阶段历时3天，总消耗成本$2.34"
+  "OpenClaw MAS协议文档已完成，包含89页，5个阶段历时3天，总消耗成本$2.34"
 
 # 看板显示：
 # - 状态：Done ✅
@@ -1587,7 +1587,7 @@ curl http://127.0.0.1:7891/api/task-activity/JJC-20260302-001
 
 ## 📋 总结
 
-**三省执行智能体集群是一个制度化的AI多Agent系统**，不是传统的"自由讨论"框架。它通过：
+**OpenClaw MAS是一个制度化的AI多Agent系统**，不是传统的"自由讨论"框架。它通过：
 
 1. **业务层**：模仿古代帝国官僚体系，建立分权制衡的组织结构
 2. **技术层**：状态机 + 权限矩阵 + 自动派发 + 调度重试，确保流程可控
@@ -1596,4 +1596,4 @@ curl http://127.0.0.1:7891/api/task-activity/JJC-20260302-001
 
 **核心价值**：用制度确保质量，用透明确保信心，用自动化确保效率。
 
-相比 CrewAI/AutoGen 的"自由+人工管理"，三省执行智能体集群提供了一套**企业级的AI协作框架**。
+相比 CrewAI/AutoGen 的"自由+人工管理"，OpenClaw MAS提供了一套**企业级的AI协作框架**。

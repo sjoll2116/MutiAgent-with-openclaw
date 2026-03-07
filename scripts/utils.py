@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-三省执行智能体集群 · 公共工具函数
+OpenClaw MAS · 公共工具函数
 避免 read_json / now_iso 等基础函数在多个脚本中重复定义
 """
 import json, pathlib, datetime

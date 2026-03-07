@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-三省执行智能体集群 · 看板本地 API 服务器
+OpenClaw MAS · 看板本地 API 服务器
 Port: 7891 (可通过 --port 修改)
 
 Endpoints:
@@ -532,16 +532,16 @@ _JUNK_TITLES = {
 }
 
 
-def handle_create_task(title, org='任务编排引擎', official='中书令', priority='normal', template_id='', params=None, target_dept=''):
-    """从看板创建新任务（圣旨模板下旨）。"""
+def handle_create_task(title, org='任务编排引擎', official='编排指挥官', priority='normal', template_id='', params=None, target_dept=''):
+    """从看板创建新任务（指令模板下发任务）。"""
     if not title or not title.strip():
         return {'ok': False, 'error': '任务标题不能为空'}
     title = title.strip()
     # 剥离 Conversation info 元数据
     title = re.split(r'\n*Conversation info\s*\(', title, maxsplit=1)[0].strip()
     title = re.split(r'\n*```', title, maxsplit=1)[0].strip()
-    # 清理常见前缀: "传旨:" "下旨:" 等
-    title = re.sub(r'^(传旨|下旨)[：:\uff1a]\s*', '', title)
+    # 清理常见前缀: "传旨:" "下发任务:" 等
+    title = re.sub(r'^(传旨|下发任务)[：:\uff1a]\s*', '', title)
     if len(title) > 100:
         title = title[:100] + '…'
     # 标题质量校验：防止闲聊被误建为任务
@@ -567,7 +567,7 @@ def handle_create_task(title, org='任务编排引擎', official='中书令', pr
         'official': official,
         'org': initial_org,
         'state': 'Queued',
-        'now': '等待协调中枢接旨分拣',
+        'now': '等待协调中枢接收任务分拣',
         'eta': '-',
         'block': '无',
         'output': '',
@@ -579,7 +579,7 @@ def handle_create_task(title, org='任务编排引擎', official='中书令', pr
             'at': now_iso(),
             'from': '用户',
             'to': initial_org,
-            'remark': f'下旨：{title}'
+            'remark': f'下发任务：{title}'
         }],
         'updatedAt': now_iso(),
     }
@@ -600,7 +600,7 @@ def handle_create_task(title, org='任务编排引擎', official='中书令', pr
 
 
 def handle_review_action(task_id, action, comment=''):
-    """安全审查引擎御批：准奏/封驳。"""
+    """安全审查引擎御批：审查通过/审查驳回。"""
     tasks = load_tasks()
     task = next((t for t in tasks if t.get('id') == task_id), None)
     if not task:
@@ -614,20 +614,20 @@ def handle_review_action(task_id, action, comment=''):
     if action == 'approve':
         if task['state'] == 'PlanReview':
             task['state'] = 'Dispatching'
-            task['now'] = '安全审查引擎准奏，移交任务调度引擎派发'
-            remark = f'✅ 准奏：{comment or "安全审查引擎审议通过"}'
+            task['now'] = '安全审查引擎审查通过，移交任务调度引擎派发'
+            remark = f'✅ 审查通过：{comment or "安全审查引擎审议通过"}'
             to_dept = '任务调度引擎'
         else:  # Review
             task['state'] = 'Completed'
             task['now'] = '御批通过，任务完成'
-            remark = f'✅ 御批准奏：{comment or "审查通过"}'
+            remark = f'✅ 御批审查通过：{comment or "审查通过"}'
             to_dept = '用户'
     elif action == 'reject':
         round_num = (task.get('review_round') or 0) + 1
         task['review_round'] = round_num
         task['state'] = 'Planning'
-        task['now'] = f'封驳退回任务编排引擎修订（第{round_num}轮）'
-        remark = f'🚫 封驳：{comment or "需要修改"}'
+        task['now'] = f'审查驳回退回任务编排引擎修订（第{round_num}轮）'
+        remark = f'🚫 审查驳回：{comment or "需要修改"}'
         to_dept = '任务编排引擎'
     else:
         return {'ok': False, 'error': f'未知操作: {action}'}
@@ -647,7 +647,7 @@ def handle_review_action(task_id, action, comment=''):
     if new_state not in ('Completed',):
         dispatch_for_state(task_id, task, new_state)
 
-    label = '已准奏' if action == 'approve' else '已封驳'
+    label = '已审查通过' if action == 'approve' else '已审查驳回'
     dispatched = ' (已自动派发 Agent)' if new_state != 'Completed' else ''
     return {'ok': True, 'message': f'{task_id} {label}{dispatched}'}
 
@@ -655,17 +655,17 @@ def handle_review_action(task_id, action, comment=''):
 # ══ Agent 在线状态检测 ══
 
 _AGENT_DEPTS = [
-    {'id':'coordinator',   'label':'协调中枢',  'emoji':'🤴', 'role':'协调中枢',     'rank':'储君'},
-    {'id':'planner','label':'任务编排引擎','emoji':'📜', 'role':'中书令',   'rank':'正一品'},
-    {'id':'reviewer',  'label':'安全审查引擎','emoji':'🔍', 'role':'侍中',     'rank':'正一品'},
-    {'id':'dispatcher','label':'任务调度引擎','emoji':'📮', 'role':'尚书令',   'rank':'正一品'},
-    {'id':'data_analyst',    'label':'数据分析师',  'emoji':'💰', 'role':'数据分析师尚书', 'rank':'正二品'},
-    {'id':'doc_writer',    'label':'文档编写员',  'emoji':'📝', 'role':'文档编写员尚书', 'rank':'正二品'},
-    {'id':'software_engineer',  'label':'代码架构师',  'emoji':'⚔️', 'role':'代码架构师尚书', 'rank':'正二品'},
-    {'id':'qa_engineer',  'label':'质量保证师',  'emoji':'⚖️', 'role':'质量保证师尚书', 'rank':'正二品'},
-    {'id':'software_engineer',  'label':'代码架构师',  'emoji':'🔧', 'role':'代码架构师尚书', 'rank':'正二品'},
-    {'id':'libu_hr', 'label':'资源调配员',  'emoji':'👔', 'role':'资源调配员尚书', 'rank':'正二品'},
-    {'id':'monitor', 'label':'情报监控员','emoji':'📰', 'role':'每日简报官',   'rank':'正三品'},
+    {'id':'coordinator',   'label':'协调中枢',  'emoji':'🤴', 'role':'协调中枢',     'rank':'中枢系统'},
+    {'id':'planner','label':'任务编排引擎','emoji':'📜', 'role':'编排指挥官',   'rank':'P10'},
+    {'id':'reviewer',  'label':'安全审查引擎','emoji':'🔍', 'role':'侍中',     'rank':'P10'},
+    {'id':'dispatcher','label':'任务调度引擎','emoji':'📮', 'role':'调度总管',   'rank':'P10'},
+    {'id':'data_analyst',    'label':'数据分析师',  'emoji':'💰', 'role':'数据分析师调度', 'rank':'P8'},
+    {'id':'doc_writer',    'label':'文档编写员',  'emoji':'📝', 'role':'文档编写员调度', 'rank':'P8'},
+    {'id':'software_engineer',  'label':'代码架构师',  'emoji':'⚔️', 'role':'代码架构师调度', 'rank':'P8'},
+    {'id':'qa_engineer',  'label':'质量保证师',  'emoji':'⚖️', 'role':'质量保证师调度', 'rank':'P8'},
+    {'id':'software_engineer',  'label':'代码架构师',  'emoji':'🔧', 'role':'代码架构师调度', 'rank':'P8'},
+    {'id':'libu_hr', 'label':'资源调配员',  'emoji':'👔', 'role':'资源调配员调度', 'rank':'P8'},
+    {'id':'monitor', 'label':'情报监控员','emoji':'📰', 'role':'每日简报官',   'rank':'P7'},
 ]
 
 
@@ -1215,13 +1215,13 @@ def handle_repair_flow_order():
 
         first['to'] = '协调中枢'
         remark = first.get('remark', '')
-        if isinstance(remark, str) and remark.startswith('下旨：'):
+        if isinstance(remark, str) and remark.startswith('下发任务：'):
             first['remark'] = remark
 
         if task.get('state') == 'Planning' and task.get('org') == '任务编排引擎' and len(flow_log) == 1:
             task['state'] = 'Queued'
             task['org'] = '协调中枢'
-            task['now'] = '等待协调中枢接旨分拣'
+            task['now'] = '等待协调中枢接收任务分拣'
 
         task['updatedAt'] = now_iso()
         fixed += 1
@@ -1871,11 +1871,11 @@ _STATE_FLOW = {
     'Pending':  ('Queued', '用户', '协调中枢', '待处理任务转交协调中枢分拣'),
     'Queued':    ('Planning', '协调中枢', '任务编排引擎', '协调中枢分拣完毕，转任务编排引擎起草'),
     'Planning': ('PlanReview', '任务编排引擎', '安全审查引擎', '任务编排引擎方案提交安全审查引擎审议'),
-    'PlanReview':   ('Dispatching', '安全审查引擎', '任务调度引擎', '安全审查引擎准奏，转任务调度引擎派发'),
+    'PlanReview':   ('Dispatching', '安全审查引擎', '任务调度引擎', '安全审查引擎审查通过，转任务调度引擎派发'),
     'Dispatching': ('Executing', '任务调度引擎', '执行智能体集群', '任务调度引擎开始派发执行'),
     'Next':     ('Executing', '任务调度引擎', '执行智能体集群', '待执行任务开始执行'),
     'Executing':    ('ResultReview', '执行智能体集群', '任务调度引擎', '各部完成，进入汇总'),
-    'ResultReview':   ('Completed', '任务调度引擎', '协调中枢', '全流程完成，回奏协调中枢转报用户'),
+    'ResultReview':   ('Completed', '任务调度引擎', '协调中枢', '全流程完成，任务汇报协调中枢转报用户'),
 }
 _STATE_LABELS = {
     'Pending': '待处理', 'Queued': '协调中枢', 'Planning': '任务编排引擎', 'PlanReview': '安全审查引擎',
@@ -1920,17 +1920,17 @@ def dispatch_for_state(task_id, task, new_state, trigger='state-transition'):
             f'任务ID: {task_id}\n'
             f'任务: {title}\n'
             f'⚠️ 看板已有此任务记录，请勿重复创建。直接用 kanban_update.py state 更新状态。\n'
-            f'请立即起草执行方案，走完完整三省流程（中书起草→门下审议→尚书派发→执行智能体集群执行）。'
+            f'请立即起草执行方案，走完完整三省流程（编排起草→安全审查→调度派发→执行智能体集群执行）。'
         ),
         'reviewer': (
             f'📋 任务编排引擎方案提交审议\n'
             f'任务ID: {task_id}\n'
             f'任务: {title}\n'
             f'⚠️ 看板已有此任务，请勿重复创建。\n'
-            f'请审议任务编排引擎方案，给出准奏或封驳意见。'
+            f'请审议任务编排引擎方案，给出审查通过或审查驳回意见。'
         ),
         'dispatcher': (
-            f'📮 安全审查引擎已准奏，请派发执行\n'
+            f'📮 安全审查引擎已审查通过，请派发执行\n'
             f'任务ID: {task_id}\n'
             f'任务: {title}\n'
             f'{"建议派发部门: " + target_dept if target_dept else ""}\n'
@@ -2390,7 +2390,7 @@ class Handler(BaseHTTPRequestHandler):
         if p == '/api/create-task':
             title = body.get('title', '').strip()
             org = body.get('org', '任务编排引擎').strip()
-            official = body.get('official', '中书令').strip()
+            official = body.get('official', '编排指挥官').strip()
             priority = body.get('priority', 'normal').strip()
             template_id = body.get('templateId', '')
             params = body.get('params', {})
@@ -2463,7 +2463,7 @@ class Handler(BaseHTTPRequestHandler):
 
 
 def main():
-    parser = argparse.ArgumentParser(description='三省执行智能体集群看板服务器')
+    parser = argparse.ArgumentParser(description='OpenClaw MAS看板服务器')
     parser.add_argument('--port', type=int, default=7891)
     parser.add_argument('--host', default='127.0.0.1')
     parser.add_argument('--cors', default=None, help='Allowed CORS origin (default: reflect request Origin header)')
@@ -2473,7 +2473,7 @@ def main():
     ALLOWED_ORIGIN = args.cors
 
     server = HTTPServer((args.host, args.port), Handler)
-    log.info(f'三省执行智能体集群看板启动 → http://{args.host}:{args.port}')
+    log.info(f'OpenClaw MAS看板启动 → http://{args.host}:{args.port}')
     print(f'   按 Ctrl+C 停止')
 
     # 启动恢复：重新派发上次被 kill 中断的 queued 任务
