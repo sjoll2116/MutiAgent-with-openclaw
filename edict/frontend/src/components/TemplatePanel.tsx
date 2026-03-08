@@ -75,7 +75,7 @@ export default function TemplatePanel() {
         params,
       });
       if (r.ok) {
-        toast(`📜 ${r.taskId} 旨意已下达`, 'ok');
+        toast(`✅ 任务指令已下达`, 'ok');
         setFormTpl(null);
         loadAll();
       } else {
@@ -197,7 +197,7 @@ export default function TemplatePanel() {
                     }}
                   >
                     <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
-                      📜 将发送给任务编排引擎的旨意：
+                      📋 将发送给任务编排引擎的指令：
                     </div>
                     <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{previewCmd}</div>
                   </div>
@@ -205,10 +205,10 @@ export default function TemplatePanel() {
 
                 <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
                   <button type="button" className="btn btn-g" onClick={preview} style={{ padding: '8px 16px', fontSize: 12 }}>
-                    👁 预览旨意
+                    👁 预览指令
                   </button>
                   <button type="submit" className="tpl-go" style={{ padding: '8px 20px', fontSize: 13 }}>
-                    📜 下发任务
+                    🚀 下发任务
                   </button>
                 </div>
               </form>

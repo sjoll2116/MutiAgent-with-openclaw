@@ -39,9 +39,10 @@ class TaskService:
         description: str = "",
         priority: str = "中",
         assignee_org: str | None = None,
-        creator: str = "emperor",
+        creator: str = "admin",
         tags: list[str] | None = None,
-        initial_state: TaskState = TaskState.TAIZI,
+        initial_state: TaskState = TaskState.Queued,
+
         meta: dict | None = None,
     ) -> Task:
         """创建任务并发布 task.created 事件。"""

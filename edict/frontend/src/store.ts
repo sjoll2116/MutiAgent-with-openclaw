@@ -1,4 +1,4 @@
-/**
+﻿/**
  * Zustand Store — OpenClaw MAS看板状态管理
  * HTTP 5s 轮询，无 WebSocket
  */
@@ -19,14 +19,14 @@ import {
 // ── Pipeline Definition (PIPE) ──
 
 export const PIPE = [
-  { key: 'Inbox', dept: '用户', icon: '👑', action: '下发任务' },
-  { key: 'Taizi', dept: '协调中枢', icon: '🤴', action: '分拣' },
-  { key: 'planner', dept: '任务编排引擎', icon: '📜', action: '起草' },
+  { key: 'Inbox', dept: '用户', icon: '👤', action: '下发任务' },
+  { key: 'Taizi', dept: '协调中枢', icon: '🤖', action: '分拣' },
+  { key: 'planner', dept: '任务编排引擎', icon: '📋', action: '起草' },
   { key: 'reviewer', dept: '安全审查引擎', icon: '🔍', action: '审议' },
   { key: 'Assigned', dept: '任务调度引擎', icon: '📮', action: '派发' },
   { key: 'Doing', dept: '执行部门', icon: '⚙️', action: '执行' },
   { key: 'Review', dept: '任务调度引擎', icon: '🔎', action: '汇总' },
-  { key: 'Done', dept: '任务汇报', icon: '✅', action: '完成' },
+  { key: 'Done', dept: '任务总结', icon: '✅', action: '完成' },
 ] as const;
 
 export const PIPE_STATE_IDX: Record<string, number> = {
@@ -58,7 +58,7 @@ export function stateLabel(t: Task): string {
 }
 
 export function isEdict(t: Task): boolean {
-  return /^JJC-/i.test(t.id || '');
+  return /^MAS-/i.test(t.id || '');
 }
 
 export function isSession(t: Task): boolean {
@@ -86,23 +86,23 @@ export type TabKey =
   | 'skills' | 'sessions' | 'memorials' | 'templates' | 'morning';
 
 export const TAB_DEFS: { key: TabKey; label: string; icon: string }[] = [
-  { key: 'edicts', label: '旨意看板', icon: '📜' },
-  { key: 'monitor', label: '省部调度', icon: '🏛️' },
-  { key: 'officials', label: '官员总览', icon: '👔' },
+  { key: 'edicts', label: '任务看板', icon: '📋' },
+  { key: 'monitor', label: '节点调度', icon: '🏛️' },
+  { key: 'officials', label: 'Agent 总览', icon: '👔' },
   { key: 'models', label: '模型配置', icon: '🤖' },
   { key: 'skills', label: '技能配置', icon: '🎯' },
-  { key: 'sessions', label: '小任务', icon: '💬' },
-  { key: 'memorials', label: '奏折阁', icon: '📜' },
-  { key: 'templates', label: '旨库', icon: '📋' },
+  { key: 'sessions', label: '会话列表', icon: '💬' },
+  { key: 'memorials', label: '任务归档', icon: '📜' },
+  { key: 'templates', label: '指令库', icon: '📋' },
   { key: 'morning', label: '天下要闻', icon: '🌅' },
 ];
 
 // ── DEPTS for monitor ──
 
 export const DEPTS = [
-  { id: 'taizi', label: '协调中枢', emoji: '🤴', role: '协调中枢', rank: '中枢系统' },
+  { id: 'taizi', label: '协调中枢', emoji: '🤖', role: '协调中枢', rank: '中枢系统' },
   { id: 'zhongshu', label: '任务编排引擎', emoji: '📜', role: '编排指挥官', rank: 'P10' },
-  { id: 'menxia', label: '安全审查引擎', emoji: '🔍', role: '侍中', rank: 'P10' },
+  { id: 'menxia', label: '安全审查引擎', emoji: '🔍', role: '审查专家', rank: 'P10' },
   { id: 'shangshu', label: '任务调度引擎', emoji: '📮', role: '调度总管', rank: 'P10' },
   { id: 'libu', label: '文档编写员', emoji: '📝', role: '文档编写员', rank: 'P8' },
   { id: 'hubu', label: '数据分析师', emoji: '💰', role: '数据分析师', rank: 'P8' },
@@ -110,7 +110,7 @@ export const DEPTS = [
   { id: 'xingbu', label: '质量保证师', emoji: '⚖️', role: '质量保证师', rank: 'P8' },
   { id: 'gongbu', label: '部署运维师', emoji: '🔧', role: '部署运维师', rank: 'P8' },
   { id: 'libu_hr', label: '资源调配员', emoji: '👔', role: '资源调配员', rank: 'P8' },
-  { id: 'zaochao', label: '情报监控员', emoji: '🌟', role: '朝报官', rank: 'P7' },
+  { id: 'zaochao', label: '系统监控员', emoji: '🌟', role: '简报员', rank: 'P7' },
 ];
 
 // ── Templates ──
@@ -234,7 +234,7 @@ export const TEMPLATES: Template[] = [
     params: [
       { key: 'range', label: '汇总范围', type: 'select', options: ['今天', '最近24小时', '昨天+今天'], default: '今天' },
     ],
-    command: '汇总{range}各部工作进展和待办，生成站会摘要',
+    command: '汇总{range}各部工作进展和待办，生成工作站会摘要',
   },
 ];
 
@@ -482,3 +482,4 @@ export function timeAgo(iso: string | undefined): string {
     return '';
   }
 }
+

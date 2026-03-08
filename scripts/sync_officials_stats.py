@@ -23,17 +23,16 @@ MODEL_PRICING = {
 }
 
 OFFICIALS = [
-    {'id':'coordinator',   'label':'协调中枢',  'role':'协调中枢',    'emoji':'🤴','rank':'主协调'},
-    {'id':'planner','label':'任务编排引擎','role':'编排指挥官',  'emoji':'📜','rank':'P10'},
-    {'id':'reviewer',  'label':'安全审查引擎','role':'审查指挥官',    'emoji':'🔍','rank':'P10'},
-    {'id':'dispatcher','label':'任务调度引擎','role':'调度指挥官',  'emoji':'📮','rank':'P10'},
-    {'id':'doc_writer',    'label':'文档编写员',  'role':'文档编写员调度','emoji':'📝','rank':'P8'},
-    {'id':'data_analyst',    'label':'数据分析师',  'role':'数据分析师调度','emoji':'💰','rank':'P8'},
-    {'id':'software_engineer',  'label':'代码架构师',  'role':'代码架构师调度','emoji':'⚔️','rank':'P8'},
-    {'id':'qa_engineer',  'label':'质量保证师',  'role':'质量保证师调度','emoji':'⚖️','rank':'P8'},
-    {'id':'software_engineer',  'label':'代码架构师',  'role':'代码架构师调度','emoji':'🔧','rank':'P8'},
-    {'id':'libu_hr', 'label':'资源调配员',  'role':'资源调配员调度','emoji':'👔','rank':'P8'},
-    {'id':'monitor', 'label':'情报监控员','role':'监控组长',  'emoji':'📰','rank':'P7'},
+    {'id':'coordinator',   'label':'协调中枢',  'role':'总协调',    'emoji':'👨‍💼','rank':'L10'},
+    {'id':'planner','label':'任务编排引擎','role':'编配专家',  'emoji':'📋','rank':'L9'},
+    {'id':'reviewer',  'label':'安全审查引擎','role':'审查专家',    'emoji':'🔍','rank':'L9'},
+    {'id':'dispatcher','label':'任务调度引擎','role':'调度主管',  'emoji':'🚀','rank':'L9'},
+    {'id':'doc_writer',    'label':'文档编写员',  'role':'文档员', 'emoji':'📝','rank':'L8'},
+    {'id':'data_analyst',    'label':'数据分析师',  'role':'分析员', 'emoji':'📊','rank':'L8'},
+    {'id':'software_engineer',  'label':'代码架构师',  'role':'架构师', 'emoji':'💻','rank':'L8'},
+    {'id':'qa_engineer',  'label':'质量保证师',  'role':'测试员', 'emoji':'⚖️','rank':'L8'},
+    {'id':'libu_hr', 'label':'资源调配员',  'role':'行政员', 'emoji':'👔','rank':'L8'},
+    {'id':'monitor', 'label':'情报监控员','role':'监控主管',  'emoji':'🌐','rank':'L7'},
 ]
 
 def rj(p, d):

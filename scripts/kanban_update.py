@@ -1,26 +1,26 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 看板任务更新工具 - 供各省部 Agent 调用
 
 用法:
   # 新建任务（收旨时）
-  python3 kanban_update.py create JJC-20260223-012 "任务标题" planner 任务编排引擎 编排指挥官
+  python3 kanban_update.py create MAS-20260223-012 "任务标题" planner 任务编排引擎 编排指挥官
 
   # 更新状态
-  python3 kanban_update.py state JJC-20260223-012 reviewer "规划方案已提交安全审查引擎"
+  python3 kanban_update.py state MAS-20260223-012 reviewer "规划方案已提交安全审查引擎"
 
   # 添加流转记录
-  python3 kanban_update.py flow JJC-20260223-012 "任务编排引擎" "安全审查引擎" "规划方案提交审核"
+  python3 kanban_update.py flow MAS-20260223-012 "任务编排引擎" "安全审查引擎" "规划方案提交审核"
 
   # 完成任务
-  python3 kanban_update.py done JJC-20260223-012 "/path/to/output" "任务完成摘要"
+  python3 kanban_update.py done MAS-20260223-012 "/path/to/output" "任务完成摘要"
 
   # 添加/更新子任务 todo
-  python3 kanban_update.py todo JJC-20260223-012 1 "实现API接口" in-progress
-  python3 kanban_update.py todo JJC-20260223-012 1 "" completed
+  python3 kanban_update.py todo MAS-20260223-012 1 "实现API接口" in-progress
+  python3 kanban_update.py todo MAS-20260223-012 1 "" completed
 
   # 🔥 实时进展汇报（Agent 主动调用，频率不限）
-  python3 kanban_update.py progress JJC-20260223-012 "正在分析需求，拟定3个子方案" "1.调研技术选型|2.撰写设计文档|3.实现原型"
+  python3 kanban_update.py progress MAS-20260223-012 "正在分析需求，拟定3个子方案" "1.调研技术选型|2.撰写设计文档|3.实现原型"
 """
 import json, pathlib, datetime, sys, subprocess, logging, os, re
 
@@ -475,3 +475,4 @@ if __name__ == '__main__':
     else:
         print(__doc__)
         sys.exit(1)
+

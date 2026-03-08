@@ -38,7 +38,7 @@ export default function OfficialPanel() {
           {alive.map((o) => (
             <span key={o.id} style={{ fontSize: 12 }}>{o.emoji} {o.role}</span>
           ))}
-          <span style={{ color: 'var(--muted)', fontSize: 11, marginLeft: 'auto' }}>其余官员待命</span>
+          <span style={{ color: 'var(--muted)', fontSize: 11, marginLeft: 'auto' }}>其余 Agent 待命</span>
         </div>
       )}
 
@@ -46,21 +46,21 @@ export default function OfficialPanel() {
       <div className="off-kpi">
         <div className="kpi">
           <div className="kpi-v" style={{ color: 'var(--acc)' }}>{offs.length}</div>
-          <div className="kpi-l">在职官员</div>
+          <div className="kpi-l">活跃 Agent</div>
         </div>
         <div className="kpi">
           <div className="kpi-v" style={{ color: '#f5c842' }}>{totals.tasks_done || 0}</div>
-          <div className="kpi-l">累计完成旨意</div>
+          <div className="kpi-l">累计完成任务</div>
         </div>
         <div className="kpi">
           <div className="kpi-v" style={{ color: (totals.cost_cny || 0) > 20 ? 'var(--warn)' : 'var(--ok)' }}>
             ¥{totals.cost_cny || 0}
           </div>
-          <div className="kpi-l">累计费用（含缓存）</div>
+          <div className="kpi-l">累计消耗费用</div>
         </div>
         <div className="kpi">
           <div className="kpi-v" style={{ fontSize: 16, paddingTop: 4 }}>{officialsData.top_official || '—'}</div>
-          <div className="kpi-l">功绩最高</div>
+          <div className="kpi-l">最高效能</div>
         </div>
       </div>
 
@@ -97,7 +97,7 @@ export default function OfficialPanel() {
           {sel ? (
             <OfficialDetail official={sel} maxTk={maxTk} onOpenTask={setModalTaskId} />
           ) : (
-            <div className="empty">选择左侧官员查看详情</div>
+            <div className="empty">选择左侧 Agent 查看详情</div>
           )}
         </div>
       </div>
@@ -150,11 +150,11 @@ function OfficialDetail({
 
       {/* Merit Stats */}
       <div style={{ marginBottom: 18 }}>
-        <div className="sec-title">功绩统计</div>
+        <div className="sec-title">效能统计</div>
         <div style={{ display: 'flex', gap: 16 }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--ok)' }}>{o.tasks_done}</div>
-            <div style={{ fontSize: 10, color: 'var(--muted)' }}>完成旨意</div>
+            <div style={{ fontSize: 10, color: 'var(--muted)' }}>完成任务</div>
           </div>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: 20, fontWeight: 800, color: 'var(--warn)' }}>{o.tasks_active}</div>
@@ -197,9 +197,9 @@ function OfficialDetail({
 
       {/* Participated Edicts */}
       <div>
-        <div className="sec-title">参与旨意（{edicts.length} 道）</div>
+        <div className="sec-title">参与任务（{edicts.length} 个）</div>
         {edicts.length === 0 ? (
-          <div style={{ fontSize: 12, color: 'var(--muted)', padding: '8px 0' }}>暂无旨意记录</div>
+          <div style={{ fontSize: 12, color: 'var(--muted)', padding: '8px 0' }}>暂无任务记录</div>
         ) : (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
             {edicts.map((e) => (

@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """端到端测试 kanban_update.py 的清洗+创建+流转全流程
 
 既可以 pytest 运行，也可以 python3 直接运行。
@@ -35,17 +35,17 @@ def _backup_and_restore():
     yield
     TASKS_FILE.write_text(backup)
     tasks = json.loads(TASKS_FILE.read_text())
-    tasks = [t for t in tasks if not t.get('id', '').startswith('JJC-TEST-')]
+    tasks = [t for t in tasks if not t.get('id', '').startswith('MAS-TEST-')]
     TASKS_FILE.write_text(json.dumps(tasks, ensure_ascii=False, indent=2))
 
 
 # ── TEST 1: 脏标题(含文件路径+Conversation)应被清洗后创建
 def test_dirty_title_cleaned():
-    cmd_create('JJC-TEST-E2E-01',
+    cmd_create('MAS-TEST-E2E-01',
         '全面审查/Users/bingsen/clawd/openclaw-sansheng-liubu/这个项目\nConversation info (xxx)',
         'Planning', '任务编排引擎', '编排指挥官',
         '下发任务（自动预建）：全面审查/Users/bingsen/clawd/项目')
-    t = _get_task('JJC-TEST-E2E-01')
+    t = _get_task('MAS-TEST-E2E-01')
     assert t is not None, "任务应被创建"
     assert '/Users' not in t['title'], f"标题不应含路径: {t['title']}"
     assert 'Conversation' not in t['title'], f"标题不应含Conversation: {t['title']}"
@@ -55,23 +55,23 @@ def test_dirty_title_cleaned():
 
 # ── TEST 2: 纯文件路径标题被拒绝
 def test_pure_path_rejected():
-    cmd_create('JJC-TEST-E2E-02', '/Users/bingsen/clawd/openclaw-sansheng-liubu/', 'Planning', '任务编排引擎', '编排指挥官')
-    assert _get_task('JJC-TEST-E2E-02') is None, "纯路径标题应被拒绝"
+    cmd_create('MAS-TEST-E2E-02', '/Users/bingsen/clawd/openclaw-sansheng-liubu/', 'Planning', '任务编排引擎', '编排指挥官')
+    assert _get_task('MAS-TEST-E2E-02') is None, "纯路径标题应被拒绝"
 
 
 # ── TEST 3: 正常标题正常创建
 def test_normal_title():
-    cmd_create('JJC-TEST-E2E-03', '调研工业数据分析大模型应用方案', 'Planning', '任务编排引擎', '编排指挥官', '协调中枢整理任务')
-    t = _get_task('JJC-TEST-E2E-03')
+    cmd_create('MAS-TEST-E2E-03', '调研工业数据分析大模型应用方案', 'Planning', '任务编排引擎', '编排指挥官', '协调中枢整理任务')
+    t = _get_task('MAS-TEST-E2E-03')
     assert t is not None, "正常任务应被创建"
     assert t['title'] == '调研工业数据分析大模型应用方案', f"标题应完整保留: {t['title']}"
 
 
 # ── TEST 4: flow remark 清洗
 def test_flow_remark_cleaned():
-    cmd_create('JJC-TEST-E2E-04', '调研工业数据分析大模型应用方案', 'Planning', '任务编排引擎', '编排指挥官')
-    cmd_flow('JJC-TEST-E2E-04', '协调中枢', '任务编排引擎', '任务传达：审查/Users/bingsen/clawd/xxx项目 Conversation blah')
-    t = _get_task('JJC-TEST-E2E-04')
+    cmd_create('MAS-TEST-E2E-04', '调研工业数据分析大模型应用方案', 'Planning', '任务编排引擎', '编排指挥官')
+    cmd_flow('MAS-TEST-E2E-04', '协调中枢', '任务编排引擎', '任务传达：审查/Users/bingsen/clawd/xxx项目 Conversation blah')
+    t = _get_task('MAS-TEST-E2E-04')
     assert t is not None
     last_flow = t['flow_log'][-1]
     assert '/Users' not in last_flow['remark'], f"remark不应含路径: {last_flow['remark']}"
@@ -80,23 +80,23 @@ def test_flow_remark_cleaned():
 
 # ── TEST 5: 太短标题拒绝
 def test_short_title_rejected():
-    cmd_create('JJC-TEST-E2E-05', '好的', 'Planning', '任务编排引擎', '编排指挥官')
-    assert _get_task('JJC-TEST-E2E-05') is None, "短标题应被拒绝"
+    cmd_create('MAS-TEST-E2E-05', '好的', 'Planning', '任务编排引擎', '编排指挥官')
+    assert _get_task('MAS-TEST-E2E-05') is None, "短标题应被拒绝"
 
 
 # ── TEST 6: 传旨前缀剥离
 def test_prefix_stripped():
-    cmd_create('JJC-TEST-E2E-06', '传旨：帮我写技术博客文章关于智能体架构', 'Planning', '任务编排引擎', '编排指挥官')
-    t = _get_task('JJC-TEST-E2E-06')
+    cmd_create('MAS-TEST-E2E-06', '传旨：帮我写技术博客文章关于智能体架构', 'Planning', '任务编排引擎', '编排指挥官')
+    t = _get_task('MAS-TEST-E2E-06')
     assert t is not None, "任务应被创建"
     assert not t['title'].startswith('传旨'), f"前缀应被剥离: {t['title']}"
 
 
 # ── TEST 7: state 更新 + org 自动联动
 def test_state_update():
-    cmd_create('JJC-TEST-E2E-07', '测试状态更新与组织联动功能', 'Planning', '任务编排引擎', '编排指挥官')
-    cmd_state('JJC-TEST-E2E-07', 'PlanReview', '方案提交安全审查引擎审议')
-    t = _get_task('JJC-TEST-E2E-07')
+    cmd_create('MAS-TEST-E2E-07', '测试状态更新与组织联动功能', 'Planning', '任务编排引擎', '编排指挥官')
+    cmd_state('MAS-TEST-E2E-07', 'PlanReview', '方案提交安全审查引擎审议')
+    t = _get_task('MAS-TEST-E2E-07')
     assert t is not None
     assert t['state'] == 'PlanReview', f"state应为PlanResultResultReview: {t['state']}"
     assert t['org'] == '安全审查引擎', f"org应为安全审查引擎: {t['org']}"
@@ -104,19 +104,19 @@ def test_state_update():
 
 # ── TEST 8: done 完成
 def test_done():
-    cmd_create('JJC-TEST-E2E-08', '测试任务完成状态标记功能', 'Planning', '任务编排引擎', '编排指挥官')
-    cmd_done('JJC-TEST-E2E-08', '/tmp/output.md', '任务已完成')
-    t = _get_task('JJC-TEST-E2E-08')
+    cmd_create('MAS-TEST-E2E-08', '测试任务完成状态标记功能', 'Planning', '任务编排引擎', '编排指挥官')
+    cmd_done('MAS-TEST-E2E-08', '/tmp/output.md', '任务已完成')
+    t = _get_task('MAS-TEST-E2E-08')
     assert t is not None
     assert t['state'] == 'Completed', f"state应为Completed: {t['state']}"
 
 
 # ── TEST 9: 已完成任务不可覆盖
 def test_done_not_overwritable():
-    cmd_create('JJC-TEST-E2E-09', '测试已完成任务不可覆盖保护', 'Planning', '任务编排引擎', '编排指挥官')
-    cmd_done('JJC-TEST-E2E-09', '/tmp/output.md', '任务已完成')
-    cmd_create('JJC-TEST-E2E-09', '试图覆盖已完成的任务标题', 'Planning', '任务编排引擎', '编排指挥官')
-    t = _get_task('JJC-TEST-E2E-09')
+    cmd_create('MAS-TEST-E2E-09', '测试已完成任务不可覆盖保护', 'Planning', '任务编排引擎', '编排指挥官')
+    cmd_done('MAS-TEST-E2E-09', '/tmp/output.md', '任务已完成')
+    cmd_create('MAS-TEST-E2E-09', '试图覆盖已完成的任务标题', 'Planning', '任务编排引擎', '编排指挥官')
+    t = _get_task('MAS-TEST-E2E-09')
     assert t is not None
     assert t['state'] == 'Completed', f"仍应为Completed: {t['state']}"
 
@@ -124,3 +124,4 @@ def test_done_not_overwritable():
 # ── 支持直接运行 python3 tests/test_e2e_kanban.py
 if __name__ == '__main__':
     sys.exit(pytest.main([__file__, '-v']))
+

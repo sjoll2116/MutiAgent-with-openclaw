@@ -34,7 +34,7 @@ log = logging.getLogger("edict")
 async def lifespan(app: FastAPI):
     """应用生命周期管理。"""
     settings = get_settings()
-    log.info(f"🏛️ Edict Backend starting on port {settings.port}...")
+    log.info(f"🚀 Edict Backend starting on port {settings.port}...")
 
     # 连接 Event Bus
     bus = await get_event_bus()
@@ -48,8 +48,8 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Edict OpenClaw MAS",
-    description="事件驱动的 AI Agent 协作平台",
+    title="OpenClaw MAS 后端服务",
+    description="事件驱动的多智能体协同平台",
     version="2.0.0",
     lifespan=lifespan,
 )

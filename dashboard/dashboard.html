@@ -1,10 +1,10 @@
-<!doctype html>
+﻿<!doctype html>
 <html lang="zh-CN">
 
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>执行智能体集群总控台</title>
+  <title>OpenClaw MAS总控台</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@700;900&display=swap');
 
@@ -3030,7 +3030,7 @@
 
     /* legacy, hidden */
 
-    /* ══ 早朝简报 ══ */
+    /* ══ 系统自检简报 ══ */
     .mn-hdr {
       display: flex;
       align-items: center;
@@ -3853,7 +3853,7 @@
   <!-- COURT CEREMONY -->
   <div class="ceremony-bg" id="ceremony" style="display:none" onclick="skipCeremony()">
     <div class="crm-glow"></div>
-    <div class="crm-line1" id="crm-l1">早朝开始</div>
+    <div class="crm-line1" id="crm-l1">系统自检开始</div>
     <div class="crm-line2" id="crm-l2">各部听旨</div>
     <div class="crm-line3" id="crm-l3"></div>
     <div class="crm-date" id="crm-date"></div>
@@ -3865,7 +3865,7 @@
     <!-- HEADER -->
     <div class="hdr">
       <div>
-        <div class="logo">⚔️ 军机处 · OpenClaw MAS总控台</div>
+        <div class="logo">⚔️ MAS控制中心 · OpenClaw MAS总控台</div>
         <div class="sub">用户视角 · 实时任务追踪</div>
       </div>
       <div class="hdr-r">
@@ -3880,12 +3880,12 @@
     <div class="tabs">
       <div class="tab active" data-tab="edicts">📜 任务看板 <span class="tbadge" id="tb-e">0</span></div>
       <div class="tab" data-tab="monitor">🔭 省部调度 <span class="tbadge" id="tb-m">0</span></div>
-      <div class="tab" data-tab="officials">👥 官员总览</div>
+      <div class="tab" data-tab="officials">👥 Agent总览</div>
       <div class="tab" data-tab="models">⚙️ 模型配置</div>
       <div class="tab" data-tab="skills">🛠️ 技能配置</div>
       <div class="tab" data-tab="sessions">💬 小任务 <span class="tbadge" id="tb-s">0</span></div>
       <div class="tab" data-tab="memorials">📜 报告阁 <span class="tbadge" id="tb-mem">0</span></div>
-      <div class="tab" data-tab="templates">📜 旨库</div>
+      <div class="tab" data-tab="templates">📜 指令库</div>
       <div class="tab" data-tab="morning">📰 天下要闻</div>
     </div>
 
@@ -3917,14 +3917,14 @@
       <div class="duty-grid" id="duty-grid"></div>
     </div>
 
-    <!-- ══ 官员总览 ══ -->
+    <!-- ══ Agent总览 ══ -->
     <div class="panel" id="panel-officials">
       <div id="off-activity" class="off-activity" style="display:none"></div>
       <div id="off-kpi" class="off-kpi"></div>
       <div class="off-layout">
         <div id="off-ranklist" class="off-ranklist"></div>
         <div id="off-detail" class="off-detail">
-          <div class="od-empty">← 点击左侧官员查看详情</div>
+          <div class="od-empty">← 点击左侧Agent查看详情</div>
         </div>
       </div>
     </div>
@@ -3993,7 +3993,7 @@
     <div class="panel" id="panel-templates">
       <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px">
         <div style="flex:1">
-          <div class="sec-title" style="margin-bottom:2px">📜 旨库 · 指令模板</div>
+          <div class="sec-title" style="margin-bottom:2px">📜 指令库 · 指令模板</div>
           <div style="font-size:11px;color:var(--muted)">选择模板、填写参数、一键下发任务 — 降低使用门槛，快速启动任务</div>
         </div>
       </div>
@@ -4005,7 +4005,7 @@
     <div class="panel" id="panel-morning">
       <div class="mb-hdr">
         <div>
-          <div class="mb-title">📰 天下要闻 · 御览</div>
+          <div class="mb-title">📰 天下要闻 · 查阅</div>
           <div id="mb-subtitle" class="mb-sub">加载中…</div>
         </div>
         <div style="display:flex;gap:8px;align-items:center">
@@ -4140,7 +4140,7 @@
       { key: 'Planning', dept: '任务编排引擎', icon: '📜', action: '起草' },
       { key: 'PlanReview', dept: '安全审查引擎', icon: '🔍', action: '审议' },
       { key: 'Dispatching', dept: '任务调度引擎', icon: '📮', action: '派发' },
-      { key: 'Executing', dept: '执行智能体集群', icon: '⚙️', action: '执行' },
+      { key: 'Executing', dept: 'OpenClaw MAS', icon: '⚙️', action: '执行' },
       { key: 'ResultReview', dept: '任务调度引擎', icon: '🔎', action: '汇总' },
       { key: 'Completed', dept: '任务汇报', icon: '✅', action: '完成' },
     ];
@@ -4371,7 +4371,7 @@
       const DEPTS = [
         { id: 'coordinator', label: '协调中枢', emoji: '🤴', role: '协调中枢', rank: '中枢系统' },
         { id: 'planner', label: '任务编排引擎', emoji: '📜', role: '编排指挥官', rank: 'P10' },
-        { id: 'reviewer', label: '安全审查引擎', emoji: '🔍', role: '侍中', rank: 'P10' },
+        { id: 'reviewer', label: '安全审查引擎', emoji: '🔍', role: '审查专家', rank: 'P10' },
         { id: 'dispatcher', label: '任务调度引擎', emoji: '📮', role: '调度总管', rank: 'P10' },
         { id: 'doc_writer', label: '文档编写员', emoji: '📝', role: '文档编写员调度', rank: 'P8' },
         { id: 'data_analyst', label: '数据分析师', emoji: '💰', role: '数据分析师调度', rank: 'P8' },
@@ -4384,7 +4384,7 @@
 
       // 每个部门当前承接的任务：从 JJC 任务里找 org 匹配且非 Done 的
       const activeTasks = tasks.filter(t => isEdict(t) && t.state !== 'Completed' && t.state !== 'Next');
-      // 官员统计数据（如已加载）
+      // Agent统计数据（如已加载）
       const offMap = {};
       if (officialsData && officialsData.officials) {
         officialsData.officials.forEach(o => offMap[o.id] = o);
@@ -4774,7 +4774,7 @@
       const phaseBar = document.getElementById('la-phase-bar');
       if (phaseBar && data.phaseDurations && data.phaseDurations.length) {
         const maxDur = Math.max(...data.phaseDurations.map(p => p.durationSec || 1), 1);
-        const phaseColors = { '用户': '#eab308', '协调中枢': '#f97316', '任务编排引擎': '#3b82f6', '安全审查引擎': '#8b5cf6', '任务调度引擎': '#10b981', '执行智能体集群': '#06b6d4', '文档编写员': '#ec4899', '数据分析师': '#f59e0b', '代码架构师': '#ef4444', '质量保证师': '#6366f1', '代码架构师': '#14b8a6', '资源调配员': '#d946ef' };
+        const phaseColors = { '用户': '#eab308', '协调中枢': '#f97316', '任务编排引擎': '#3b82f6', '安全审查引擎': '#8b5cf6', '任务调度引擎': '#10b981', 'OpenClaw MAS': '#06b6d4', '文档编写员': '#ec4899', '数据分析师': '#f59e0b', '代码架构师': '#ef4444', '质量保证师': '#6366f1', '代码架构师': '#14b8a6', '资源调配员': '#d946ef' };
         let totalDurText = data.totalDuration ? `<span style="margin-left:auto;font-size:10px;color:var(--muted)">总耗时 ${data.totalDuration}</span>` : '';
         phaseBar.innerHTML = `<div style="padding:4px 0 8px;border-bottom:1px solid var(--border)">
       <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px"><span style="font-size:11px;font-weight:600;color:var(--fg)">⏱ 阶段耗时</span>${totalDurText}</div>
@@ -5130,7 +5130,7 @@
     async function loadLive() {
       try {
         liveStatus = await fetchJ(API + '/live-status');
-        // 提前加载官员数据，供省部调度 Tab 使用
+        // 提前加载Agent数据，供省部调度 Tab 使用
         if (!officialsData) {
           try { officialsData = await fetchJ(API + '/officials-stats'); } catch (e) { }
         }
@@ -5655,12 +5655,12 @@
         actEl.style.display = 'flex';
         actEl.innerHTML = `<span class="act-label">🟢 当前活跃：</span>`
           + alive.map(o => `<span class="act-dot alive">${o.emoji} ${o.role}</span>`).join('')
-          + `<span style="color:var(--muted);font-size:11px;margin-left:auto">其余官员待命</span>`;
+          + `<span style="color:var(--muted);font-size:11px;margin-left:auto">其余Agent待命</span>`;
       }
 
       // KPI 行
       document.getElementById('off-kpi').innerHTML = `
-    <div class="kpi"><div class="kpi-v blue">${offs.length}</div><div class="kpi-l">在职官员</div></div>
+    <div class="kpi"><div class="kpi-v blue">${offs.length}</div><div class="kpi-l">在职Agent</div></div>
     <div class="kpi"><div class="kpi-v gold">${totals.tasks_done || 0}</div><div class="kpi-l">累计完成任务</div></div>
     <div class="kpi"><div class="kpi-v ${(totals.cost_cny || 0) > 20 ? 'warn' : 'green'}">¥${totals.cost_cny || 0}</div><div class="kpi-l">累计费用（含缓存）</div></div>
     <div class="kpi"><div class="kpi-v" style="font-size:16px;padding-top:4px">${esc(data.top_official || '—')}</div><div class="kpi-l">功绩最高</div></div>`;
@@ -5792,7 +5792,7 @@
       } catch (e) { toast('服务器连接失败', 'err'); }
     }
 
-    /* ══ REVIEW ACTION (御批 审查通过/审查驳回) ══ */
+    /* ══ REVIEW ACTION (审批 审查通过/审查驳回) ══ */
     async function reviewAction(taskId, action) {
       const labels = { approve: '审查通过', reject: '审查驳回' };
       const comment = prompt(`${labels[action]} ${taskId}\n\n请输入批注（可留空）：`);
@@ -6014,7 +6014,7 @@
     /* ══ KEY ══ */
     document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('modal-bg').classList.remove('open') });
 
-    /* ══ COURT CEREMONY (上朝仪式感) ══ */
+    /* ══ COURT CEREMONY (系统启动仪式感) ══ */
     function showCeremony() {
       const lastOpen = localStorage.getItem('openclaw_court_date');
       const today = new Date().toISOString().substring(0, 10);
@@ -6133,7 +6133,7 @@
     ${renderPhase('指令原文', '👑', originLog)}
     ${renderPhase('编排规划', '📋', planLog)}
     ${renderPhase('安全审查', '🔍', reviewLog)}
-    ${renderPhase('执行智能体集群执行', '⚔️', execLog)}
+    ${renderPhase('OpenClaw MAS执行', '⚔️', execLog)}
     ${renderPhase('汇总任务汇报', '📨', resultLog)}
 
     ${t.output && t.output !== '-' ? `<div style="margin-top:12px;padding-top:12px;border-top:1px solid var(--line)">

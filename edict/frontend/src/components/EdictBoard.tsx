@@ -108,7 +108,7 @@ function EdictCard({ task }: { task: Task }) {
               {i + 1}
             </span>
           ))}
-          <span style={{ color: 'var(--muted)', fontSize: 10 }}>第 {task.review_round} 轮磋商</span>
+          <span style={{ color: 'var(--muted)', fontSize: 10 }}>第 {task.review_round} 轮审计</span>
         </div>
       )}
       {todoTotal > 0 && (
@@ -174,10 +174,10 @@ export default function EdictBoard() {
   const unArchivedDone = allEdicts.filter((t) => !t.archived && ['Done', 'Cancelled'].includes(t.state));
 
   const handleArchiveAll = async () => {
-    if (!confirm('将所有已完成/已取消的旨意移入归档？')) return;
+    if (!confirm('将所有已完成/已取消的任务移入归档？')) return;
     try {
       const r = await api.archiveAllDone();
-      if (r.ok) { toast(`📦 ${r.count || 0} 道旨意已归档`); loadAll(); }
+      if (r.ok) { toast(`📦 ${r.count || 0} 项任务已归档`); loadAll(); }
       else toast(r.error || '批量归档失败', 'err');
     } catch { toast('服务器连接失败', 'err'); }
   };
@@ -218,9 +218,9 @@ export default function EdictBoard() {
       <div className="edict-grid">
         {edicts.length === 0 ? (
           <div className="empty" style={{ gridColumn: '1/-1' }}>
-            暂无旨意<br />
+            暂无任务<br />
             <small style={{ fontSize: 11, marginTop: 6, display: 'block', color: 'var(--muted)' }}>
-              通过飞书向协调中枢发送任务，中枢分拣后转任务编排引擎处理
+              下发任务后，协调中枢将自动分拣并转交给相关引擎处理
             </small>
           </div>
         ) : (

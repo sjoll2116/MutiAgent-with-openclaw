@@ -1,8 +1,6 @@
 """Task 模型 — 系统任务核心表。
 
-对应当前 tasks_source.json 中的每一条任务记录。
-state 对应状态机：
-  Queued → Planning → PlanReview → Dispatching → Executing → ResultReview → Completed
+包含所有前端展示、Go 调度器逻辑、Agent 上报所需的字段。
 """
 
 import enum
@@ -28,16 +26,20 @@ from ..db import Base
 class TaskState(str, enum.Enum):
     """任务状态枚举。"""
     Queued = "Queued"           # 等待路由
-    Planning = "Planning"     # 规划
-    PlanReview = "PlanReview"         # 安全审核
-    Dispatching = "Dispatching"     # 派发
-    Next = "Next"             # 待执行
-    Executing = "Executing"           # 执行中
-    ResultReview = "ResultReview"         # 审查汇总
-    Completed = "Completed"             # 完成
-    Blocked = "Blocked"       # 阻塞
-    Cancelled = "Cancelled"   # 取消
-    Pending = "Pending"       # 待处理
+    Planning = "Planning"       # 规划
+    PlanReview = "PlanReview"   # 安全审核
+    Dispatching = "Dispatching" # 派发
+    Next = "Next"               # 待执行
+    Executing = "Executing"     # 执行中
+    ResultReview = "ResultReview" # 审查汇总
+    Completed = "Completed"       # 完成
+    Blocked = "Blocked"         # 阻塞
+    Cancelled = "Cancelled"     # 取消
+    Pending = "Pending"         # 待处理
+    
+    # 状态机流转别名
+    PlanResultReview = "PlanReview"
+    ResultResultReview = "ResultReview"
 
 
 # 终态集合
@@ -47,15 +49,15 @@ TERMINAL_STATES = {TaskState.Completed, TaskState.Cancelled}
 STATE_TRANSITIONS = {
     TaskState.Queued: {TaskState.Planning, TaskState.Cancelled},
     TaskState.Planning: {TaskState.PlanReview, TaskState.Cancelled, TaskState.Blocked},
-    TaskState.PlanResultReview: {TaskState.Dispatching, TaskState.Planning, TaskState.Cancelled},  # 审查驳回退回
+    TaskState.PlanResultReview: {TaskState.Dispatching, TaskState.Planning, TaskState.Cancelled},
     TaskState.Dispatching: {TaskState.Executing, TaskState.Next, TaskState.Cancelled, TaskState.Blocked},
     TaskState.Next: {TaskState.Executing, TaskState.Cancelled},
     TaskState.Executing: {TaskState.ResultReview, TaskState.Completed, TaskState.Blocked, TaskState.Cancelled},
-    TaskState.ResultResultReview: {TaskState.Completed, TaskState.Executing, TaskState.Cancelled},  # 审查不通过退回
+    TaskState.ResultResultReview: {TaskState.Completed, TaskState.Executing, TaskState.Cancelled},
     TaskState.Blocked: {TaskState.Queued, TaskState.Planning, TaskState.PlanReview, TaskState.Dispatching, TaskState.Executing},
 }
 
-# 状态 → Agent 映射
+# 状态 → Agent 映射 (辅助)
 STATE_AGENT_MAP = {
     TaskState.Queued: "coordinator",
     TaskState.Planning: "planner",
@@ -64,7 +66,7 @@ STATE_AGENT_MAP = {
     TaskState.ResultResultReview: "dispatcher",
 }
 
-# 组织 → Agent 映射
+# 组织 → Agent 映射 (辅助)
 ORG_AGENT_MAP = {
     "文档编写员": "doc_writer",
     "数据分析师": "data_analyst",
@@ -78,67 +80,73 @@ ORG_AGENT_MAP = {
 
 
 class Task(Base):
-    """任务表。"""
+    """任务表 (全字段版)。"""
     __tablename__ = "tasks"
 
-    id = Column(String(32), primary_key=True, comment="任务ID, e.g. JJC-20260301-001")
-    title = Column(Text, nullable=False, comment="任务标题")
-    state = Column(Enum(TaskState, name="task_state"), nullable=False, default=TaskState.Queued, index=True)
-    org = Column(String(32), nullable=False, default="协调中枢", comment="当前执行部门")
+    task_id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    trace_id = Column(String(64), nullable=False, index=True)
+    title = Column(String(200), nullable=False)
+    description = Column(Text, default="")
+    priority = Column(String(16), default="normal")
+    state = Column(Enum(TaskState, name="task_state", inherit_schema=True), nullable=False, default=TaskState.Queued, index=True)
+    org = Column(String(32), nullable=False, default="协调中枢", index=True)
+    creator = Column(String(50), default="admin")
+    
+    # --- 动态进展评估字段 (前端 TaskModal 强依赖) ---
     official = Column(String(32), default="", comment="责任官员")
     now = Column(Text, default="", comment="当前进展描述")
     eta = Column(String(64), default="-", comment="预计完成时间")
     block = Column(Text, default="无", comment="阻塞原因")
     output = Column(Text, default="", comment="最终产出")
-    priority = Column(String(16), default="normal", comment="优先级")
-    archived = Column(Boolean, default=False, index=True)
-
-    # JSONB 灵活字段
-    flow_log = Column(JSONB, default=list, comment="流转日志 [{at, from, to, remark}]")
-    progress_log = Column(JSONB, default=list, comment="进展日志 [{at, agent, text, todos}]")
-    todos = Column(JSONB, default=list, comment="子任务 [{id, title, status, detail}]")
-    scheduler = Column(JSONB, default=dict, comment="调度器元数据")
-    template_id = Column(String(64), default="", comment="模板ID")
-    template_params = Column(JSONB, default=dict, comment="模板参数")
     ac = Column(Text, default="", comment="验收标准")
-    target_dept = Column(String(64), default="", comment="目标部门")
+    
+    # --- 流程控制字段 ---
+    archived = Column(Boolean, default=False, index=True)
+    archived_at = Column(String(64), default="")
+    prev_state = Column(String(32), default="")
+    review_round = Column(Integer, default=0)
+    target_dept = Column(String(64), default="")
+    
+    # --- 模板与调度数据 ---
+    template_id = Column(String(64), default="")
+    template_params = Column(JSONB, default=dict)
+    scheduler = Column(JSONB, default=dict)
+    
+    # --- JSON 日志与结构化数据 ---
+    flow_log = Column(JSONB, default=list)
+    progress_log = Column(JSONB, default=list)
+    todos = Column(JSONB, default=list)
+    meta = Column(JSONB, default=dict)
 
-    # 时间戳
-    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
-    updated_at = Column(
-        DateTime(timezone=True),
-        default=lambda: datetime.now(timezone.utc),
-        onupdate=lambda: datetime.now(timezone.utc),
-        nullable=False,
-    )
-
-    __table_args__ = (
-        Index("ix_tasks_state_archived", "state", "archived"),
-        Index("ix_tasks_updated_at", "updated_at"),
-    )
+    created_at = Column(DateTime(timezone=True), server_default=text("now()"))
+    updated_at = Column(DateTime(timezone=True), server_default=text("now()"), onupdate=text("now()"))
 
     def to_dict(self) -> dict:
-        """序列化为 API 响应格式（兼容旧 live_status 格式）。"""
+        """格式化输出，保持与前端 interface Task 的兼容性。"""
         return {
-            "id": self.id,
+            "id": str(self.task_id),
+            "trace_id": self.trace_id,
             "title": self.title,
-            "state": self.state.value if self.state else "",
+            "description": self.description,
+            "priority": self.priority,
+            "state": self.state.value if hasattr(self.state, 'value') else str(self.state),
             "org": self.org,
+            "creator": self.creator,
             "official": self.official,
             "now": self.now,
             "eta": self.eta,
             "block": self.block,
             "output": self.output,
-            "priority": self.priority,
+            "ac": self.ac,
             "archived": self.archived,
+            "archivedAt": self.archived_at,
+            "review_round": self.review_round,
+            "targetDept": self.target_dept,
             "flow_log": self.flow_log or [],
             "progress_log": self.progress_log or [],
             "todos": self.todos or [],
-            "templateId": self.template_id,
-            "templateParams": self.template_params or {},
-            "ac": self.ac,
-            "targetDept": self.target_dept,
-            "_scheduler": self.scheduler or {},
+            "scheduler": self.scheduler or {},
             "createdAt": self.created_at.isoformat() if self.created_at else "",
             "updatedAt": self.updated_at.isoformat() if self.updated_at else "",
+            "_prev_state": self.prev_state,
         }

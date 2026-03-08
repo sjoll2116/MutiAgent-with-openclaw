@@ -1,4 +1,4 @@
-# OpenClaw MAS任务分发流转体系 · 业务与技术架构
+﻿# OpenClaw MAS任务分发流转体系 · 业务与技术架构
 
 > 本文档详细阐述「OpenClaw MAS」项目如何从**业务制度设计**到**代码实现细节**，完整处理复杂多Agent协作的任务分发与流转。这是一个**制度化的AI多Agent框架**，而非传统的自由讨论式协作系统。
 
@@ -124,7 +124,7 @@ reviewer --> Planning: 审查审查驳回(可多次)
 reviewer --> Dispatching: 安全审查引擎审查通过
 Assigned --> Executing: 调度派发执行
 Doing --> ResultReview: 各部完成
-Review --> Completed: 用户御批通过
+Review --> Completed: 用户审批通过
 Review --> PlanResultReview: 用户要求修改
 Done --> [*]
 Doing --> [*]: 手动取消
@@ -142,7 +142,7 @@ DAY 1:
           自动派发 taizi agent → 处理此任务
   
   10:30 - 协调中枢分拣完毕。判定为「工作任务」（非闲聊）
-          建任务 JJC-20260228-E2E
+          建任务 MAS-20260228-E2E
           flow_log 记录："用户 → 协调中枢：下发任务"
           state: Taizi → planner, org: 协调中枢 → 任务编排引擎
           自动派发 zhongshu agent
@@ -238,7 +238,7 @@ DAY 7：全部完成（比理想路径晚1-2天）
 
 ```json
 {
-  "id": "JJC-20260228-E2E",          // 任务全局唯一ID (JJC-日期-序号)
+  "id": "MAS-20260228-E2E",          // 任务全局唯一ID (MAS-日期-序号)
   "title": "为OpenClaw MAS编写完整自动化测试方案",
   "official": "编排指挥官",              // 负责官职
   "org": "任务编排引擎",                   // 当前负责部门
@@ -348,7 +348,7 @@ DAY 7：全部完成（比理想路径晚1-2天）
 | **状态单向递进** | Pending → Taizi → planner → ... → Done，不能跳过或倒退 | 只能通过 review_action(reject) 返回上一步 |
 | **审查必审** | 所有编排提出的方案都要安全审查引擎审议，无法跳过 | 编排不能直接转调度引擎，审查必入 |
 | **一旦Done无改** | 任务进入Done/Cancelled后不能再修改状态 | 若需修改需要创建新任务或取消后重新建 |
-| **task_id唯一性** | JJC-日期-序号 全局唯一，同一天同一任务不重复建 | 看板防重，自动去重 |
+| **task_id唯一性** | MAS-日期-序号 全局唯一，同一天同一任务不重复建 | 看板防重，自动去重 |
 | **资源消耗透明** | 每次进展汇报都要上报 tokens/cost/elapsed | 便于成本核算和性能优化 |
 
 ---
@@ -638,7 +638,7 @@ def _parse_activity_entry(item):
 
 #### 融合后的活动流结构
 
-单个任务的59条活动流（JJC-20260228-E2E 示例）：
+单个任务的59条活动流（MAS-20260228-E2E 示例）：
 
 ```
 kind    count  代表事件
@@ -763,7 +763,7 @@ T+180:
   
   ✅ 阶段1：重试
   - retryCount: 0 → 1
-  - dispatch_for_state('JJC-20260228-E2E', 'Planning', trigger='taizi-scan-retry')
+  - dispatch_for_state('MAS-20260228-E2E', 'Planning', trigger='taizi-scan-retry')
   - 派发消息发送到任务编排引擎（唤醒agent或重启）
   - flow_log: "停滞180秒，自动重试第1次"
 
@@ -781,7 +781,7 @@ T+360 (若仍未恢复):
   
   ✅ 阶段2：升级
   - escalationLevel: 0 → 1
-  - wake_agent('reviewer', "💬 任务JJC-20260228-E2E停滞，任务编排引擎无反应，请介入")
+  - wake_agent('reviewer', "💬 任务MAS-20260228-E2E停滞，任务编排引擎无反应，请介入")
   - flow_log: "升级至安全审查引擎协调"
   
   安全审查引擎Agent被唤醒，可以：
@@ -805,7 +805,7 @@ T+720 (若仍未解决):
   ✅ 阶段4：自动回滚
   - snapshot.state = 'Dispatching' (前一个稳定状态)
   - task.state: planner → Assigned
-  - dispatch_for_state('JJC-20260228-E2E', 'Dispatching', trigger='taizi-auto-rollback')
+  - dispatch_for_state('MAS-20260228-E2E', 'Dispatching', trigger='taizi-auto-rollback')
   - flow_log: "连续停滞，自动回滚到Assigned，由任务调度引擎重新派发"
   
   结果：
@@ -837,8 +837,8 @@ T+720 (若仍未解决):
 响应：
 {
   "ok": true,
-  "taskId": "JJC-20260228-001",
-  "message": "任务 JJC-20260228-001 已下达，正在派发给协调中枢"
+  "taskId": "MAS-20260228-001",
+  "message": "任务 MAS-20260228-001 已下达，正在派发给协调中枢"
 }
 ```
 
@@ -846,12 +846,12 @@ T+720 (若仍未解决):
 
 ```
 请求：
-GET /api/task-activity/JJC-20260228-E2E
+GET /api/task-activity/MAS-20260228-E2E
 
 响应：
 {
   "ok": true,
-  "taskId": "JJC-20260228-E2E",
+  "taskId": "MAS-20260228-E2E",
   "taskMeta": {
     "title": "为OpenClaw MAS编写完整自动化测试方案",
     "state": "Dispatching",
@@ -976,7 +976,7 @@ GET /api/task-activity/JJC-20260228-E2E
 响应：
 {
   "ok": true,
-  "message": "JJC-20260228-E2E 已推进到下一阶段 (已自动派发 Agent)",
+  "message": "MAS-20260228-E2E 已推进到下一阶段 (已自动派发 Agent)",
   "oldState": "Planning",
   "newState": "PlanReview",
   "targetAgent": "reviewer"
@@ -1001,7 +1001,7 @@ OR 请求（审查驳回）：
 响应：
 {
   "ok": true,
-  "message": "JJC-20260228-E2E 已审查通过 (已自动派发 Agent)",
+  "message": "MAS-20260228-E2E 已审查通过 (已自动派发 Agent)",
   "state": "Dispatching",
   "reviewRound": 1
 }
@@ -1017,7 +1017,7 @@ Agent 通过此工具与看板交互，共7个命令：
 
 ```bash
 python3 scripts/kanban_update.py create \
-  JJC-20260228-E2E \
+  MAS-20260228-E2E \
   "为OpenClaw MAS编写完整自动化测试方案" \
   planner \
   任务编排引擎 \
@@ -1030,7 +1030,7 @@ python3 scripts/kanban_update.py create \
 
 ```bash
 python3 scripts/kanban_update.py state \
-  JJC-20260228-E2E \
+  MAS-20260228-E2E \
   reviewer \
   "方案提交安全审查引擎审议"
 
@@ -1050,7 +1050,7 @@ python3 scripts/kanban_update.py state \
 
 ```bash
 python3 scripts/kanban_update.py flow \
-  JJC-20260228-E2E \
+  MAS-20260228-E2E \
   "任务编排引擎" \
   "安全审查引擎" \
   "📋 方案提交审核，请审议"
@@ -1069,7 +1069,7 @@ python3 scripts/kanban_update.py flow \
 
 ```bash
 python3 scripts/kanban_update.py progress \
-  JJC-20260228-E2E \
+  MAS-20260228-E2E \
   "已完成需求分析和方案初稿，现正征询代码架构师意见" \
   "1.需求分析✅|2.方案设计✅|3.代码架构师咨询🔄|4.待安全审查"
 
@@ -1107,7 +1107,7 @@ python3 scripts/kanban_update.py progress \
 
 ```bash
 python3 scripts/kanban_update.py done \
-  JJC-20260228-E2E \
+  MAS-20260228-E2E \
   "https://github.com/org/repo/tree/feature/auto-test" \
   "自动化测试方案已完成，涵盖单元/集成/E2E三层，通过率98.5%"
 
@@ -1128,7 +1128,7 @@ python3 scripts/kanban_update.py done \
 ```bash
 # 叫停（随时可恢复）
 python3 scripts/kanban_update.py stop \
-  JJC-20260228-E2E \
+  MAS-20260228-E2E \
   "等待代码架构师反馈继续"
 
 # 说明：
@@ -1138,7 +1138,7 @@ python3 scripts/kanban_update.py stop \
 #
 # 恢复：
 python3 scripts/kanban_update.py resume \
-  JJC-20260228-E2E \
+  MAS-20260228-E2E \
   "代码架构师已反馈，继续执行"
 #
 # - task.state 恢复到 _prev_state
@@ -1146,7 +1146,7 @@ python3 scripts/kanban_update.py resume \
 
 # 取消（不可恢复）
 python3 scripts/kanban_update.py cancel \
-  JJC-20260228-E2E \
+  MAS-20260228-E2E \
   "业务需求变更，任务作废"
 #
 # - task.state = Cancelled
@@ -1395,7 +1395,7 @@ curl -X POST http://127.0.0.1:7891/api/create-task \
     "priority": "high"
   }'
 
-# 响应：JJC-20260302-001 已创建
+# 响应：MAS-20260302-001 已创建
 # 协调中枢Agent 收到通知："📜 用户任务..."
 
 # ═══════════════════════════════════════════════════════════
@@ -1405,7 +1405,7 @@ curl -X POST http://127.0.0.1:7891/api/create-task \
 # 协调中枢Agent 判定：这是"工作任务"（非闲聊）
 # 自动运行：
 python3 scripts/kanban_update.py state \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   planner \
   "分拣完毕，转任务编排引擎起草"
 
@@ -1419,7 +1419,7 @@ python3 scripts/kanban_update.py state \
 
 # 第一次汇报（30分钟后）：
 python3 scripts/kanban_update.py progress \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   "已完成需求分析，拟定三部分文档：概述|技术栈|使用指南" \
   "1.需求分析✅|2.文档规划✅|3.内容编写🔄|4.审查待完成"
 
@@ -1430,18 +1430,18 @@ python3 scripts/kanban_update.py progress \
 
 # 第二次汇报（再过90分钟）：
 python3 scripts/kanban_update.py progress \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   "文档初稿已完成，现提交安全审查引擎审议" \
   "1.需求分析✅|2.文档规划✅|3.内容编写✅|4.待审查"
 
 python3 scripts/kanban_update.py flow \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   "任务编排引擎" \
   "安全审查引擎" \
   "提交审议"
 
 python3 scripts/kanban_update.py state \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   reviewer \
   "方案提交安全审查引擎审议"
 
@@ -1457,12 +1457,12 @@ python3 scripts/kanban_update.py state \
 
 # 情景A：审查通过
 python3 scripts/kanban_update.py state \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   Assigned \
   "✅ 审查通过，已采纳改进建议"
 
 python3 scripts/kanban_update.py flow \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   "安全审查引擎" \
   "任务调度引擎" \
   "✅ 审查通过：文档质量良好，建议补充代码示例"
@@ -1471,12 +1471,12 @@ python3 scripts/kanban_update.py flow \
 
 # 情景B：审查驳回
 python3 scripts/kanban_update.py state \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   planner \
   "🚫 审查驳回：需补充协议规范部分"
 
 python3 scripts/kanban_update.py flow \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   "安全审查引擎" \
   "任务编排引擎" \
   "🚫 审查驳回：协议部分过于简略，需补充权限矩阵示例"
@@ -1494,12 +1494,12 @@ python3 scripts/kanban_update.py flow \
 # - 代码架构师：部署文档
 
 python3 scripts/kanban_update.py state \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   Doing \
   "派发给文档编写员+代码架构师+代码架构师三部并行执行"
 
 python3 scripts/kanban_update.py flow \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   "任务调度引擎" \
   "执行智能体集群" \
   "派发执行：文档编写员排版|代码架构师代码示例|代码架构师基础设施部分"
@@ -1512,19 +1512,19 @@ python3 scripts/kanban_update.py flow \
 
 # 文档编写员进展汇报（20分钟）：
 python3 scripts/kanban_update.py progress \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   "已完成文档排版和目录调整，现待其他部门内容补充" \
   "1.排版✅|2.目录调整✅|3.等待代码示例|4.等待基础设施部分"
 
 # 代码架构师进展汇报（40分钟）：
 python3 scripts/kanban_update.py progress \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   "已编写5个代码示例（权限检查、派发流程、session融合等），待集成到文档" \
   "1.分析需求✅|2.编码示例✅|3.集成文档🔄|4.测试验证"
 
 # 代码架构师进展汇报（60分钟）：
 python3 scripts/kanban_update.py progress \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   "已编写Docker+K8s部署部分，Nginx配置和让证书更新文案完成" \
   "1.Docker编写✅|2.K8s配置✅|3.一键部署脚本🔄|4.部署文档待完成"
 
@@ -1535,12 +1535,12 @@ python3 scripts/kanban_update.py progress \
 # 等所有部门汇报完成后，任务调度引擎汇总所有成果
 
 python3 scripts/kanban_update.py progress \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   "全部部门已完成。汇总成果：\n- 文档已排版，包含9个章节\n- 15个代码示例已集成\n- 完整部署指南已编写\n通过率：100%" \
   "1.排版✅|2.代码示例✅|3.基础设施✅|4.汇总✅"
 
 python3 scripts/kanban_update.py state \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   Review \
   "所有部门完成，进入审查阶段"
 
@@ -1551,7 +1551,7 @@ python3 scripts/kanban_update.py state \
 # ═══════════════════════════════════════════════════════════
 
 python3 scripts/kanban_update.py done \
-  JJC-20260302-001 \
+  MAS-20260302-001 \
   "https://github.com/org/repo/docs/architecture.md" \
   "OpenClaw MAS协议文档已完成，包含89页，5个阶段历时3天，总消耗成本$2.34"
 
@@ -1565,7 +1565,7 @@ python3 scripts/kanban_update.py done \
 # 查询最终成果
 # ═══════════════════════════════════════════════════════════
 
-curl http://127.0.0.1:7891/api/task-activity/JJC-20260302-001
+curl http://127.0.0.1:7891/api/task-activity/MAS-20260302-001
 
 # 响应：
 # {
@@ -1597,3 +1597,5 @@ curl http://127.0.0.1:7891/api/task-activity/JJC-20260302-001
 **核心价值**：用制度确保质量，用透明确保信心，用自动化确保效率。
 
 相比 CrewAI/AutoGen 的"自由+人工管理"，OpenClaw MAS提供了一套**企业级的AI协作框架**。
+
+

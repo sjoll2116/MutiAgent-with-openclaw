@@ -1,4 +1,4 @@
-# 📸 截图说明
+﻿# 📸 截图说明
 
 看板截图用于 README 和文档展示。请启动看板后按以下顺序截图并放置到本目录。
 
@@ -11,12 +11,12 @@
 | `03-task-detail.png` | 任务流转详情（点击任务卡片展开） | 📋 任务看板 → 详情 |
 | `04-model-config.png` | 模型配置面板 | ⚙️ 模型配置 |
 | `05-skills-config.png` | 技能配置面板 | 🛠️ 技能配置 |
-| `06-official-overview.png` | 官员总览（12 位 Agent） | 👥 官员总览 |
+| `06-official-overview.png` | Agent总览（12 位 Agent） | 👥 Agent总览 |
 | `07-sessions.png` | 小任务 / 会话 | 💬 小任务 |
 | `08-memorials.png` | 报告阁 | 📜 报告阁 |
-| `09-templates.png` | 旨库（指令模板） | 📜 旨库 |
+| `09-templates.png` | 指令库（指令模板） | 📜 指令库 |
 | `10-morning-briefing.png` | 天下要闻 | 📰 天下要闻 |
-| `11-ceremony.png` | 上朝仪式动画 | 开场动画 |
+| `11-ceremony.png` | 系统启动仪式动画 | 开场动画 |
 
 ## 自动截图
 
@@ -37,3 +37,4 @@ python3 scripts/record_demo.py
 - 确保看板有足够的数据（至少 5+ 任务）
 - 深色主题截图效果最佳
 - 截图前刷新数据确保最新状态
+

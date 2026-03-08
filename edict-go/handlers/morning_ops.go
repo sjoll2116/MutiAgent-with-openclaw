@@ -1,4 +1,4 @@
-package handlers
+﻿package handlers
 
 import (
 	"encoding/json"
@@ -67,7 +67,7 @@ func RepairFlowOrder(c *gin.Context) {
 	err := store.WithTasks(func(tasks []models.Task) ([]models.Task, error) {
 		for i := range tasks {
 			t := &tasks[i]
-			if len(t.ID) < 4 || t.ID[:4] != "JJC-" {
+			if len(t.ID) < 4 || t.ID[:4] != "MAS-" {
 				continue
 			}
 			if len(t.FlowLog) == 0 {
@@ -145,3 +145,4 @@ func saveJSONSafe(filename string, data any) error {
 var (
 	_ = fmt.Sprintf
 )
+

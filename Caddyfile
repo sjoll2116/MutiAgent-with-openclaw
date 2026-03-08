@@ -1,0 +1,3 @@
+www.webwork.icu, webwork.icu {
+    reverse_proxy edict-go-prod:7891
+}

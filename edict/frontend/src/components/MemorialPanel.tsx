@@ -14,7 +14,7 @@ export default function MemorialPanel() {
 
   const exportMemorial = (t: Task) => {
     const fl = t.flow_log || [];
-    let md = `# 📜 奏折 · ${t.title}\n\n`;
+    let md = `# 📄 任务总结 · ${t.title}\n\n`;
     md += `- **任务编号**: ${t.id}\n`;
     md += `- **状态**: ${t.state}\n`;
     md += `- **负责部门**: ${t.org}\n`;
@@ -30,7 +30,7 @@ export default function MemorialPanel() {
     }
     if (t.output && t.output !== '-') md += `## 产出物\n\n\`${t.output}\`\n`;
     navigator.clipboard.writeText(md).then(
-      () => toast('✅ 奏折已复制为 Markdown', 'ok'),
+      () => toast('✅ 总结已复制为 Markdown', 'ok'),
       () => toast('复制失败', 'err')
     );
   };
@@ -58,7 +58,7 @@ export default function MemorialPanel() {
       {/* List */}
       <div className="mem-list">
         {!mems.length ? (
-          <div className="mem-empty">暂无奏折 — 任务完成后自动生成</div>
+          <div className="mem-empty">暂无总结 — 任务完成后自动生成</div>
         ) : (
           mems.map((t) => {
             const fl = t.flow_log || [];
@@ -68,7 +68,7 @@ export default function MemorialPanel() {
             const stIcon = t.state === 'Done' ? '✅' : '🚫';
             return (
               <div className="mem-card" key={t.id} onClick={() => setDetailTask(t)}>
-                <div className="mem-icon">📜</div>
+                <div className="mem-icon">📄</div>
                 <div className="mem-info">
                   <div className="mem-title">
                     {stIcon} {t.title || t.id}
@@ -177,11 +177,11 @@ function MemorialDetailModal({
             </div>
           )}
 
-          {renderPhase('指令原文', '👑', originLog)}
+          {renderPhase('指令原文', '👤', originLog)}
           {renderPhase('编排规划', '📋', planLog)}
           {renderPhase('安全审查', '🔍', reviewLog)}
-          {renderPhase('执行部门执行', '⚔️', execLog)}
-          {renderPhase('汇总任务汇报', '📨', resultLog)}
+          {renderPhase('执行部门执行', '⚙️', execLog)}
+          {renderPhase('任务汇报', '📨', resultLog)}
 
           {t.output && t.output !== '-' && (
             <div style={{ marginTop: 12, paddingTop: 12, borderTop: '1px solid var(--line)' }}>
@@ -192,7 +192,7 @@ function MemorialDetailModal({
 
           <div style={{ display: 'flex', gap: 8, marginTop: 16, justifyContent: 'flex-end' }}>
             <button className="btn btn-g" onClick={() => onExport(t)} style={{ fontSize: 12, padding: '6px 16px' }}>
-              📋 复制奏折
+              📋 复制任务总结
             </button>
           </div>
         </div>

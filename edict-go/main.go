@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"net/http/httputil"
+	"net/url"
 	"os"
 	"path/filepath"
 
@@ -92,6 +94,18 @@ func main() {
 	r.POST("/api/scheduler-rollback", handlers.SchedulerRollback)
 	r.POST("/api/repair-flow-order", handlers.RepairFlowOrder)
 
+	// Proxy to Python backend (RAG & Auth)
+	pythonTarget, _ := url.Parse("http://127.0.0.1:8000")
+	proxy := httputil.NewSingleHostReverseProxy(pythonTarget)
+
+	pythonProxy := func(c *gin.Context) {
+		proxy.ServeHTTP(c.Writer, c.Request)
+	}
+
+	r.Any("/api/auth/*any", pythonProxy)
+	r.Any("/api/rag/*any", pythonProxy)
+	r.POST("/api/auth/login", pythonProxy)
+
 	// ── Static files + SPA fallback ──
 	r.NoRoute(handlers.ServeStaticOrSPA)
 
@@ -104,22 +118,18 @@ func main() {
 
 // corsMiddleware mirrors the Python CORS headers.
 func corsMiddleware() gin.HandlerFunc {
-	allowed := map[string]bool{
-		"http://127.0.0.1:7891": true,
-		"http://localhost:7891": true,
-		"http://127.0.0.1:5173": true,
-		"http://localhost:5173": true,
-	}
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")
-		if !allowed[origin] {
-			origin = "http://127.0.0.1:7891"
+		if origin != "" {
+			c.Header("Access-Control-Allow-Origin", origin)
+		} else {
+			c.Header("Access-Control-Allow-Origin", "*")
 		}
-		c.Header("Access-Control-Allow-Origin", origin)
-		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, OPTIONS")
-		c.Header("Access-Control-Allow-Headers", "Content-Type")
+		c.Header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
+		c.Header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With")
+		c.Header("Access-Control-Allow-Credentials", "true")
 		if c.Request.Method == "OPTIONS" {
-			c.AbortWithStatus(200)
+			c.AbortWithStatus(204)
 			return
 		}
 		c.Next()

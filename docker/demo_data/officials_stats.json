@@ -1,4 +1,4 @@
-{
+﻿{
   "generatedAt": "2026-02-24 22:13:06",
   "officials": [
     {
@@ -29,42 +29,42 @@
       "flow_participations": 23,
       "participated_edicts": [
         {
-          "id": "JJC-20260224-014",
+          "id": "MAS-20260224-014",
           "title": "A计划：三省执行智能体集群 GitHub 爆款项目打造",
           "state": "Executing"
         },
         {
-          "id": "JJC-20260224-013",
+          "id": "MAS-20260224-013",
           "title": "电芯循环数据清洗小模型方案",
           "state": "Planning"
         },
         {
-          "id": "JJC-20260224-001",
-          "title": "每日早朝简报系统（7点图文新闻）",
+          "id": "MAS-20260224-001",
+          "title": "每日系统自检简报系统（7点图文新闻）",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-014",
+          "id": "MAS-20260223-014",
           "title": "看板流程合规审查 + 省部调度Tab优化",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-013",
-          "title": "官员总览看板重新设计",
+          "id": "MAS-20260223-013",
+          "title": "Agent总览看板重新设计",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-012",
-          "title": "看板增加官员总览面板",
+          "id": "MAS-20260223-012",
+          "title": "看板增加Agent总览面板",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-011",
+          "id": "MAS-20260223-011",
           "title": "三省执行智能体集群制开源 GitHub 项目",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-010",
+          "id": "MAS-20260223-010",
           "title": "电芯循环测试数据预测算法设计与可视化验证",
           "state": "Completed"
         }
@@ -100,32 +100,32 @@
       "flow_participations": 23,
       "participated_edicts": [
         {
-          "id": "JJC-20260224-014",
+          "id": "MAS-20260224-014",
           "title": "A计划：三省执行智能体集群 GitHub 爆款项目打造",
           "state": "Executing"
         },
         {
-          "id": "JJC-20260224-001",
-          "title": "每日早朝简报系统（7点图文新闻）",
+          "id": "MAS-20260224-001",
+          "title": "每日系统自检简报系统（7点图文新闻）",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-014",
+          "id": "MAS-20260223-014",
           "title": "看板流程合规审查 + 省部调度Tab优化",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-013",
-          "title": "官员总览看板重新设计",
+          "id": "MAS-20260223-013",
+          "title": "Agent总览看板重新设计",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-012",
-          "title": "看板增加官员总览面板",
+          "id": "MAS-20260223-012",
+          "title": "看板增加Agent总览面板",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-010",
+          "id": "MAS-20260223-010",
           "title": "电芯循环测试数据预测算法设计与可视化验证",
           "state": "Completed"
         }
@@ -161,27 +161,27 @@
       "flow_participations": 12,
       "participated_edicts": [
         {
-          "id": "JJC-20260224-001",
-          "title": "每日早朝简报系统（7点图文新闻）",
+          "id": "MAS-20260224-001",
+          "title": "每日系统自检简报系统（7点图文新闻）",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-014",
+          "id": "MAS-20260223-014",
           "title": "看板流程合规审查 + 省部调度Tab优化",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-013",
-          "title": "官员总览看板重新设计",
+          "id": "MAS-20260223-013",
+          "title": "Agent总览看板重新设计",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-012",
-          "title": "看板增加官员总览面板",
+          "id": "MAS-20260223-012",
+          "title": "看板增加Agent总览面板",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-010",
+          "id": "MAS-20260223-010",
           "title": "电芯循环测试数据预测算法设计与可视化验证",
           "state": "Completed"
         }
@@ -192,7 +192,7 @@
     {
       "id": "software_engineer",
       "label": "代码架构师",
-      "role": "代码架构师尚书",
+      "role": "代码架构师主管",
       "emoji": "⚔️",
       "rank": "正二品",
       "model": "anthropic/claude-sonnet-4-6",
@@ -217,7 +217,7 @@
       "flow_participations": 2,
       "participated_edicts": [
         {
-          "id": "JJC-20260223-010",
+          "id": "MAS-20260223-010",
           "title": "电芯循环测试数据预测算法设计与可视化验证",
           "state": "Completed"
         }
@@ -228,7 +228,7 @@
     {
       "id": "software_engineer",
       "label": "代码架构师",
-      "role": "代码架构师尚书",
+      "role": "代码架构师主管",
       "emoji": "🔧",
       "rank": "正二品",
       "model": "anthropic/claude-sonnet-4-6",
@@ -253,27 +253,27 @@
       "flow_participations": 8,
       "participated_edicts": [
         {
-          "id": "JJC-20260224-001",
-          "title": "每日早朝简报系统（7点图文新闻）",
+          "id": "MAS-20260224-001",
+          "title": "每日系统自检简报系统（7点图文新闻）",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-014",
+          "id": "MAS-20260223-014",
           "title": "看板流程合规审查 + 省部调度Tab优化",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-013",
-          "title": "官员总览看板重新设计",
+          "id": "MAS-20260223-013",
+          "title": "Agent总览看板重新设计",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-012",
-          "title": "看板增加官员总览面板",
+          "id": "MAS-20260223-012",
+          "title": "看板增加Agent总览面板",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-011",
+          "id": "MAS-20260223-011",
           "title": "三省执行智能体集群制开源 GitHub 项目",
           "state": "Completed"
         }
@@ -284,7 +284,7 @@
     {
       "id": "doc_writer",
       "label": "文档编写员",
-      "role": "文档编写员尚书",
+      "role": "文档编写员主管",
       "emoji": "📝",
       "rank": "正二品",
       "model": "anthropic/claude-sonnet-4-6",
@@ -309,12 +309,12 @@
       "flow_participations": 4,
       "participated_edicts": [
         {
-          "id": "JJC-20260223-011",
+          "id": "MAS-20260223-011",
           "title": "三省执行智能体集群制开源 GitHub 项目",
           "state": "Completed"
         },
         {
-          "id": "JJC-20260223-010",
+          "id": "MAS-20260223-010",
           "title": "电芯循环测试数据预测算法设计与可视化验证",
           "state": "Completed"
         }
@@ -325,7 +325,7 @@
     {
       "id": "data_analyst",
       "label": "数据分析师",
-      "role": "数据分析师尚书",
+      "role": "数据分析师主管",
       "emoji": "💰",
       "rank": "正二品",
       "model": "anthropic/claude-sonnet-4-6",
@@ -350,7 +350,7 @@
       "flow_participations": 3,
       "participated_edicts": [
         {
-          "id": "JJC-20260223-010",
+          "id": "MAS-20260223-010",
           "title": "电芯循环测试数据预测算法设计与可视化验证",
           "state": "Completed"
         }
@@ -361,7 +361,7 @@
     {
       "id": "qa_engineer",
       "label": "质量保证师",
-      "role": "质量保证师尚书",
+      "role": "质量保证师主管",
       "emoji": "⚖️",
       "rank": "正二品",
       "model": "anthropic/claude-sonnet-4-6",
@@ -398,3 +398,4 @@
   },
   "top_official": "任务编排引擎"
 }
+

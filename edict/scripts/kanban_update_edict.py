@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 """
 看板任务更新工具 - Edict 兼容层
 
@@ -6,12 +6,12 @@
 如果 API 不可用，降级回写 JSON 文件（过渡期保障）。
 
 用法:
-  python3 kanban_update.py create JJC-20260223-012 "任务标题" planner 任务编排引擎 编排指挥官
-  python3 kanban_update.py state JJC-20260223-012 reviewer "规划方案已提交安全审查引擎"
-  python3 kanban_update.py flow JJC-20260223-012 "任务编排引擎" "安全审查引擎" "规划方案提交审核"
-  python3 kanban_update.py done JJC-20260223-012 "/path/to/output" "任务完成摘要"
-  python3 kanban_update.py todo JJC-20260223-012 1 "实现API接口" in-progress
-  python3 kanban_update.py progress JJC-20260223-012 "正在分析需求" "1.调研✅|2.文档🔄|3.原型"
+  python3 kanban_update.py create MAS-20260223-012 "任务标题" planner 任务编排引擎 编排指挥官
+  python3 kanban_update.py state MAS-20260223-012 reviewer "规划方案已提交安全审查引擎"
+  python3 kanban_update.py flow MAS-20260223-012 "任务编排引擎" "安全审查引擎" "规划方案提交审核"
+  python3 kanban_update.py done MAS-20260223-012 "/path/to/output" "任务完成摘要"
+  python3 kanban_update.py todo MAS-20260223-012 1 "实现API接口" in-progress
+  python3 kanban_update.py progress MAS-20260223-012 "正在分析需求" "1.调研✅|2.文档🔄|3.原型"
 """
 
 import json
@@ -423,3 +423,4 @@ if __name__ == '__main__':
     else:
         print(__doc__)
         sys.exit(1)
+

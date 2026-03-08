@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+﻿#!/usr/bin/env python3
 import json
 import pathlib
 import time
@@ -42,20 +42,19 @@ def state_from_session(age_ms, aborted):
 
 def detect_official(agent_id):
     mapping = {
-        'main':    ('主协调', '协调中枢'),        # legacy id for taizi
-        'coordinator':   ('主协调', '协调中枢'),
-        'planner': ('编排指挥官', '任务编排引擎'),
-        'reviewer':  ('审查指挥官', '安全审查引擎'),
-        'dispatcher': ('调度指挥官', '任务调度引擎'),
-        'data_analyst':    ('数据分析师调度', '数据分析师'),
-        'doc_writer':    ('文档编写员调度', '文档编写员'),
-        'software_engineer':  ('代码架构师调度', '代码架构师'),
-        'qa_engineer':  ('质量保证师调度', '质量保证师'),
-        'software_engineer':  ('代码架构师调度', '代码架构师'),
-        'libu_hr': ('资源调配员调度', '资源调配员'),
-        'monitor': ('情报监控员', '监控组长'),
+        'main':    ('总协调', '协调中枢'),
+        'coordinator':   ('总协调', '协调中枢'),
+        'planner': ('编配专家', '任务编排引擎'),
+        'reviewer':  ('审查专家', '安全审查引擎'),
+        'dispatcher': ('调度主管', '任务调度引擎'),
+        'data_analyst':    ('数据分析师', '执行部门'),
+        'doc_writer':    ('文档编写员', '执行部门'),
+        'software_engineer':  ('代码架构师', '执行部门'),
+        'qa_engineer':  ('质量保证师', '执行部门'),
+        'libu_hr': ('资源调配员', '人力支撑'),
+        'monitor': ('监控主管', '系统监控员'),
     }
-    return mapping.get(agent_id, ('调度指挥官', '任务调度引擎'))
+    return mapping.get(agent_id, ('调度主管', '任务调度引擎'))
 
 
 def load_activity(session_file, limit=12):
@@ -246,7 +245,7 @@ def main():
             except Exception:
                 pass
 
-        # merge manual parallel tasks (用于军机处并行看板展示)
+        # merge manual parallel tasks (用于并行看板展示)
         manual_tasks_file = DATA / 'manual_parallel_tasks.json'
         if manual_tasks_file.exists():
             try:
@@ -304,7 +303,7 @@ def main():
         
         tasks = filtered_tasks
         
-        # ── 保留已有的 JJC-* 任务任务（不覆盖用户下发任务记录）──
+        # ── 保留已有的 MAS-* 任务任务（不覆盖用户下发任务记录）──
         # JJC 任务的 now 字段由 Agent 自己通过 kanban_update.py progress 命令主动上报，
         # 不再从会话日志中被动抓取。这里只做合并，不做 activity 映射。
         existing_tasks_file = DATA / 'tasks_source.json'
@@ -352,3 +351,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

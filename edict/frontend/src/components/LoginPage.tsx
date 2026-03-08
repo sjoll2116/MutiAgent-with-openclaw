@@ -30,39 +30,39 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
             alignItems: 'center',
             justifyContent: 'center',
             height: '100vh',
-            background: 'radial-gradient(circle at center, #1a1a2e 0%, #0f0f1a 100%)'
+            background: 'var(--bg)'
         }}>
             <div className="login-card" style={{
-                background: 'rgba(255, 255, 255, 0.03)',
+                background: 'var(--panel)',
                 backdropFilter: 'blur(20px)',
-                border: '1px solid rgba(255, 255, 255, 0.1)',
+                border: '1px solid var(--line)',
                 borderRadius: '24px',
                 padding: '48px',
                 width: '100%',
                 maxWidth: '400px',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.5)',
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.2)',
                 textAlign: 'center'
             }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>⚔️</div>
+                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🦞</div>
                 <h1 style={{
                     fontSize: '28px',
                     fontWeight: 800,
                     marginBottom: '8px',
                     letterSpacing: '-0.02em',
-                    background: 'linear-gradient(to right, #fff, #94a3b8)',
+                    background: 'linear-gradient(to right, var(--text), var(--muted))',
                     WebkitBackgroundClip: 'text',
                     WebkitTextFillColor: 'transparent'
                 }}>
-                    三省六部
+                    OpenClaw MAS
                 </h1>
                 <p style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '32px' }}>
-                    Multi-Agent Orchestration System
+                    指挥-执行分离多智能体系统
                 </p>
 
                 <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
                     <div style={{ textAlign: 'left' }}>
                         <label style={{ fontSize: '12px', fontWeight: 600, color: '#94a3b8', display: 'block', marginBottom: '8px', marginLeft: '4px' }}>
-                            身份验证密码
+                            访问密码
                         </label>
                         <input
                             type="password"
@@ -107,7 +107,7 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
                         onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
                         onMouseOut={(e) => e.currentTarget.style.filter = 'brightness(1)'}
                     >
-                        {loading ? '验证中...' : '进入朝廷'}
+                        {loading ? '验证中...' : '进入系统'}
                     </button>
                 </form>
 

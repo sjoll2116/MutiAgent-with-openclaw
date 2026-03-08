@@ -1,4 +1,4 @@
-{
+﻿{
   "generatedAt": "2026-02-24 22:13:06",
   "defaultModel": "anthropic/claude-sonnet-4-6",
   "knownModels": [
@@ -163,7 +163,7 @@
     {
       "id": "data_analyst",
       "label": "数据分析师",
-      "role": "数据分析师尚书",
+      "role": "数据分析师主管",
       "duty": "资源/预算/成本",
       "emoji": "💰",
       "model": "anthropic/claude-sonnet-4-6",
@@ -185,7 +185,7 @@
     {
       "id": "doc_writer",
       "label": "文档编写员",
-      "role": "文档编写员尚书",
+      "role": "文档编写员主管",
       "duty": "文档/汇报/规范",
       "emoji": "📝",
       "model": "anthropic/claude-sonnet-4-6",
@@ -207,7 +207,7 @@
     {
       "id": "software_engineer",
       "label": "代码架构师",
-      "role": "代码架构师尚书",
+      "role": "代码架构师主管",
       "duty": "应急与巡检",
       "emoji": "⚔️",
       "model": "anthropic/claude-sonnet-4-6",
@@ -229,7 +229,7 @@
     {
       "id": "qa_engineer",
       "label": "质量保证师",
-      "role": "质量保证师尚书",
+      "role": "质量保证师主管",
       "duty": "合规/审计/红线",
       "emoji": "⚖️",
       "model": "anthropic/claude-sonnet-4-6",
@@ -251,7 +251,7 @@
     {
       "id": "software_engineer",
       "label": "代码架构师",
-      "role": "代码架构师尚书",
+      "role": "代码架构师主管",
       "duty": "工程交付与自动化",
       "emoji": "🔧",
       "model": "anthropic/claude-sonnet-4-6",

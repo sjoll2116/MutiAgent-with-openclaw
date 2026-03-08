@@ -24,6 +24,11 @@ export default function App() {
   const liveStatus = useStore((s) => s.liveStatus);
   const countdown = useStore((s) => s.countdown);
   const loadAll = useStore((s) => s.loadAll);
+  const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+
+  useEffect(() => {
+    document.body.className = theme;
+  }, [theme]);
 
   // 监听登录态失效事件
   useEffect(() => {
@@ -72,20 +77,27 @@ export default function App() {
       <div className="hdr">
         <div>
           <div className="logo">OpenClaw MAS · 总控台</div>
-          <div className="sub-text">OpenClaw Sansheng-Liubu Dashboard</div>
+          <div className="sub-text">OpenClaw Multi-Agent Orchestration Dashboard</div>
         </div>
         <div className="hdr-r" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span className={`chip ${syncOk ? 'ok' : syncOk === false ? 'err' : ''}`}>
             {syncOk ? '✅ 同步正常' : syncOk === false ? '❌ 服务器未启动' : '⏳ 连接中…'}
           </span>
-          <span className="chip">{activeEdicts.length} 道旨意</span>
+          <span className="chip">{activeEdicts.length} 项任务</span>
           <button className="btn-refresh" onClick={() => loadAll()}>
             ⟳ 刷新
           </button>
           <span style={{ fontSize: 11, color: 'var(--muted)' }}>⟳ {countdown}s</span>
           <button
             className="btn-refresh"
-            style={{ marginLeft: '12px', background: 'rgba(255,255,255,0.05)' }}
+            style={{ marginLeft: '12px' }}
+            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+          >
+            {theme === 'dark' ? '🌞 浅色' : '🌙 深色'}
+          </button>
+          <button
+            className="btn-refresh"
+            style={{ marginLeft: '12px', background: 'var(--panel-glass)' }}
             onClick={() => api.logout()}
           >
             退出

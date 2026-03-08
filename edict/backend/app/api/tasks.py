@@ -26,7 +26,8 @@ class TaskCreate(BaseModel):
     description: str = ""
     priority: str = "中"
     assignee_org: str | None = None
-    creator: str = "emperor"
+    creator: str = "admin"
+
     tags: list[str] = []
     meta: dict | None = None
 

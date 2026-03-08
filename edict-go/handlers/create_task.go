@@ -1,4 +1,4 @@
-package handlers
+﻿package handlers
 
 import (
 	"fmt"
@@ -79,9 +79,9 @@ func CreateTask(c *gin.Context) {
 	var taskID string
 
 	err := store.WithTasks(func(tasks []models.Task) ([]models.Task, error) {
-		// Generate ID: JJC-YYYYMMDD-NNN
+		// Generate ID: MAS-YYYYMMDD-NNN
 		today := time.Now().Format("20060102")
-		prefix := "JJC-" + today + "-"
+		prefix := "MAS-" + today + "-"
 		maxSeq := 0
 		for _, t := range tasks {
 			if strings.HasPrefix(t.ID, prefix) {
@@ -147,3 +147,4 @@ func CreateTask(c *gin.Context) {
 		Message: fmt.Sprintf("任务 %s 已创建，正交由协调中枢处理", taskID),
 	})
 }
+

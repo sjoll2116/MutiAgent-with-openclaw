@@ -19,9 +19,18 @@ if config.config_file_name is not None:
 import sys
 import os
 
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "backend"))
-from app.models import Task, Event, Thought, Todo  # noqa
+# 将 backend 目录加入 sys.path 以便识别 app 模块
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "backend")))
+
+from app.models.task import Task  # noqa
 from app.db import Base
+
+# 如果环境变量中有 DATABASE_URL，优先使用它掩盖 alembic.ini 中的 localhost
+db_url = os.environ.get("DATABASE_URL")
+if db_url:
+    config.set_main_option("sqlalchemy.url", db_url)
+
 
 target_metadata = Base.metadata
 
