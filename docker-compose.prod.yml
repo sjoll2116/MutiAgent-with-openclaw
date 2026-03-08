@@ -28,7 +28,9 @@ services:
       context: .
       dockerfile: edict-go/Dockerfile
     container_name: edict-go-prod
+    command: ./edict-go --host 0.0.0.0 --port 7891
     ports:
+
       - "7891:7891"
     environment:
       - REDIS_URL=redis://redis:6379/0
@@ -65,5 +67,26 @@ services:
       - redis
     restart: always
 
+  # ── Caddy Reverse Proxy (HTTPS) ──
+  caddy:
+    image: caddy:2-alpine
+    container_name: edict-caddy-prod
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - go-scheduler
+    env_file:
+      - .env
+
 volumes:
   postgres_data_prod:
+  caddy_data:
+  caddy_config:
+
+
