@@ -64,6 +64,11 @@ func GetAgentsStatus(c *gin.Context) {
 	}
 
 	gatewayAlive := checkGatewayAlive()
+	isDocker := os.Getenv("IS_DOCKER") == "true"
+	if isDocker {
+		gatewayAlive = true
+	}
+
 	gatewayProbe := false
 	if gatewayAlive {
 		gatewayProbe = checkGatewayProbe()
@@ -128,6 +133,10 @@ func GetAgentsStatus(c *gin.Context) {
 		gwStatus = "🟡 进程在但无响应"
 	}
 
+	if !gatewayProbe {
+		log.Printf("⚠️ Agent Status Probe: Gateway unhealthy (PROBE=%v, ALIVE=%v)", gatewayProbe, gatewayAlive)
+	}
+
 	c.JSON(http.StatusOK, gin.H{
 		"ok": true,
 		"gateway": gin.H{
@@ -145,12 +154,33 @@ func checkGatewayAlive() bool {
 }
 
 func checkGatewayProbe() bool {
+	url := os.Getenv("OPENCLAW_GATEWAY_URL")
+	if url == "" {
+		url = "http://127.0.0.1:18789"
+	}
+	url = strings.TrimSuffix(url, "/") + "/health"
+
 	client := &http.Client{Timeout: 3 * time.Second}
-	resp, err := client.Get("http://127.0.0.1:8765/health")
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return false
 	}
-	resp.Body.Close()
+
+	token := os.Getenv("OPENCLAW_TOKEN")
+	if token != "" {
+		req.Header.Set("X-OpenClaw-Token", token)
+	}
+
+	resp, err := client.Do(req)
+	if err != nil {
+		log.Printf("❌ Gateway Probe Failed: GET %s -> %v", url, err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		log.Printf("⚠️ Gateway Probe: GET %s -> HTTP %d", url, resp.StatusCode)
+	}
 	return resp.StatusCode == 200
 }
 

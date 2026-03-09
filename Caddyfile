@@ -1,3 +1,9 @@
-www.webwork.icu, webwork.icu {
+www.webwork.icu {
+    # 将所有流量转发给 Go 调度器（它负责服务 React 静止文件和 API）
     reverse_proxy edict-go-prod:7891
+
+    # 日志记录 (可选)
+    log {
+        output file /data/caddy.log
+    }
 }

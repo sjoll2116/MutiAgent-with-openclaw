@@ -33,7 +33,7 @@ def atomic_json_read(path: pathlib.Path, default: Any = None) -> Any:
     try:
         fcntl.flock(fd, fcntl.LOCK_SH)
         try:
-            return json.loads(path.read_text()) if path.exists() else default
+            return json.loads(path.read_text(encoding='utf-8')) if path.exists() else default
         except Exception:
             return default
     finally:
@@ -49,7 +49,6 @@ def atomic_json_update(
     """
     原子地读取 → 修改 → 写回 JSON 文件。
     modifier(data) 应返回修改后的数据。
-    使用临时文件 + rename 保证写入原子性。
     """
     lock_file = _lock_path(path)
     lock_file.parent.mkdir(parents=True, exist_ok=True)
@@ -58,7 +57,7 @@ def atomic_json_update(
         fcntl.flock(fd, fcntl.LOCK_EX)
         # Read
         try:
-            data = json.loads(path.read_text()) if path.exists() else default
+            data = json.loads(path.read_text(encoding='utf-8')) if path.exists() else default
         except Exception:
             data = default
         # Modify
@@ -68,7 +67,7 @@ def atomic_json_update(
             dir=str(path.parent), suffix='.tmp', prefix=path.stem + '_'
         )
         try:
-            with os.fdopen(tmp_fd, 'w') as f:
+            with os.fdopen(tmp_fd, 'w', encoding='utf-8') as f:
                 json.dump(result, f, ensure_ascii=False, indent=2)
             os.replace(tmp_path, str(path))
         except Exception:
@@ -81,9 +80,7 @@ def atomic_json_update(
 
 
 def atomic_json_write(path: pathlib.Path, data: Any) -> None:
-    """原子写入 JSON 文件（持排他锁 + tmpfile rename）。
-    直接写入，不读取现有内容（避免 atomic_json_update 的多余读开销）。
-    """
+    """原子写入 JSON 文件（持排他锁 + tmpfile rename）。"""
     lock_file = _lock_path(path)
     lock_file.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR)
@@ -93,7 +90,7 @@ def atomic_json_write(path: pathlib.Path, data: Any) -> None:
             dir=str(path.parent), suffix='.tmp', prefix=path.stem + '_'
         )
         try:
-            with os.fdopen(tmp_fd, 'w') as f:
+            with os.fdopen(tmp_fd, 'w', encoding='utf-8') as f:
                 json.dump(data, f, ensure_ascii=False, indent=2)
             os.replace(tmp_path, str(path))
         except Exception:

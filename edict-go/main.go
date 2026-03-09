@@ -24,7 +24,7 @@ func main() {
 	distDir := flag.String("dist", "", "Path to dist/ directory for static files (default: ../dashboard/dist)")
 	flag.Parse()
 
-	// Resolve data directory
+	// 解析 data 目录
 	if *dataDir == "" {
 		exe, _ := os.Executable()
 		*dataDir = filepath.Join(filepath.Dir(exe), "..", "data")
@@ -37,7 +37,7 @@ func main() {
 	store.InitRedis()
 	log.Printf("📂 Data directory: %s", abs)
 
-	// Resolve dist directory
+	// 解析 dist 目录
 	if *distDir == "" {
 		exe, _ := os.Executable()
 		*distDir = filepath.Join(filepath.Dir(exe), "..", "dashboard", "dist")
@@ -46,15 +46,21 @@ func main() {
 	handlers.SetDistDir(distAbs)
 	log.Printf("📂 Dist directory: %s", distAbs)
 
-	// Start Go Events background orchestrator
+	// 启动 Go Events 后台编排器
 	services.StartOrchestrator()
+
+	// 打印环境变量以供调试
+	log.Printf("🔧 [ENV] IS_DOCKER: %s", os.Getenv("IS_DOCKER"))
+	log.Printf("🔧 [ENV] OPENCLAW_GATEWAY_URL: %s", os.Getenv("OPENCLAW_GATEWAY_URL"))
+	log.Printf("🔧 [ENV] PYTHON_BACKEND_URL: %s", os.Getenv("PYTHON_BACKEND_URL"))
+	log.Printf("🔧 [ENV] PORT: %s", os.Getenv("PORT"))
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
 	r.Use(gin.Recovery())
 	r.Use(corsMiddleware())
 
-	// ── GET routes ──
+	// ── GET 路由 ──
 	r.GET("/healthz", handlers.Healthz)
 	r.GET("/ws/live-status", services.WsLiveStatusHandler)
 	r.GET("/api/live-status", handlers.JSONFile("live_status.json"))
@@ -72,7 +78,7 @@ func main() {
 	r.GET("/api/agents-status", handlers.GetAgentsStatus)
 	r.GET("/api/agent-activity/:agentId", handlers.GetAgentActivity)
 
-	// ── POST routes ──
+	// ── POST 路由 ──
 	r.POST("/api/create-task", handlers.CreateTask)
 	r.POST("/api/review-action", handlers.ReviewAction)
 	r.POST("/api/task-action", handlers.TaskAction)
@@ -94,8 +100,15 @@ func main() {
 	r.POST("/api/scheduler-rollback", handlers.SchedulerRollback)
 	r.POST("/api/repair-flow-order", handlers.RepairFlowOrder)
 
-	// Proxy to Python backend (RAG & Auth)
-	pythonTarget, _ := url.Parse("http://127.0.0.1:8000")
+	// 代理到 Python 后端 (RAG & Auth)
+	pythonBackendURL := os.Getenv("PYTHON_BACKEND_URL")
+	if pythonBackendURL == "" {
+		pythonBackendURL = "http://127.0.0.1:8000"
+	}
+	pythonTarget, err := url.Parse(pythonBackendURL)
+	if err != nil {
+		log.Fatalf("Invalid PYTHON_BACKEND_URL: %v", err)
+	}
 	proxy := httputil.NewSingleHostReverseProxy(pythonTarget)
 
 	pythonProxy := func(c *gin.Context) {
@@ -104,9 +117,8 @@ func main() {
 
 	r.Any("/api/auth/*any", pythonProxy)
 	r.Any("/api/rag/*any", pythonProxy)
-	r.POST("/api/auth/login", pythonProxy)
 
-	// ── Static files + SPA fallback ──
+	// ── 静态文件 + SPA 回退 ──
 	r.NoRoute(handlers.ServeStaticOrSPA)
 
 	addr := fmt.Sprintf("%s:%d", *host, *port)
@@ -116,7 +128,7 @@ func main() {
 	}
 }
 
-// corsMiddleware mirrors the Python CORS headers.
+// 跨域中间件
 func corsMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 		origin := c.GetHeader("Origin")

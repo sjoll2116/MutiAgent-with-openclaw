@@ -37,6 +37,12 @@ services:
       - REDIS_URL=redis://redis:6379/0
       - PORT=7891
       - OPENCLAW_PROJECT_DIR=/app
+      - PYTHON_BACKEND_URL=http://python-api:8000
+      - OPENCLAW_GATEWAY_URL=http://host.docker.internal:18789
+      - OPENCLAW_TOKEN=${SERVICE_TOKEN}
+      - IS_DOCKER=true
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       - ./data:/app/data
       # 挂载 Agents 目录以便 openclaw 读取人格

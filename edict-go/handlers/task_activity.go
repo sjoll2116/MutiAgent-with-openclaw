@@ -14,7 +14,7 @@ import (
 	"edict-go/store"
 )
 
-// GetTaskActivity handles GET /api/task-activity/:taskId.
+// GetTaskActivity 处理 GET /api/task-activity/:taskId
 func GetTaskActivity(c *gin.Context) {
 	taskID := c.Param("taskId")
 	if taskID == "" {
@@ -38,7 +38,7 @@ func GetTaskActivity(c *gin.Context) {
 	org := task.Org
 	updatedAt := task.UpdatedAt
 
-	// ── Task meta ──
+	// 任务元数据
 	meta := &models.TaskMeta{
 		Title:       task.Title,
 		State:       state,
@@ -50,13 +50,13 @@ func GetTaskActivity(c *gin.Context) {
 		Archived:    task.Archived,
 	}
 
-	// ── Determine responsible agent ──
+	// 确定负责的 agent
 	agentID := models.StateAgentMap[state]
 	if agentID == "" && (state == "Doing" || state == "Next") {
 		agentID = models.OrgAgentMap[org]
 	}
 
-	// ── Build activity list ──
+	// 构建活动列表
 	var activity []models.ActivityEntry
 	relatedAgents := map[string]bool{}
 
@@ -82,7 +82,7 @@ func GetTaskActivity(c *gin.Context) {
 			if pl.Agent != "" {
 				relatedAgents[pl.Agent] = true
 			}
-			// Accumulate resources
+			// 累积资源
 			if pl.Tokens > 0 {
 				totalTokens += pl.Tokens
 				hasResource = true
@@ -95,7 +95,7 @@ func GetTaskActivity(c *gin.Context) {
 				totalElapsed += pl.Elapsed
 				hasResource = true
 			}
-			// Progress text entry
+			// 进度文本条目
 			if pl.Text != "" {
 				entry := models.ActivityEntry{
 					At:         pl.At,
@@ -117,7 +117,7 @@ func GetTaskActivity(c *gin.Context) {
 				}
 				activity = append(activity, entry)
 			}
-			// Todos entry
+			// Todos 条目
 			if len(pl.Todos) > 0 {
 				todosEntry := models.ActivityEntry{
 					At:         pl.At,
@@ -136,7 +136,7 @@ func GetTaskActivity(c *gin.Context) {
 				prevTodos = pl.Todos
 			}
 		}
-		// Fallback agent from last progress
+		// 最后一个进度条的 agent
 		if agentID == "" {
 			last := task.ProgressLog[len(task.ProgressLog)-1]
 			if last.Agent != "" {
@@ -144,7 +144,7 @@ func GetTaskActivity(c *gin.Context) {
 			}
 		}
 	} else {
-		// Legacy: use now/todos directly
+		// 兼容旧数据：直接使用 now/todos
 		if task.Now != "" {
 			activity = append(activity, models.ActivityEntry{
 				At:    updatedAt,
@@ -167,7 +167,7 @@ func GetTaskActivity(c *gin.Context) {
 		}
 	}
 
-	// Sort by timestamp
+	// 按时间戳排序
 	sort.Slice(activity, func(i, j int) bool {
 		return activity[i].At < activity[j].At
 	})
@@ -176,19 +176,19 @@ func GetTaskActivity(c *gin.Context) {
 		relatedAgents[agentID] = true
 	}
 
-	// ── Phase durations ──
+	// 阶段时长
 	phaseDurations := computePhaseDurations(task.FlowLog)
 
-	// ── Todos summary ──
+	// Todos 摘要
 	var todosSummary *models.TodosSummary
 	if len(task.Todos) > 0 {
 		todosSummary = computeTodosSummary(task.Todos)
 	}
 
-	// ── Total duration ──
+	// 总时长
 	totalDuration := computeTotalDuration(task.FlowLog, state)
 
-	// ── Build response ──
+	// 构建响应
 	resp := models.TaskActivityResp{
 		OK:             true,
 		TaskID:         taskID,
@@ -212,7 +212,7 @@ func GetTaskActivity(c *gin.Context) {
 		resp.Activity = activity
 	}
 
-	// Sorted related agents
+	// 排序后的相关 agent
 	if len(relatedAgents) > 0 {
 		agents := make([]string, 0, len(relatedAgents))
 		for a := range relatedAgents {
@@ -236,7 +236,7 @@ func GetTaskActivity(c *gin.Context) {
 	c.JSON(http.StatusOK, resp)
 }
 
-// ── Helper functions ──
+// 辅助函数
 
 func computePhaseDurations(flowLog []models.FlowEntry) []models.PhaseDuration {
 	if len(flowLog) == 0 {
@@ -351,7 +351,7 @@ func computeTotalDuration(flowLog []models.FlowEntry, state string) string {
 	return formatDuration(dur)
 }
 
-// parseTimeDiffSeconds parses two ISO timestamps and returns the difference in seconds.
+// 解析两个 ISO 时间戳并返回秒差
 func parseTimeDiffSeconds(from, to string) int {
 	layouts := []string{
 		"2006-01-02T15:04:05.000Z",
@@ -388,7 +388,7 @@ func parseTimeDiffSeconds(from, to string) int {
 	return sec
 }
 
-// formatDuration converts seconds into a human-readable Chinese string.
+// 将秒数转换为中文
 func formatDuration(sec int) string {
 	switch {
 	case sec < 60:
