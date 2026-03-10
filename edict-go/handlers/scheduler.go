@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"edict-go/models"
+	"edict-go/services"
 	"edict-go/store"
 )
 
@@ -108,6 +109,13 @@ func SchedulerRetry(c *gin.Context) {
 		store.SchedulerAddFlow(task, fmt.Sprintf("重试(第%d次)：%s", retryCount+1, reason))
 		task.UpdatedAt = store.NowISO()
 		resultMsg = fmt.Sprintf("%s 重试(第%d次)", body.TaskID, retryCount+1)
+
+		go services.PublishEvent(services.TopicTaskStatus, body.TaskID, "task.status", "api", services.EventPayload{
+			"task_id":      body.TaskID,
+			"to":           task.State,
+			"assignee_org": task.Org,
+		})
+
 		return tasks, nil
 	})
 	if err != nil {
@@ -197,6 +205,13 @@ func SchedulerRollback(c *gin.Context) {
 		store.SchedulerMarkProgress(task, "已回滚")
 		task.UpdatedAt = store.NowISO()
 		resultMsg = fmt.Sprintf("%s 已回滚到 %s", body.TaskID, task.State)
+
+		go services.PublishEvent(services.TopicTaskStatus, body.TaskID, "task.status", "api", services.EventPayload{
+			"task_id":      body.TaskID,
+			"to":           task.State,
+			"assignee_org": task.Org,
+		})
+
 		return tasks, nil
 	})
 	if err != nil {

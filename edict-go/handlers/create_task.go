@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"edict-go/models"
+	"edict-go/services"
 	"edict-go/store"
 )
 
@@ -141,10 +142,15 @@ func CreateTask(c *gin.Context) {
 		return
 	}
 
+	go services.PublishEvent(services.TopicTaskCreated, taskID, "task.created", "api", services.EventPayload{
+		"task_id": taskID,
+		"title":   title,
+		"state":   "Queued",
+	})
+
 	c.JSON(http.StatusOK, models.APIResp{
 		OK:      true,
 		TaskID:  taskID,
 		Message: fmt.Sprintf("任务 %s 已创建，正交由协调中枢处理", taskID),
 	})
 }
-

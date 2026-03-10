@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 
 	"edict-go/models"
+	"edict-go/services"
 	"edict-go/store"
 )
 
@@ -224,6 +225,8 @@ func ReviewAction(c *gin.Context) {
 	}
 
 	var resultMsg string
+	var newState string
+	var newOrg string
 	err := store.WithTasks(func(tasks []models.Task) ([]models.Task, error) {
 		task := store.FindTask(tasks, body.TaskID)
 		if task == nil {
@@ -282,6 +285,9 @@ func ReviewAction(c *gin.Context) {
 		store.SchedulerMarkProgress(task, "审议动作 "+body.Action+" -> "+task.State)
 		task.UpdatedAt = store.NowISO()
 
+		newState = task.State
+		newOrg = task.Org
+
 		label := "已审查通过"
 		if body.Action == "reject" {
 			label = "已审查驳回"
@@ -297,6 +303,15 @@ func ReviewAction(c *gin.Context) {
 		c.JSON(http.StatusOK, models.APIResp{OK: false, Error: err.Error()})
 		return
 	}
+
+	if newState != "" && newState != "Completed" && newState != "Cancelled" {
+		go services.PublishEvent(services.TopicTaskStatus, body.TaskID, "task.status", "api", services.EventPayload{
+			"task_id":      body.TaskID,
+			"to":           newState,
+			"assignee_org": newOrg,
+		})
+	}
+
 	c.JSON(http.StatusOK, models.APIResp{OK: true, Message: resultMsg})
 }
 
@@ -316,6 +331,8 @@ func AdvanceState(c *gin.Context) {
 	}
 
 	var resultMsg string
+	var newState string
+	var newOrg string
 	err := store.WithTasks(func(tasks []models.Task) ([]models.Task, error) {
 		task := store.FindTask(tasks, body.TaskID)
 		if task == nil {
@@ -345,6 +362,9 @@ func AdvanceState(c *gin.Context) {
 		store.SchedulerMarkProgress(task, "手动推进 "+cur+" -> "+flow.Next)
 		task.UpdatedAt = store.NowISO()
 
+		newState = task.State
+		newOrg = task.Org
+
 		fromLabel := models.StateLabels[cur]
 		toLabel := models.StateLabels[flow.Next]
 		dispatched := ""
@@ -358,5 +378,14 @@ func AdvanceState(c *gin.Context) {
 		c.JSON(http.StatusOK, models.APIResp{OK: false, Error: err.Error()})
 		return
 	}
+
+	if newState != "" && newState != "Completed" && newState != "Cancelled" {
+		go services.PublishEvent(services.TopicTaskStatus, body.TaskID, "task.status", "api", services.EventPayload{
+			"task_id":      body.TaskID,
+			"to":           newState,
+			"assignee_org": newOrg,
+		})
+	}
+
 	c.JSON(http.StatusOK, models.APIResp{OK: true, Message: resultMsg})
 }
