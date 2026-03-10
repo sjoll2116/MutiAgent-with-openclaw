@@ -26,10 +26,10 @@ export default function CourtCeremony() {
 
   const tasks = liveStatus?.tasks || [];
   const jjc = tasks.filter(isEdict);
-  const pending = jjc.filter((t) => !['Done', 'Cancelled'].includes(t.state)).length;
-  const done = jjc.filter((t) => t.state === 'Done').length;
+  const pending = jjc.filter((t) => !['Completed', 'Cancelled'].includes(t.state)).length;
+  const done = jjc.filter((t) => t.state === 'Completed').length;
   const overdue = jjc.filter(
-    (t) => t.state !== 'Done' && t.state !== 'Cancelled' && t.eta && new Date(t.eta.replace(' ', 'T')) < new Date()
+    (t) => t.state !== 'Completed' && t.state !== 'Cancelled' && t.eta && new Date(t.eta.replace(' ', 'T')) < new Date()
   ).length;
 
   const d = new Date();

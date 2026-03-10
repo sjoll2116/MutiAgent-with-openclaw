@@ -59,7 +59,7 @@ export default function App() {
   const tabBadge = (key: string): string => {
     if (key === 'edicts') return String(activeEdicts.length);
     if (key === 'sessions') return String(tasks.filter((t) => !isEdict(t)).length);
-    if (key === 'memorials') return String(edicts.filter((t) => ['Done', 'Cancelled'].includes(t.state)).length);
+    if (key === 'memorials') return String(edicts.filter((t) => ['Completed', 'Cancelled'].includes(t.state)).length);
     if (key === 'monitor') {
       const activeDepts = tasks.filter((t) => isEdict(t) && t.state === 'Doing').length;
       return activeDepts + '活跃';

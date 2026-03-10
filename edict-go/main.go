@@ -35,16 +35,41 @@ func initOpenClawConfig() {
 	}
 	configPath := filepath.Join(configDir, "openclaw.json")
 
-	config := make(map[string]interface{})
-	if data, err := os.ReadFile(configPath); err == nil {
-		if err := json.Unmarshal(data, &config); err != nil {
-			log.Printf("⚠️ Failed to parse openclaw.json: %v", err)
-			config = make(map[string]interface{})
-		}
+	configBody := make(map[string]interface{})
+	if err := json.Unmarshal([]byte(`{"gateway":{}}`), &configBody); err != nil {
+		return
 	}
 
-	config["gatewayToken"] = token
-	data, err := json.MarshalIndent(config, "", "  ")
+	if data, err := os.ReadFile(configPath); err == nil {
+		_ = json.Unmarshal(data, &configBody)
+	}
+
+	// 强制设置嵌套结构 gateway.auth.token
+	var gateway map[string]interface{}
+	if g, ok := configBody["gateway"].(map[string]interface{}); ok {
+		gateway = g
+	} else {
+		gateway = make(map[string]interface{})
+		configBody["gateway"] = gateway
+	}
+
+	var auth map[string]interface{}
+	if a, ok := gateway["auth"].(map[string]interface{}); ok {
+		auth = a
+	} else {
+		auth = make(map[string]interface{})
+		gateway["auth"] = auth
+	}
+
+	auth["token"] = token
+
+	// 彻底清理所有旧版可能存在的冲突 key (根目录)
+	delete(configBody, "gatewayToken")
+	delete(configBody, "token")
+	// 清理旧版嵌套路径
+	delete(gateway, "token")
+
+	data, err := json.MarshalIndent(configBody, "", "  ")
 	if err != nil {
 		log.Printf("⚠️ Failed to marshal openclaw.json: %v", err)
 		return
@@ -52,7 +77,7 @@ func initOpenClawConfig() {
 	if err := os.WriteFile(configPath, data, 0644); err != nil {
 		log.Printf("⚠️ Failed to write openclaw.json: %v", err)
 	} else {
-		log.Printf("✅ Injected OPENCLAW_TOKEN into %s", configPath)
+		log.Printf("✅ Injected OPENCLAW_TOKEN into %s (gateway.auth.token) & Cleaned legacy keys", configPath)
 	}
 }
 

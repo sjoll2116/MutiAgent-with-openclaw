@@ -270,6 +270,12 @@ func AgentWake(c *gin.Context) {
 	// Async wake
 	go func() {
 		cmd := exec.Command("openclaw", "agent", "--agent", body.AgentID, "-m", msg, "--timeout", "120")
+		env := os.Environ()
+		token := os.Getenv("OPENCLAW_TOKEN")
+		if token != "" {
+			env = append(env, fmt.Sprintf("OPENCLAW_GATEWAY_TOKEN=%s", token))
+		}
+		cmd.Env = env
 		for attempt := 1; attempt <= 2; attempt++ {
 			out, err := cmd.CombinedOutput()
 			if err == nil {

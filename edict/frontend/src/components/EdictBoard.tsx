@@ -176,7 +176,7 @@ export default function EdictBoard() {
   const handleArchiveAll = async () => {
     if (!confirm('将所有已完成/已取消的任务移入归档？')) return;
     try {
-      const r = await api.archiveAllDone();
+      const r = await api.archiveAllCompleted();
       if (r.ok) { toast(`📦 ${r.count || 0} 项任务已归档`); loadAll(); }
       else toast(r.error || '批量归档失败', 'err');
     } catch { toast('服务器连接失败', 'err'); }

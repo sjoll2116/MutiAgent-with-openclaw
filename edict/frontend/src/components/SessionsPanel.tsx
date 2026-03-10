@@ -71,7 +71,7 @@ export default function SessionsPanel() {
   const sessions = tasks.filter((t) => !isEdict(t));
 
   let filtered = sessions;
-  if (sessFilter === 'active') filtered = sessions.filter((t) => !['Done', 'Cancelled'].includes(t.state));
+  if (sessFilter === 'active') filtered = sessions.filter((t) => !['Completed', 'Cancelled'].includes(t.state));
   else if (sessFilter !== 'all') filtered = sessions.filter((t) => extractAgent(t) === sessFilter);
 
   // Unique agents for filter tabs

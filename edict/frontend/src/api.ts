@@ -80,7 +80,7 @@ export const api = {
     postJ<ActionResult>(`${API_BASE}/api/advance-state`, { taskId, comment }),
   archiveTask: (taskId: string, archived: boolean) =>
     postJ<ActionResult>(`${API_BASE}/api/archive-task`, { taskId, archived }),
-  archiveAllDone: () =>
+  archiveAllCompleted: () =>
     postJ<ActionResult & { count?: number }>(`${API_BASE}/api/archive-task`, { archiveAllDone: true }),
   schedulerScan: (thresholdSec = 180) =>
     postJ<ActionResult & { count?: number; actions?: ScanAction[]; checkedAt?: string }>(

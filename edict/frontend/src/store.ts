@@ -101,17 +101,15 @@ export const TAB_DEFS: { key: TabKey; label: string; icon: string }[] = [
 // ── DEPTS for monitor ──
 
 export const DEPTS = [
-  { id: 'taizi', label: '协调中枢', emoji: '🤖', role: '协调中枢', rank: '中枢系统' },
-  { id: 'zhongshu', label: '任务编排引擎', emoji: '📜', role: '编排指挥官', rank: 'P10' },
-  { id: 'menxia', label: '安全审查引擎', emoji: '🔍', role: '审查专家', rank: 'P10' },
-  { id: 'shangshu', label: '任务调度引擎', emoji: '📮', role: '调度总管', rank: 'P10' },
-  { id: 'libu', label: '文档编写员', emoji: '📝', role: '文档编写员', rank: 'P8' },
-  { id: 'hubu', label: '数据分析师', emoji: '💰', role: '数据分析师', rank: 'P8' },
-  { id: 'bingbu', label: '代码架构师', emoji: '⚔️', role: '代码架构师', rank: 'P8' },
-  { id: 'xingbu', label: '质量保证师', emoji: '⚖️', role: '质量保证师', rank: 'P8' },
-  { id: 'gongbu', label: '部署运维师', emoji: '🔧', role: '部署运维师', rank: 'P8' },
-  { id: 'libu_hr', label: '资源调配员', emoji: '👔', role: '资源调配员', rank: 'P8' },
-  { id: 'zaochao', label: '系统监控员', emoji: '🌟', role: '简报员', rank: 'P7' },
+  { id: 'coordinator', label: '协调中枢', emoji: '🤴', role: '协调中枢', rank: '核心' },
+  { id: 'planner', label: '任务编排引擎', emoji: '📜', role: '规划引擎', rank: '核心' },
+  { id: 'reviewer', label: '安全审查引擎', emoji: '🔍', role: '审核引擎', rank: '核心' },
+  { id: 'dispatcher', label: '任务调度引擎', emoji: '📮', role: '调度引擎', rank: '核心' },
+  { id: 'doc_writer', label: '文档编写员', emoji: '📚', role: '文档撰写', rank: '执行' },
+  { id: 'data_analyst', label: '数据分析师', emoji: '💰', role: '数据分析', rank: '执行' },
+  { id: 'software_engineer', label: '代码架构师', emoji: '🔧', role: '软件研发', rank: '执行' },
+  { id: 'qa_engineer', label: '质量保证师', emoji: '⚖️', role: '质量保障', rank: '执行' },
+  { id: 'monitor', label: '情报监控员', emoji: '📰', role: '系统监控', rank: '外围' },
 ];
 
 // ── Templates ──

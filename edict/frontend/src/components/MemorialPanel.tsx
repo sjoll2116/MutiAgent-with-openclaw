@@ -9,7 +9,7 @@ export default function MemorialPanel() {
   const toast = useStore((s) => s.toast);
 
   const tasks = liveStatus?.tasks || [];
-  let mems = tasks.filter((t) => isEdict(t) && ['Done', 'Cancelled'].includes(t.state));
+  let mems = tasks.filter((t) => isEdict(t) && ['Completed', 'Cancelled'].includes(t.state));
   if (filter !== 'all') mems = mems.filter((t) => t.state === filter);
 
   const exportMemorial = (t: Task) => {
@@ -42,7 +42,7 @@ export default function MemorialPanel() {
         <span style={{ fontSize: 12, color: 'var(--muted)' }}>筛选：</span>
         {[
           { key: 'all', label: '全部' },
-          { key: 'Done', label: '✅ 已完成' },
+          { key: 'Completed', label: '✅ 已完成' },
           { key: 'Cancelled', label: '🚫 已取消' },
         ].map((f) => (
           <span
@@ -65,7 +65,7 @@ export default function MemorialPanel() {
             const depts = [...new Set(fl.map((f) => f.from).concat(fl.map((f) => f.to)).filter((x) => x && x !== '用户'))];
             const firstAt = fl.length ? (fl[0].at || '').substring(0, 16).replace('T', ' ') : '';
             const lastAt = fl.length ? (fl[fl.length - 1].at || '').substring(0, 16).replace('T', ' ') : '';
-            const stIcon = t.state === 'Done' ? '✅' : '🚫';
+            const stIcon = t.state === 'Completed' ? '✅' : '🚫';
             return (
               <div className="mem-card" key={t.id} onClick={() => setDetailTask(t)}>
                 <div className="mem-icon">📄</div>
@@ -111,7 +111,7 @@ function MemorialDetailModal({
 }) {
   const fl = t.flow_log || [];
   const st = t.state || 'Unknown';
-  const stIcon = st === 'Done' ? '✅' : st === 'Cancelled' ? '🚫' : '🔄';
+  const stIcon = st === 'Completed' ? '✅' : st === 'Cancelled' ? '🚫' : '🔄';
   const depts = [...new Set(fl.map((f) => f.from).concat(fl.map((f) => f.to)).filter((x) => x && x !== '用户'))];
 
   // Reconstruct phases
