@@ -306,44 +306,38 @@ body {
 }
 
 /* state colors */
-.st-Inbox {
-  border-color: var(--acc);
-  color: var(--acc);
-  background: transparent;
-}
-
-.st-Taizi {
+.st-Queued {
   border-color: #e8a04044;
   color: #e8a040;
   background: #281a08;
 }
 
-.st-planner {
+.st-Planning {
   border-color: var(--acc2);
   color: var(--acc2);
   background: transparent;
 }
 
-.st-reviewer {
+.st-PlanReview {
   border-color: #ff9a6a44;
   color: #ff9a6a;
   background: #280f0a;
 }
 
-.st-Assigned,
-.st-Doing {
+.st-Dispatching,
+.st-Executing {
   border-color: var(--acc);
   color: var(--acc);
   background: transparent;
 }
 
-.st-Review {
+.st-ResultReview {
   border-color: #f5c84244;
   color: #f5c842;
   background: #201a08;
 }
 
-.st-Done {
+.st-Completed {
   border-color: #2ecc8a44;
   color: var(--ok);
   background: #0a2018;

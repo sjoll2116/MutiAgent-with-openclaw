@@ -19,19 +19,19 @@ import {
 // ── Pipeline Definition (PIPE) ──
 
 export const PIPE = [
-  { key: 'Inbox', dept: '用户', icon: '👤', action: '下发任务' },
-  { key: 'Taizi', dept: '协调中枢', icon: '🤖', action: '分拣' },
-  { key: 'planner', dept: '任务编排引擎', icon: '📋', action: '起草' },
-  { key: 'reviewer', dept: '安全审查引擎', icon: '🔍', action: '审议' },
-  { key: 'Assigned', dept: '任务调度引擎', icon: '📮', action: '派发' },
-  { key: 'Doing', dept: '执行部门', icon: '⚙️', action: '执行' },
-  { key: 'Review', dept: '任务调度引擎', icon: '🔎', action: '汇总' },
-  { key: 'Done', dept: '任务总结', icon: '✅', action: '完成' },
+  { key: 'Pending', dept: '用户', icon: '👤', action: '下发任务' },
+  { key: 'Queued', dept: '协调中枢', icon: '🤖', action: '分拣' },
+  { key: 'Planning', dept: '任务编排引擎', icon: '📋', action: '起草' },
+  { key: 'PlanReview', dept: '安全审查引擎', icon: '🔍', action: '审议' },
+  { key: 'Dispatching', dept: '任务调度引擎', icon: '📮', action: '派发' },
+  { key: 'Executing', dept: '执行部门', icon: '⚙️', action: '执行' },
+  { key: 'ResultReview', dept: '任务调度引擎', icon: '🔎', action: '汇总' },
+  { key: 'Completed', dept: '任务总结', icon: '✅', action: '完成' },
 ] as const;
 
 export const PIPE_STATE_IDX: Record<string, number> = {
-  Inbox: 0, Pending: 0, Taizi: 1, planner: 2, reviewer: 3,
-  Assigned: 4, Doing: 5, Review: 6, Done: 7, Blocked: 5, Cancelled: 5, Next: 4,
+  Pending: 0, Queued: 1, Planning: 2, PlanReview: 3,
+  Dispatching: 4, Next: 4, Executing: 5, ResultReview: 6, Completed: 7, Blocked: 5, Cancelled: 5,
 };
 
 export const DEPT_COLOR: Record<string, string> = {
@@ -41,9 +41,10 @@ export const DEPT_COLOR: Record<string, string> = {
 };
 
 export const STATE_LABEL: Record<string, string> = {
-  Inbox: '收件', Pending: '待处理', Taizi: '中枢分拣', planner: '编排起草',
-  reviewer: '安全审查', Assigned: '已派发', Doing: '执行中', Review: '待审查',
-  Done: '已完成', Blocked: '阻塞', Cancelled: '已取消', Next: '待执行',
+  Pending: '待处理', Queued: '待路由', Planning: '编排起草',
+  PlanReview: '安全审查', Dispatching: '调度派发中', Next: '待执行',
+  Executing: '执行中', ResultReview: '待审查',
+  Completed: '已完成', Blocked: '阻塞', Cancelled: '已取消',
 };
 
 export function deptColor(d: string): string {
@@ -52,8 +53,8 @@ export function deptColor(d: string): string {
 
 export function stateLabel(t: Task): string {
   const r = t.review_round || 0;
-  if (t.state === 'reviewer' && r > 1) return `安全审查（第${r}轮）`;
-  if (t.state === 'planner' && r > 0) return `编排修订（第${r}轮）`;
+  if (t.state === 'PlanReview' && r > 1) return `安全审查（第${r}轮）`;
+  if (t.state === 'Planning' && r > 0) return `编排修订（第${r}轮）`;
   return STATE_LABEL[t.state] || t.state;
 }
 
@@ -66,7 +67,7 @@ export function isSession(t: Task): boolean {
 }
 
 export function isArchived(t: Task): boolean {
-  return t.archived || ['Done', 'Cancelled'].includes(t.state);
+  return t.archived || ['Completed', 'Cancelled'].includes(t.state);
 }
 
 export type PipeStatus = { key: string; dept: string; icon: string; action: string; status: 'done' | 'active' | 'pending' };

@@ -25,12 +25,13 @@ const AGENT_LABELS: Record<string, string> = {
 };
 
 const NEXT_LABELS: Record<string, string> = {
-  Taizi: '任务编排引擎起草',
-  planner: '安全审查引擎审议',
-  reviewer: '任务调度引擎派发',
-  Assigned: '开始执行',
-  Doing: '进入审查',
-  Review: '完成',
+  Queued: '任务编排引擎起草',
+  Planning: '安全审查引擎审议',
+  PlanReview: '任务调度引擎派发',
+  Dispatching: '开始执行',
+  Next: '开始执行',
+  Executing: '进入审查',
+  ResultReview: '完成',
 };
 
 function fmtStalled(sec: number): string {
@@ -91,7 +92,7 @@ export default function TaskModal() {
     fetchActivity();
     fetchSched();
 
-    const isDone = ['Done', 'Cancelled'].includes(task.state);
+    const isDone = ['Completed', 'Cancelled'].includes(task.state);
     if (!isDone) {
       const handleWs = () => {
         fetchActivity();
@@ -120,7 +121,7 @@ export default function TaskModal() {
   const todos = task.todos || [];
   const todoDone = todos.filter((x) => x.status === 'completed').length;
   const todoTotal = todos.length;
-  const canStop = !['Done', 'Blocked', 'Cancelled'].includes(task.state);
+  const canStop = !['Completed', 'Blocked', 'Cancelled'].includes(task.state);
   const canResume = ['Blocked', 'Cancelled'].includes(task.state);
 
   const doTaskAction = async (action: string, reason: string) => {
@@ -272,13 +273,13 @@ export default function TaskModal() {
             {canResume && (
               <button className="btn-action btn-resume" onClick={() => doTaskAction('resume', '恢复执行')}>▶️ 恢复执行</button>
             )}
-            {['Review', 'reviewer'].includes(task.state) && (
+            {['ResultReview', 'PlanReview'].includes(task.state) && (
               <>
                 <button className="btn-action" style={{ background: '#2ecc8a22', color: '#2ecc8a', border: '1px solid #2ecc8a44' }} onClick={() => doReview('approve')}>✅ 审查通过</button>
                 <button className="btn-action" style={{ background: '#ff527022', color: '#ff5270', border: '1px solid #ff527044' }} onClick={() => doReview('reject')}>🚫 审查驳回</button>
               </>
             )}
-            {['Pending', 'Taizi', 'planner', 'reviewer', 'Assigned', 'Doing', 'Review', 'Next'].includes(task.state) && (
+            {['Pending', 'Queued', 'Planning', 'PlanReview', 'Dispatching', 'Executing', 'ResultReview', 'Next'].includes(task.state) && (
               <button className="btn-action" style={{ background: '#7c5cfc18', color: '#7c5cfc', border: '1px solid #7c5cfc44' }} onClick={doAdvance}>⏩ 推进到下一步</button>
             )}
           </div>
@@ -388,7 +389,7 @@ export default function TaskModal() {
           )}
 
           {/* Live Activity */}
-          <LiveActivitySection data={activityData} isDone={['Done', 'Cancelled'].includes(task.state)} logRef={logRef} />
+          <LiveActivitySection data={activityData} isDone={['Completed', 'Cancelled'].includes(task.state)} logRef={logRef} />
         </div>
       </div>
     </div>

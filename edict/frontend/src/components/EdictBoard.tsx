@@ -3,8 +3,8 @@ import { api, type Task } from '../api';
 
 // 排序权重
 const STATE_ORDER: Record<string, number> = {
-  Doing: 0, Review: 1, Assigned: 2, reviewer: 3, planner: 4,
-  Taizi: 5, Inbox: 6, Blocked: 7, Next: 8, Done: 9, Cancelled: 10,
+  Executing: 0, ResultReview: 1, Dispatching: 2, PlanReview: 3, Planning: 4,
+  Queued: 5, Pending: 6, Blocked: 7, Next: 8, Completed: 9, Cancelled: 10,
 };
 
 function MiniPipe({ task }: { task: Task }) {
@@ -36,7 +36,7 @@ function EdictCard({ task }: { task: Task }) {
   const todos = task.todos || [];
   const todoDone = todos.filter((x) => x.status === 'completed').length;
   const todoTotal = todos.length;
-  const canStop = !['Done', 'Blocked', 'Cancelled'].includes(task.state);
+  const canStop = !['Completed', 'Blocked', 'Cancelled'].includes(task.state);
   const canResume = ['Blocked', 'Cancelled'].includes(task.state);
   const archived = isArchived(task);
   const isBlocked = task.block && task.block !== '无' && task.block !== '-';
@@ -171,7 +171,7 @@ export default function EdictBoard() {
 
   edicts.sort((a, b) => (STATE_ORDER[a.state] ?? 9) - (STATE_ORDER[b.state] ?? 9));
 
-  const unArchivedDone = allEdicts.filter((t) => !t.archived && ['Done', 'Cancelled'].includes(t.state));
+  const unArchivedDone = allEdicts.filter((t) => !t.archived && ['Completed', 'Cancelled'].includes(t.state));
 
   const handleArchiveAll = async () => {
     if (!confirm('将所有已完成/已取消的任务移入归档？')) return;
