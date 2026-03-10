@@ -2,12 +2,14 @@ package services
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"os/exec"
 	"time"
 
+	"edict-go/models"
 	"edict-go/store"
 
 	"github.com/redis/go-redis/v9"
@@ -103,22 +105,33 @@ func recoverPendingDispatches(ctx context.Context, sem chan struct{}) {
 func handleDispatch(ctx context.Context, msg redis.XMessage, sem chan struct{}) {
 	defer func() { <-sem }()
 
-	taskID := msg.Values["task_id"].(string)
-	agent := msg.Values["agent"].(string)
-	message := ""
-	if m, ok := msg.Values["message"].(string); ok {
-		message = m
-	}
-	traceID := ""
-	if t, ok := msg.Values["trace_id"].(string); ok {
-		traceID = t
-	}
-	state := ""
-	if s, ok := msg.Values["state"].(string); ok {
-		state = s
+	payloadStr, ok := msg.Values["payload"].(string)
+	if !ok {
+		log.Printf("⚠️ Dispatch message %s missing payload", msg.ID)
+		store.RDB.XAck(ctx, TopicTaskDispatch, DispatchGroup, msg.ID)
+		return
 	}
 
-	log.Printf("🔄 Dispatching task %s → agent '%s' state=%s", taskID, agent, state)
+	var payload map[string]interface{}
+	if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
+		log.Printf("❌ Dispatch payload unmarshal error: %v", err)
+		store.RDB.XAck(ctx, TopicTaskDispatch, DispatchGroup, msg.ID)
+		return
+	}
+
+	taskID, _ := payload["task_id"].(string)
+	agent, _ := payload["agent"].(string)
+	message, _ := payload["message"].(string)
+	state, _ := payload["state"].(string)
+	traceID, _ := msg.Values["trace_id"].(string)
+
+	if taskID == "" || agent == "" {
+		log.Printf("⚠️ Dispatch message %s invalid: task_id=%s, agent=%s", msg.ID, taskID, agent)
+		store.RDB.XAck(ctx, TopicTaskDispatch, DispatchGroup, msg.ID)
+		return
+	}
+
+	log.Printf("🔄 Dispatching task %s → agent '%s' (state: %s)", taskID, agent, state)
 
 	// 发布心跳开始
 	PublishEvent(TopicAgentHeartbeat, "dispatcher", "agent.dispatch.start", traceID, EventPayload{
@@ -138,15 +151,110 @@ func handleDispatch(ctx context.Context, msg redis.XMessage, sem chan struct{}) 
 
 	if result.ReturnCode == 0 {
 		log.Printf("✅ Agent '%s' completed task %s", agent, taskID)
+		// Agent 可能通过 kanban_update.py 更新了任务状态，
+		// 但 kanban_update.py 不会发布 Redis 事件，所以这里主动检查并补发。
+		checkAndPublishStateChange(taskID, state, agent)
 	} else {
-		log.Printf("⚠️ Agent '%s' returned non-zero for task %s: rc=%d", agent, taskID, result.ReturnCode)
+		if result.ReturnCode == -1 {
+			log.Printf("❌ Dispatch FAILED for task %s: 'openclaw' command not found or execution failed.", taskID)
+		} else {
+			log.Printf("⚠️ Agent '%s' returned non-zero (rc=%d) for task %s", agent, result.ReturnCode, taskID)
+		}
+
+		// 打印所有可能的输出，协助诊断
 		if result.Stderr != "" {
-			log.Printf("Stderr: %s", result.Stderr)
+			log.Printf("▶️ Stderr: %s", result.Stderr)
+		}
+		if result.Stdout != "" {
+			log.Printf("▶️ Stdout/Output: %s", result.Stdout)
 		}
 	}
 
 	// ACK
 	store.RDB.XAck(ctx, TopicTaskDispatch, DispatchGroup, msg.ID)
+}
+
+// checkAndPublishStateChange 检查 Agent 执行后任务状态是否发生变化。
+// - 若已变化：发布 task.status 事件驱动后续流转。
+// - 若未变化：使用 StateFlow 自动推进到下一状态，写入 JSON，再发布事件。
+func checkAndPublishStateChange(taskID, dispatchedState, agent string) {
+	tasks, err := store.LoadTasks()
+	if err != nil {
+		log.Printf("⚠️ checkAndPublishStateChange: failed to load tasks: %v", err)
+		return
+	}
+	task := store.FindTask(tasks, taskID)
+	if task == nil {
+		log.Printf("⚠️ checkAndPublishStateChange: task %s not found", taskID)
+		return
+	}
+
+	currentState := task.State
+
+	// 终态不再流转
+	if models.TerminalStates[currentState] {
+		log.Printf("ℹ️ Task %s reached terminal state %s, no further dispatch", taskID, currentState)
+		return
+	}
+
+	// 情况 1：Agent 已经推进了状态 → 直接发布事件
+	if currentState != dispatchedState && currentState != "" {
+		log.Printf("🔁 Task %s state changed: %s → %s (by agent '%s'), publishing event to continue flow",
+			taskID, dispatchedState, currentState, agent)
+		PublishEvent(TopicTaskStatus, taskID, "task.status", "dispatcher-auto", EventPayload{
+			"task_id":      taskID,
+			"from":         dispatchedState,
+			"to":           currentState,
+			"assignee_org": task.Org,
+		})
+		return
+	}
+
+	// 情况 2：Agent 完成但未推进状态 → 使用 StateFlow 自动推进
+	flow, ok := models.StateFlow[currentState]
+	if !ok {
+		log.Printf("⚠️ Task %s state %s has no defined next step in StateFlow, cannot auto-advance", taskID, currentState)
+		return
+	}
+
+	log.Printf("🔁 Auto-advancing task %s: %s → %s (agent '%s' completed but didn't advance state)",
+		taskID, currentState, flow.Next, agent)
+
+	// 写入新状态到 tasks_source.json
+	err = store.WithTasks(func(allTasks []models.Task) ([]models.Task, error) {
+		t := store.FindTask(allTasks, taskID)
+		if t == nil {
+			return allTasks, nil
+		}
+		t.State = flow.Next
+		t.Org = flow.ToDept
+		t.Now = "⬇️ 自动推进：" + flow.Remark
+		t.FlowLog = append(t.FlowLog, models.FlowEntry{
+			At:     store.NowISO(),
+			From:   flow.FromDept,
+			To:     flow.ToDept,
+			Remark: "⬇️ 自动推进：" + flow.Remark,
+		})
+		t.UpdatedAt = store.NowISO()
+		return allTasks, nil
+	})
+	if err != nil {
+		log.Printf("❌ Auto-advance failed for task %s: %v", taskID, err)
+		return
+	}
+
+	// 终态不发布事件
+	if models.TerminalStates[flow.Next] {
+		log.Printf("ℹ️ Task %s auto-advanced to terminal state %s", taskID, flow.Next)
+		return
+	}
+
+	PublishEvent(TopicTaskStatus, taskID, "task.status", "dispatcher-auto", EventPayload{
+		"task_id":      taskID,
+		"from":         currentState,
+		"to":           flow.Next,
+		"assignee_org": flow.ToDept,
+	})
 }
 
 type openclawResult struct {
@@ -186,7 +294,13 @@ func callOpenClaw(ctx context.Context, agent, message, taskID, traceID string) o
 		if exitErr, ok := err.(*exec.ExitError); ok {
 			exitCode = exitErr.ExitCode()
 		} else {
-			exitCode = -1
+			// 如果是指令找不到（例如 command not found），返回 -1
+			log.Printf("❌ Execution error for agent '%s' on task %s: %v", agent, taskID, err)
+			return openclawResult{
+				ReturnCode: -1,
+				Stderr:     err.Error(),
+				Stdout:     string(outBytes),
+			}
 		}
 	}
 
@@ -197,9 +311,14 @@ func callOpenClaw(ctx context.Context, agent, message, taskID, traceID string) o
 		stdOutStr = stdOutStr[len(stdOutStr)-5000:]
 	}
 
+	stderr := ""
+	if exitCode != 0 {
+		stderr = stdOutStr
+	}
+
 	return openclawResult{
 		ReturnCode: exitCode,
 		Stdout:     stdOutStr,
-		Stderr:     "",
+		Stderr:     stderr,
 	}
 }

@@ -185,6 +185,7 @@ type TaskActivityResp struct {
 // ── 映射字典 (镜像自 Python 常量) ──
 
 // StateAgentMap 将任务状态映射到其负责的 Agent。
+// 注意：Executing 状态没有固定 agent，其实际 agent 会在 eventbus.go 取决于具体部门 OrgAgentMap。
 var StateAgentMap = map[string]string{
 	"Queued":       "coordinator",
 	"Planning":     "planner",
@@ -203,7 +204,7 @@ var OrgAgentMap = map[string]string{
 	"安全审查引擎":  "reviewer",
 	"任务调度引擎":  "dispatcher",
 	"协调中枢":    "coordinator",
-	"执行智能体集群": "executors",
+	"执行智能体集群": "dispatcher", // Dispatcher 负责统筹执行和验收
 }
 
 // StateLabels 将状态 key 映射到中文显示标签。

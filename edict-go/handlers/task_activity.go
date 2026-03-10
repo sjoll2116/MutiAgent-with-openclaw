@@ -177,7 +177,7 @@ func GetTaskActivity(c *gin.Context) {
 	}
 
 	// 阶段时长
-	phaseDurations := computePhaseDurations(task.FlowLog)
+	phaseDurations := computePhaseDurations(task.FlowLog, state)
 
 	// Todos 摘要
 	var todosSummary *models.TodosSummary
@@ -238,11 +238,13 @@ func GetTaskActivity(c *gin.Context) {
 
 // 辅助函数
 
-func computePhaseDurations(flowLog []models.FlowEntry) []models.PhaseDuration {
+func computePhaseDurations(flowLog []models.FlowEntry, state string) []models.PhaseDuration {
 	if len(flowLog) == 0 {
 		return nil
 	}
 	var phases []models.PhaseDuration
+	isTerminal := models.TerminalStates[state]
+
 	for i, fl := range flowLog {
 		startAt := fl.At
 		toDept := fl.To
@@ -250,11 +252,17 @@ func computePhaseDurations(flowLog []models.FlowEntry) []models.PhaseDuration {
 
 		var endAt string
 		ongoing := false
+
 		if i+1 < len(flowLog) {
 			endAt = flowLog[i+1].At
 		} else {
-			endAt = store.NowISO()
-			ongoing = true
+			// 如果是最后一条流转记录，且任务已处于终态，则不继续计时
+			if isTerminal {
+				endAt = startAt // 结束状态的驻留时间为0
+			} else {
+				endAt = store.NowISO()
+				ongoing = true
+			}
 		}
 
 		durSec := parseTimeDiffSeconds(startAt, endAt)

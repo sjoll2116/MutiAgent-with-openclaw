@@ -47,6 +47,8 @@ services:
       - ./data:/app/data
       # 挂载 Agents 目录以便 openclaw 读取人格
       - ./agents:/app/agents:ro
+      # 挂载 scripts 目录以便 Agent 执行 kanban_update.py
+      - ./scripts:/app/scripts
       # 由于 docker 内还没有系统级 openclaw cli，如果要在该容器内执行 agent
       # 必须在 Dockerfile 中打包安装 openclaw。
       - ~/.openclaw:/root/.openclaw

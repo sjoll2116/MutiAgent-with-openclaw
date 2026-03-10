@@ -154,7 +154,12 @@ func handleEvent(topic string, msg redis.XMessage) {
 	payloadStr := msg.Values["payload"].(string)
 
 	var payload EventPayload
-	json.Unmarshal([]byte(payloadStr), &payload)
+	if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
+		log.Printf("⚠️ Failed to unmarshal event payload from %s: %v", topic, err)
+		return
+	}
+
+	log.Printf("📥 Event received: topic=%s type=%s", topic, eventType)
 
 	switch topic {
 	case TopicTaskCreated:
@@ -185,6 +190,7 @@ func onTaskCreated(payload EventPayload) {
 		agent = "coordinator"
 	}
 
+	log.Printf("⚡ Triggering dispatch for new task %s (state: %s) -> agent: %s", taskID, state, agent)
 	PublishEvent(TopicTaskDispatch, "go-orch", "task.dispatch.request", "orchestrator", EventPayload{
 		"task_id": taskID,
 		"agent":   agent,
@@ -198,6 +204,14 @@ func onTaskStatus(eventType string, payload EventPayload) {
 	toStateStr, _ := payload["to"].(string)
 
 	agent := store.GetAgentForState(toStateStr)
+	// 若状态没有固定映射的 agent，则按 org 查找（如 Executing 状态按部门分配执行 agent）
+	if agent == "" {
+		org, _ := payload["assignee_org"].(string)
+		orgAgent := store.GetAgentForOrg(org)
+		if orgAgent != "" {
+			agent = orgAgent
+		}
+	}
 	if toStateStr == "Dispatching" {
 		org, _ := payload["assignee_org"].(string)
 		orgAgent := store.GetAgentForOrg(org)
@@ -207,11 +221,14 @@ func onTaskStatus(eventType string, payload EventPayload) {
 	}
 
 	if agent != "" {
+		log.Printf("⚡ Triggering dispatch for task %s (status change: %s) -> agent: %s", taskID, toStateStr, agent)
 		PublishEvent(TopicTaskDispatch, "go-orch", "task.dispatch.request", "orchestrator", EventPayload{
 			"task_id": taskID,
 			"agent":   agent,
 			"state":   toStateStr,
 			"message": "任务已流转到 " + toStateStr,
 		})
+	} else {
+		log.Printf("⚠️ No agent found for state %s, skipping dispatch", toStateStr)
 	}
 }

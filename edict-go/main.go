@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
@@ -17,7 +18,47 @@ import (
 	"edict-go/store"
 )
 
+func initOpenClawConfig() {
+	token := os.Getenv("OPENCLAW_TOKEN")
+	if token == "" {
+		return
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		log.Printf("⚠️ Cannot get user home dir: %v", err)
+		return
+	}
+	configDir := filepath.Join(home, ".openclaw")
+	if err := os.MkdirAll(configDir, 0755); err != nil {
+		log.Printf("⚠️ Cannot create .openclaw dir: %v", err)
+		return
+	}
+	configPath := filepath.Join(configDir, "openclaw.json")
+
+	config := make(map[string]interface{})
+	if data, err := os.ReadFile(configPath); err == nil {
+		if err := json.Unmarshal(data, &config); err != nil {
+			log.Printf("⚠️ Failed to parse openclaw.json: %v", err)
+			config = make(map[string]interface{})
+		}
+	}
+
+	config["gatewayToken"] = token
+	data, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		log.Printf("⚠️ Failed to marshal openclaw.json: %v", err)
+		return
+	}
+	if err := os.WriteFile(configPath, data, 0644); err != nil {
+		log.Printf("⚠️ Failed to write openclaw.json: %v", err)
+	} else {
+		log.Printf("✅ Injected OPENCLAW_TOKEN into %s", configPath)
+	}
+}
+
 func main() {
+	initOpenClawConfig()
+
 	port := flag.Int("port", 7891, "HTTP listen port")
 	host := flag.String("host", "127.0.0.1", "HTTP listen address")
 	dataDir := flag.String("data", "", "Path to data/ directory (default: ../data)")
