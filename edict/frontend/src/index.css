@@ -2132,6 +2132,18 @@ body {
   background: #200a10;
 }
 
+body.light .toast.ok {
+  border-color: #2ecc8a55;
+  background: #eefdf5;
+  color: #16a34a;
+}
+
+body.light .toast.err {
+  border-color: #ff527055;
+  background: #fdf2f2;
+  color: #dc2626;
+}
+
 @keyframes tin {
   from {
     transform: translateX(40px);

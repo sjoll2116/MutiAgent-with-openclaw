@@ -29,7 +29,7 @@ services:
       dockerfile: Dockerfile
 
     container_name: edict-go-prod
-    command: ./edict-go --host 0.0.0.0 --port 7891 --dist /app/dist
+    command: ./edict-go --host 0.0.0.0 --port 7891 --dist /app/dist --data /app/data
     ports:
 
       - "7891:7891"

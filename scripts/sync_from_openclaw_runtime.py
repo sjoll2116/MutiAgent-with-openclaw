@@ -266,13 +266,12 @@ def main():
                 deduped.append(t)
         tasks = deduped
 
-        # ── 过滤掉非 JJC 且非活跃的系统会话，防止看板噪音 ──
+        # ── 过滤掉非 MAS 且非活跃的系统会话，防止看板噪音 ──
         # 规则: 仅保留 24小时内更新的活跃会话，且排除 cron/subagent 等纯后台任务
         filtered_tasks = []
         one_day_ago = now_ms - 24 * 3600 * 1000
         for t in tasks:
-            # 始终保留 JJC 任务（如果有的话，虽然这里主要是 OC 任务，但以防万一）
-            if str(t['id']).startswith('JJC'):
+            if str(t['id']).startswith('JJC') or str(t['id']).startswith('MAS'):
                 filtered_tasks.append(t)
                 continue
             
@@ -310,10 +309,10 @@ def main():
         if existing_tasks_file.exists():
             try:
                 existing = json.loads(existing_tasks_file.read_text())
-                jjc_existing = [t for t in existing if str(t.get('id', '')).startswith('JJC')]
+                jjc_existing = [t for t in existing if str(t.get('id', '')).startswith('JJC') or str(t.get('id', '')).startswith('MAS')]
                 
-                # 去掉 tasks 里已有的 JJC（以防重复），再把任务放到最前面
-                tasks = [t for t in tasks if not str(t.get('id', '')).startswith('JJC')]
+                # 去掉 tasks 里已有的 JJC/MAS（以防重复），再把任务放到最前面
+                tasks = [t for t in tasks if not (str(t.get('id', '')).startswith('JJC') or str(t.get('id', '')).startswith('MAS'))]
                 tasks = jjc_existing + tasks
             except Exception as e:
                 log.error(f'merge existing JJC tasks failed: {e}')

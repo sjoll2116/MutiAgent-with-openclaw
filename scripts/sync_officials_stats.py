@@ -134,10 +134,10 @@ def get_task_stats(org_label, tasks):
     active = [t for t in tasks if t.get('state') in ('Executing','ResultReview','Dispatching') and t.get('org')==org_label]
     fl = sum(1 for t in tasks for f in t.get('flow_log',[])
              if f.get('from')==org_label or f.get('to')==org_label)
-    # 参与的任务（JJC）列表
+    # 参与的任务（JJC/MAS）列表
     participated = []
     for t in tasks:
-        if not t['id'].startswith('JJC'): continue
+        if not (t['id'].startswith('JJC') or t['id'].startswith('MAS')): continue
         for f in t.get('flow_log',[]):
             if f.get('from')==org_label or f.get('to')==org_label:
                 if t['id'] not in [x['id'] for x in participated]:

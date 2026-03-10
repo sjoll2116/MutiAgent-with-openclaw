@@ -3951,7 +3951,7 @@
 
     <!-- ══ 小任务/会话监控 ══ -->
     <div class="panel" id="panel-sessions">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">飞书/Telegram 中的日常对话与小任务 · 非JJC指令类任务</div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:14px">飞书/Telegram 中的日常对话与小任务 · 非指令类任务</div>
       <div class="sess-filters">
         <span style="font-size:11px;color:var(--muted)">筛选：</span>
         <span class="sess-filter active" data-sf="all" onclick="filterSessions('all',this)">全部</span>
@@ -4165,8 +4165,8 @@
     }
 
     /* ══ TASK CLASSIFICATION ══ */
-    // 用户的任务：JJC-* 开头，有真实标题
-    function isEdict(t) { return /^JJC-/i.test(t.id || '') }
+    // 用户的任务：JJC-*/MAS-* 开头，有真实标题
+    function isEdict(t) { return /^(JJC|MAS)-/i.test(t.id || '') }
     // 系统会话：OC-* / MC-* 开头
     function isSession(t) { return /^(OC-|MC-)/i.test(t.id || '') }
     // 归档判定：Done/Cancelled 或手动标记 archived
@@ -4382,7 +4382,7 @@
         { id: 'monitor', label: '情报监控员', emoji: '🌟', role: '每日简报官', rank: 'P7' },
       ];
 
-      // 每个部门当前承接的任务：从 JJC 任务里找 org 匹配且非 Done 的
+      // 每个部门当前承接的任务：从 JJC/MAS 任务里找 org 匹配且非 Done 的
       const activeTasks = tasks.filter(t => isEdict(t) && t.state !== 'Completed' && t.state !== 'Next');
       // Agent统计数据（如已加载）
       const offMap = {};
@@ -6025,7 +6025,7 @@
       el.style.display = 'flex';
       // Fill data from live status
       const tasks = liveStatus ? (liveStatus.tasks || []) : [];
-      const jjc = tasks.filter(t => (t.id || '').startsWith('JJC-'));
+      const jjc = tasks.filter(t => (t.id || '').startsWith('JJC-') || (t.id || '').startsWith('MAS-'));
       const pending = jjc.filter(t => !['Completed', 'Cancelled'].includes(t.state)).length;
       const done = jjc.filter(t => t.state === 'Completed').length;
       const overdue = jjc.filter(t => t.state !== 'Completed' && t.state !== 'Cancelled' && t.eta && new Date(t.eta.replace(' ', 'T')) < new Date()).length;
@@ -6053,8 +6053,8 @@
     function renderMemorials() {
       const tasks = liveStatus ? (liveStatus.tasks || []) : [];
       const filter = (document.getElementById('mem-filter') || {}).value || 'all';
-      // Only JJC edicts that are Done or Cancelled
-      let mems = tasks.filter(t => (t.id || '').startsWith('JJC-') && ['Completed', 'Cancelled'].includes(t.state));
+      // Only JJC/MAS edicts that are Done or Cancelled
+      let mems = tasks.filter(t => ((t.id || '').startsWith('JJC-') || (t.id || '').startsWith('MAS-')) && ['Completed', 'Cancelled'].includes(t.state));
       if (filter !== 'all') mems = mems.filter(t => t.state === filter);
       document.getElementById('tb-mem').textContent = mems.length;
 

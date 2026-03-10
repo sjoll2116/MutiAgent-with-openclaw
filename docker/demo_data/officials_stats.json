@@ -30,7 +30,7 @@
       "participated_edicts": [
         {
           "id": "MAS-20260224-014",
-          "title": "A计划：三省执行智能体集群 GitHub 爆款项目打造",
+          "title": "A计划：执行智能体集群 GitHub 爆款项目打造",
           "state": "Executing"
         },
         {
@@ -60,7 +60,7 @@
         },
         {
           "id": "MAS-20260223-011",
-          "title": "三省执行智能体集群制开源 GitHub 项目",
+          "title": "执行智能体集群制开源 GitHub 项目",
           "state": "Completed"
         },
         {
@@ -101,7 +101,7 @@
       "participated_edicts": [
         {
           "id": "MAS-20260224-014",
-          "title": "A计划：三省执行智能体集群 GitHub 爆款项目打造",
+          "title": "A计划：执行智能体集群 GitHub 爆款项目打造",
           "state": "Executing"
         },
         {
@@ -274,7 +274,7 @@
         },
         {
           "id": "MAS-20260223-011",
-          "title": "三省执行智能体集群制开源 GitHub 项目",
+          "title": "执行智能体集群制开源 GitHub 项目",
           "state": "Completed"
         }
       ],
@@ -310,7 +310,7 @@
       "participated_edicts": [
         {
           "id": "MAS-20260223-011",
-          "title": "三省执行智能体集群制开源 GitHub 项目",
+          "title": "执行智能体集群制开源 GitHub 项目",
           "state": "Completed"
         },
         {
@@ -398,4 +398,3 @@
   },
   "top_official": "任务编排引擎"
 }
-

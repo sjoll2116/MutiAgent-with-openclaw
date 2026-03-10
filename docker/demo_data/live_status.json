@@ -51,7 +51,7 @@
   "tasks": [
     {
       "id": "MAS-20260224-014",
-      "title": "A计划：三省执行智能体集群 GitHub 爆款项目打造",
+      "title": "A计划：执行智能体集群 GitHub 爆款项目打造",
       "official": "编排指挥官",
       "org": "任务编排引擎",
       "state": "Executing",
@@ -66,7 +66,7 @@
           "at": "2026-02-24T14:03:00.543790Z",
           "from": "用户",
           "to": "任务编排引擎",
-          "remark": "下发指令：执行A计划——三省执行智能体集群 GitHub 爆款项目打造，30天行动计划"
+          "remark": "下发指令：执行A计划——执行智能体集群 GitHub 爆款项目打造，30天行动计划"
         },
         {
           "at": "2026-02-24T14:04:39.078564Z",
@@ -354,7 +354,7 @@
     },
     {
       "id": "MAS-20260223-011",
-      "title": "三省执行智能体集群制开源 GitHub 项目",
+      "title": "执行智能体集群制开源 GitHub 项目",
       "official": "编排指挥官",
       "org": "任务编排引擎",
       "state": "Completed",
@@ -368,7 +368,7 @@
           "at": "2026-02-23T14:51:33Z",
           "from": "用户",
           "to": "任务编排引擎",
-          "remark": "下发指令：把三省执行智能体集群制做成开源GitHub项目，补全看板功能，写好文档"
+          "remark": "下发指令：执行智能体集群制做成开源GitHub项目，补全看板功能，写好文档"
         },
         {
           "at": "2026-02-23T14:53:00Z",
@@ -500,10 +500,10 @@
       "official": "编排指挥官",
       "org": "任务编排引擎",
       "state": "Completed",
-      "now": "已完成：三省执行智能体集群并行流程规划",
+      "now": "已完成:执行智能体集群并行流程规划",
       "eta": "已完成 2026-02-23 10:27",
       "block": "无",
-      "output": "/Users/bingsen/clawd/junjichu-v2/docs/三省执行智能体集群-OpenClaw实施指南-实装版-v1.md",
+      "output": "/Users/bingsen/clawd/junjichu-v2/docs/执行智能体集群-OpenClaw实施指南-实装版-v1.md",
       "flow": {
         "draft": "已起草",
         "review": "审查指挥官通过",
@@ -1423,7 +1423,7 @@
     {
       "at": "未知",
       "official": "编排指挥官",
-      "task": "三省执行智能体集群制开源 GitHub 项目",
+      "task": "执行智能体集群制开源 GitHub 项目",
       "out": "https://github.com/cft0808/openclaw-sansheng-liubu",
       "qa": "待补成果"
     },
@@ -1438,7 +1438,7 @@
       "at": "2026-02-23 10:05:17",
       "official": "编排指挥官",
       "task": "任务编排引擎：并行流程规划",
-      "out": "/Users/bingsen/clawd/junjichu-v2/docs/三省执行智能体集群-OpenClaw实施指南-实装版-v1.md",
+      "out": "/Users/bingsen/clawd/junjichu-v2/docs/执行智能体集群-OpenClaw实施指南-实装版-v1.md",
       "qa": "通过"
     },
     {
@@ -1491,4 +1491,3 @@
     "missingFieldCount": 0
   }
 }
-

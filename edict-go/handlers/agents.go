@@ -65,7 +65,8 @@ func GetAgentsStatus(c *gin.Context) {
 
 	gatewayAlive := checkGatewayAlive()
 	isDocker := os.Getenv("IS_DOCKER") == "true"
-	if isDocker {
+	// 如果在 Docker 中，或者显式配置了 Gateway URL，我们就认为 Gateway 应该是在线的（由网络探测决定）
+	if isDocker || os.Getenv("OPENCLAW_GATEWAY_URL") != "" {
 		gatewayAlive = true
 	}
 
