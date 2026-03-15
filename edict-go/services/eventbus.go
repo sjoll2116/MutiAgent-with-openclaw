@@ -7,6 +7,7 @@ import (
 	"log"
 	"time"
 
+	"edict-go/models"
 	"edict-go/store"
 
 	"github.com/redis/go-redis/v9"
@@ -83,6 +84,7 @@ func StartOrchestrator() {
 	go runRecoverPending()
 	go runPollCycle()
 	go StartDispatchWorker(store.Ctx)
+	go StartStallDetector(store.Ctx)
 
 	log.Println("🏛️ Go Orchestrator worker started")
 }
@@ -146,7 +148,7 @@ func runPollCycle() {
 }
 
 func handleEvent(topic string, msg redis.XMessage) {
-	// 1. 广播到 WebSockets（始终执行）
+	// 1. 广播到 WebSockets
 	BroadcastToWebSockets(topic, msg)
 
 	// 2. 调度器逻辑
@@ -169,11 +171,78 @@ func handleEvent(topic string, msg redis.XMessage) {
 	case TopicTaskCompleted:
 		// 记录日志
 	case TopicTaskStalled:
-		// 停滞处理逻辑
+		onTaskStalled(payload)
 	}
 
 	// 3. 确认消息
 	store.RDB.XAck(store.Ctx, topic, OrchestratorGroup, msg.ID)
+}
+
+// StartStallDetector 启动后台协程，定期扫描超时未更新的任务
+func StartStallDetector(ctx context.Context) {
+	ticker := time.NewTicker(2 * time.Minute)
+	log.Println("🧭 Stall detector started")
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			detectStalledTasks()
+		}
+	}
+}
+
+func detectStalledTasks() {
+	tasks, err := store.LoadTasks()
+	if err != nil {
+		return
+	}
+
+	threshold := 5 * time.Minute
+	now := time.Now()
+
+	for _, t := range tasks {
+		if models.TerminalStates[t.State] || t.State == "Blocked" {
+			continue
+		}
+
+		updatedAt, err := time.Parse(time.RFC3339, t.UpdatedAt)
+		if err != nil {
+			continue
+		}
+
+		if now.Sub(updatedAt) > threshold {
+			log.Printf("⚠️ Task %s is STALLED (state: %s, last update: %s)", t.ID, t.State, t.UpdatedAt)
+			PublishEvent(TopicTaskStalled, t.ID, "task.stalled", "stall-detector", EventPayload{
+				"task_id": t.ID,
+				"state":   t.State,
+				"since":   t.UpdatedAt,
+			})
+		}
+	}
+}
+
+func onTaskStalled(payload EventPayload) {
+	taskID, _ := payload["task_id"].(string)
+
+	// 对停滞任务进行升级：增加 FlowLog 并标记 Now 状态
+	store.WithTasks(func(tasks []models.Task) ([]models.Task, error) {
+		t := store.FindTask(tasks, taskID)
+		if t == nil {
+			return tasks, nil
+		}
+
+		remark := "🧭 检测到任务长时间未进展，系统已发布停滞告警"
+		t.Now = "⚠️ 运行异常：" + remark
+		t.FlowLog = append(t.FlowLog, models.FlowEntry{
+			At:     store.NowISO(),
+			From:   "系统调度站",
+			To:     t.Org,
+			Remark: remark,
+		})
+		t.UpdatedAt = store.NowISO()
+		return tasks, nil
+	})
 }
 
 func onTaskCreated(payload EventPayload) {

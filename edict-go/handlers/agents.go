@@ -237,16 +237,13 @@ func getAgentSessionStatus(agentID string) (lastTs int64, sessions int, isBusy b
 // ── POST /api/agent-wake ──
 
 func AgentWake(c *gin.Context) {
-	var body struct {
-		AgentID string `json:"agentId"`
-		Message string `json:"message"`
-	}
+	var body models.AgentWakeReq
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResp{OK: false, Error: "invalid JSON"})
 		return
 	}
 	if body.AgentID == "" {
-		c.JSON(http.StatusBadRequest, models.APIResp{OK: false, Error: "agentId required"})
+		c.JSON(http.StatusBadRequest, models.APIResp{OK: false, Error: "agent_id required"})
 		return
 	}
 	if !safeNameRe.MatchString(body.AgentID) {
@@ -296,16 +293,13 @@ func AgentWake(c *gin.Context) {
 // ── POST /api/set-model ──
 
 func SetModel(c *gin.Context) {
-	var body struct {
-		AgentID string `json:"agentId"`
-		Model   string `json:"model"`
-	}
+	var body models.SetModelReq
 	if err := c.ShouldBindJSON(&body); err != nil {
 		c.JSON(http.StatusBadRequest, models.APIResp{OK: false, Error: "invalid JSON"})
 		return
 	}
 	if body.AgentID == "" || body.Model == "" {
-		c.JSON(http.StatusBadRequest, models.APIResp{OK: false, Error: "agentId and model required"})
+		c.JSON(http.StatusBadRequest, models.APIResp{OK: false, Error: "agent_id and model required"})
 		return
 	}
 

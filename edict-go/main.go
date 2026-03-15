@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -101,6 +102,7 @@ func main() {
 	}
 	store.Init(abs)
 	store.InitRedis()
+	store.InitDB()
 	log.Printf("📂 Data directory: %s", abs)
 
 	// 解析 dist 目录
@@ -114,6 +116,8 @@ func main() {
 
 	// 启动 Go Events 后台编排器
 	services.StartOrchestrator()
+	// 启动 Runtime 同步服务
+	services.StartRuntimeSync(context.Background())
 
 	// 打印环境变量以供调试
 	log.Printf("🔧 [ENV] IS_DOCKER: %s", os.Getenv("IS_DOCKER"))
@@ -128,45 +132,68 @@ func main() {
 
 	// ── GET 路由 ──
 	r.GET("/healthz", handlers.Healthz)
-	r.GET("/ws/live-status", services.WsLiveStatusHandler)
+	r.GET("/ws", services.WsLiveStatusHandler)
+	r.GET("/ws/live-status", services.WsLiveStatusHandler) // Alias for dashboard
+	r.GET("/ws/task/:taskId", services.WsLiveStatusHandler)
+	
+	// ── Auth 路由 ──
+	r.POST("/api/auth/login", handlers.LoginHandler)
+
+	// ── 公共查询路由 ──
 	r.GET("/api/live-status", handlers.JSONFile("live_status.json"))
 	r.GET("/api/agent-config", handlers.JSONFile("agent_config.json"))
 	r.GET("/api/model-change-log", handlers.JSONFileArray("model_change_log.json"))
 	r.GET("/api/last-result", handlers.JSONFile("last_model_change_result.json"))
 	r.GET("/api/officials-stats", handlers.JSONFile("officials_stats.json"))
 	r.GET("/api/morning-brief", handlers.JSONFile("morning_brief.json"))
-	r.GET("/api/morning-config", handlers.GetMorningConfig)
 	r.GET("/api/morning-brief/:date", handlers.GetMorningBriefByDate)
-	r.GET("/api/remote-skills-list", handlers.GetRemoteSkillsList)
-	r.GET("/api/skill-content/:agentId/:skillName", handlers.GetSkillContent)
-	r.GET("/api/task-activity/:taskId", handlers.GetTaskActivity)
-	r.GET("/api/scheduler-state/:taskId", handlers.GetSchedulerState)
-	r.GET("/api/agents-status", handlers.GetAgentsStatus)
-	r.GET("/api/agent-activity/:agentId", handlers.GetAgentActivity)
 
-	// ── POST 路由 ──
-	r.POST("/api/create-task", handlers.CreateTask)
-	r.POST("/api/review-action", handlers.ReviewAction)
-	r.POST("/api/task-action", handlers.TaskAction)
-	r.POST("/api/archive-task", handlers.ArchiveTask)
-	r.POST("/api/task-todos", handlers.UpdateTaskTodos)
-	r.POST("/api/advance-state", handlers.AdvanceState)
-	r.POST("/api/agent-wake", handlers.AgentWake)
-	r.POST("/api/set-model", handlers.SetModel)
-	r.POST("/api/morning-config", handlers.SaveMorningConfig)
-	r.POST("/api/morning-brief/refresh", handlers.RefreshMorningBrief)
-	r.POST("/api/add-skill", handlers.AddSkill)
-	r.POST("/api/add-remote-skill", handlers.AddRemoteSkill)
-	r.POST("/api/remote-skills-list", handlers.PostRemoteSkillsList)
-	r.POST("/api/update-remote-skill", handlers.UpdateRemoteSkill)
-	r.POST("/api/remove-remote-skill", handlers.RemoveRemoteSkill)
-	r.POST("/api/scheduler-scan", handlers.SchedulerScan)
-	r.POST("/api/scheduler-retry", handlers.SchedulerRetry)
-	r.POST("/api/scheduler-escalate", handlers.SchedulerEscalate)
-	r.POST("/api/scheduler-rollback", handlers.SchedulerRollback)
-	r.POST("/api/repair-flow-order", handlers.RepairFlowOrder)
+	// ── 受保护的 API 组 (需 Auth) ──
+	authorized := r.Group("/api")
+	authorized.Use(handlers.AuthMiddleware())
+	{
+		// Task Read
+		authorized.GET("/tasks", handlers.ListTasks)
+		authorized.GET("/tasks/:taskId", handlers.GetTask)
+		authorized.GET("/tasks-stats", handlers.GetTaskStats)
+		authorized.GET("/task-activity/:taskId", handlers.GetTaskActivity)
+		authorized.GET("/scheduler-state/:taskId", handlers.GetSchedulerState)
 
-	// 代理到 Python 后端 (RAG & Auth)
+		// Task Write/Action
+		authorized.POST("/create-task", handlers.CreateTask)
+		authorized.POST("/review-action", handlers.ReviewAction)
+		authorized.POST("/task-action", handlers.TaskAction)
+		authorized.POST("/archive-task", handlers.ArchiveTask)
+		authorized.POST("/task-todos", handlers.UpdateTaskTodos)
+		authorized.POST("/advance-state", handlers.AdvanceState)
+
+		// Agent/System
+		authorized.GET("/agents-status", handlers.GetAgentsStatus)
+		authorized.GET("/agent-activity/:agentId", handlers.GetAgentActivity)
+		authorized.POST("/agent-wake", handlers.AgentWake)
+		authorized.POST("/set-model", handlers.SetModel)
+		authorized.GET("/morning-config", handlers.GetMorningConfig)
+		authorized.POST("/morning-config", handlers.SaveMorningConfig)
+		authorized.POST("/morning-brief/refresh", handlers.RefreshMorningBrief)
+		
+		// Skills
+		authorized.GET("/remote-skills-list", handlers.GetRemoteSkillsList)
+		authorized.GET("/skill-content/:agentId/:skillName", handlers.GetSkillContent)
+		authorized.POST("/add-skill", handlers.AddSkill)
+		authorized.POST("/add-remote-skill", handlers.AddRemoteSkill)
+		authorized.POST("/remote-skills-list", handlers.PostRemoteSkillsList)
+		authorized.POST("/update-remote-skill", handlers.UpdateRemoteSkill)
+		authorized.POST("/remove-remote-skill", handlers.RemoveRemoteSkill)
+		
+		// Scheduler
+		authorized.POST("/scheduler-scan", handlers.SchedulerScan)
+		authorized.POST("/scheduler-retry", handlers.SchedulerRetry)
+		authorized.POST("/scheduler-escalate", handlers.SchedulerEscalate)
+		authorized.POST("/scheduler-rollback", handlers.SchedulerRollback)
+		authorized.POST("/repair-flow-order", handlers.RepairFlowOrder)
+	}
+
+	// 代理到 Python 后端 (RAG)
 	pythonBackendURL := os.Getenv("PYTHON_BACKEND_URL")
 	if pythonBackendURL == "" {
 		pythonBackendURL = "http://127.0.0.1:8000"
@@ -181,7 +208,6 @@ func main() {
 		proxy.ServeHTTP(c.Writer, c.Request)
 	}
 
-	r.Any("/api/auth/*any", pythonProxy)
 	r.Any("/api/rag/*any", pythonProxy)
 
 	// ── 静态文件 + SPA 回退 ──

@@ -133,45 +133,86 @@ func handleDispatch(ctx context.Context, msg redis.XMessage, sem chan struct{}) 
 
 	log.Printf("🔄 Dispatching task %s → agent '%s' (state: %s)", taskID, agent, state)
 
-	// 发布心跳开始
+	// 1. 发布心跳开始
 	PublishEvent(TopicAgentHeartbeat, "dispatcher", "agent.dispatch.start", traceID, EventPayload{
 		"task_id": taskID,
 		"agent":   agent,
 	})
 
-	result := callOpenClaw(ctx, agent, message, taskID, traceID)
+	maxRetry := 3 // 默认最大重试次数
+	retryCount := 0
 
-	// 发布 Agent 思考输出
+	var result openclawResult
+	for retryCount <= maxRetry {
+		if retryCount > 0 {
+			log.Printf("🔄 Retrying task %s (Agent: %s), attempt %d/%d...", taskID, agent, retryCount, maxRetry)
+			time.Sleep(time.Duration(retryCount*5) * time.Second) // 指数退避
+		}
+
+		result = callOpenClaw(ctx, agent, message, taskID, traceID)
+
+		if result.ReturnCode == 0 {
+			break
+		}
+
+		retryCount++
+		// 更新 DB 中的进度/错误信息
+		updateTaskRetryInfo(taskID, agent, result, retryCount)
+	}
+
+	// 2. 发布 Agent 思考输出
 	PublishEvent(TopicAgentThoughts, "agent."+agent, "agent.output", traceID, EventPayload{
 		"task_id":     taskID,
 		"agent":       agent,
 		"output":      result.Stdout,
 		"return_code": result.ReturnCode,
+		"retry_count": retryCount,
 	})
 
 	if result.ReturnCode == 0 {
 		log.Printf("✅ Agent '%s' completed task %s", agent, taskID)
-		// Agent 可能通过 kanban_update.py 更新了任务状态，
-		// 但 kanban_update.py 不会发布 Redis 事件，所以这里主动检查并补发。
 		checkAndPublishStateChange(taskID, state, agent)
 	} else {
-		if result.ReturnCode == -1 {
-			log.Printf("❌ Dispatch FAILED for task %s: 'openclaw' command not found or execution failed.", taskID)
-		} else {
-			log.Printf("⚠️ Agent '%s' returned non-zero (rc=%d) for task %s", agent, result.ReturnCode, taskID)
-		}
-
-		// 打印所有可能的输出，协助诊断
-		if result.Stderr != "" {
-			log.Printf("▶️ Stderr: %s", result.Stderr)
-		}
-		if result.Stdout != "" {
-			log.Printf("▶️ Stdout/Output: %s", result.Stdout)
-		}
+		log.Printf("❌ Dispatch EXHAUSTED for task %s (Agent: %s) after %d retries", taskID, agent, retryCount)
+		// 最终失败，标记任务阻塞
+		markTaskBlocked(taskID, agent, result)
 	}
 
 	// ACK
 	store.RDB.XAck(ctx, TopicTaskDispatch, DispatchGroup, msg.ID)
+}
+
+func updateTaskRetryInfo(taskID, agent string, res openclawResult, attempt int) {
+	tasks, _ := store.LoadTasks()
+	task := store.FindTask(tasks, taskID)
+	if task == nil {
+		return
+	}
+
+	task.Now = fmt.Sprintf("⚠️ 执行失败 (重试 %d/3): %s", attempt, res.Stderr)
+	task.UpdatedAt = store.NowISO()
+	store.SaveTasks([]models.Task{*task})
+}
+
+func markTaskBlocked(taskID, agent string, res openclawResult) {
+	tasks, _ := store.LoadTasks()
+	task := store.FindTask(tasks, taskID)
+	if task == nil {
+		return
+	}
+
+	task.State = "Blocked"
+	task.Block = fmt.Sprintf("Agent %s 最终执行失败: %s", agent, res.Stderr)
+	task.UpdatedAt = store.NowISO()
+	store.SaveTasks([]models.Task{*task})
+
+	// 发布状态变更事件，以便 Dashboard 监控
+	PublishEvent(TopicTaskStatus, taskID, "task.status", "dispatcher-retry", EventPayload{
+		"task_id": taskID,
+		"from":    "Executing",
+		"to":      "Blocked",
+		"reason":  task.Block,
+	})
 }
 
 // checkAndPublishStateChange 检查 Agent 执行后任务状态是否发生变化。

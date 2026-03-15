@@ -13,12 +13,12 @@ class MultiModalParser:
     """多模态解析服务：负责将 PDF 和图片转换为文本。
     逻辑分流：
     - 常见扫描件、标准 PDF：PaddleOCR-VL-1.5 (快速、低成本)
-    - 复杂图表、手写、学术报表：GLM-4.1V-9B-Thinking (高性能、逻辑理解)
+    - 复杂图表、手写、学术报表：GLM-Z1-9B-0414 (高性能、逻辑理解)
     """
 
     def __init__(self):
         self.paddle_model = "PaddlePaddle/PaddleOCR-VL-1.5"
-        self.glm_model = "THUDM/GLM-4.1V-9B-Thinking"
+        self.glm_model = "THUDM/GLM-Z1-9B-0414"
 
     async def parse(self, file_bytes: bytes, filename: str) -> str:
         """解析文件内容。"""

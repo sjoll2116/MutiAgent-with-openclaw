@@ -20,7 +20,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from .config import get_settings
 from .services.event_bus import get_event_bus
-from .api import tasks, agents, events, admin, websocket, rag, auth
+from .api import rag
 
 
 logging.basicConfig(
@@ -34,9 +34,9 @@ log = logging.getLogger("edict")
 async def lifespan(app: FastAPI):
     """应用生命周期管理。"""
     settings = get_settings()
-    log.info(f"🚀 Edict Backend starting on port {settings.port}...")
+    log.info(f"🚀 Edict Backend (RAG Only) starting on port {settings.port}...")
 
-    # 连接 Event Bus
+    # 如果 RAG 仍需 Event Bus，则保持连接
     bus = await get_event_bus()
     log.info("✅ Event Bus connected")
 
@@ -48,9 +48,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="OpenClaw MAS 后端服务",
-    description="事件驱动的多智能体协同平台",
-    version="2.0.0",
+    title="OpenClaw MAS RAG Backend",
+    description="专门负责 RAG 检索与评估的 Python 服务",
+    version="2.1.0",
     lifespan=lifespan,
 )
 
@@ -63,14 +63,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 注册路由
-app.include_router(auth.router, prefix="/api", tags=["auth"])
-app.include_router(tasks.router, prefix="/api/tasks", tags=["tasks"])
-
-app.include_router(agents.router, prefix="/api/agents", tags=["agents"])
-app.include_router(events.router, prefix="/api/events", tags=["events"])
-app.include_router(admin.router, prefix="/api/admin", tags=["admin"])
-app.include_router(websocket.router, tags=["websocket"])
+# 注册路由 - 仅保留 RAG
 app.include_router(rag.router, prefix="/api", tags=["rag"])
 
 

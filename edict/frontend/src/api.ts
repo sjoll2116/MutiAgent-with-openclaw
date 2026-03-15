@@ -118,6 +118,13 @@ export const api = {
   // RAG 知识库
   ragIngest: (data: IngestRequest) =>
     postJ<ActionResult>(`${API_BASE}/api/rag/ingest`, data),
+  listDocuments: (page = 1, limit = 10) =>
+    fetchJ<{ items: RAGDocument[] }>(`${API_BASE}/api/rag/documents?page=${page}&limit=${limit}`),
+  deleteDocument: (docId: string) =>
+    fetch(`${API_BASE}/api/rag/documents/${encodeURIComponent(docId)}`, { 
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` }
+    }).then(r => r.json()),
 
   // 认证
   login: async (password: string) => {
@@ -451,4 +458,13 @@ export interface IngestRequest {
   content: string;
   filename?: string;
   metadata?: Record<string, unknown>;
+}
+
+export interface RAGDocument {
+  doc_id: string;
+  file_name: string;
+  file_type: string;
+  created_at: string;
+  source_agent: string;
+  is_temporary: boolean;
 }

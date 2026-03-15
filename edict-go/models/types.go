@@ -71,7 +71,67 @@ type CreateTaskReq struct {
 	Priority   string         `json:"priority,omitempty"`
 	TemplateID string         `json:"templateId,omitempty"`
 	Params     map[string]any `json:"params,omitempty"`
-	TargetDept string         `json:"targetDept,omitempty"`
+	TargetDept string         `json:"target_dept,omitempty"`
+}
+
+// TaskActionReq 用于 POST /api/task-action (done / block / progress / stop / cancel / resume)
+type TaskActionReq struct {
+	TaskID    string `json:"task_id"`
+	Action    string `json:"action,omitempty"` // stop, cancel, resume
+	State     string `json:"state,omitempty"`  // Completed, Blocked
+	Now       string `json:"now,omitempty"`
+	Block     string `json:"block,omitempty"`
+	Output    string `json:"output,omitempty"`
+	TodosPipe string `json:"todos_pipe,omitempty"`
+	Tokens    int    `json:"tokens,omitempty"`
+	Cost      float64 `json:"cost,omitempty"`
+	Elapsed   int     `json:"elapsed,omitempty"`
+	TargetDept string `json:"target_dept,omitempty"`
+	FromDept  string  `json:"from,omitempty"`
+	ToDept    string  `json:"to,omitempty"`
+	Remark    string  `json:"remark,omitempty"`
+}
+
+// ArchiveTaskReq 用于 POST /api/archive-task
+type ArchiveTaskReq struct {
+	TaskID         string `json:"task_id"`
+	Archived       *bool  `json:"archived,omitempty"`
+	ArchiveAllDone bool   `json:"archive_all_done,omitempty"`
+}
+
+// TodoUpdateReq 用于 POST /api/task-todos
+type TodoUpdateReq struct {
+	TaskID string `json:"task_id"`
+	TodoID string `json:"todo_id,omitempty"`
+	Title  string `json:"title,omitempty"`
+	Status string `json:"status,omitempty"`
+	Detail string `json:"detail,omitempty"`
+	Todos  []TodoItem `json:"todos,omitempty"`
+}
+
+// ReviewActionReq 用于 POST /api/review-action
+type ReviewActionReq struct {
+	TaskID  string `json:"task_id"`
+	Action  string `json:"action"`
+	Comment string `json:"comment,omitempty"`
+}
+
+// AdvanceStateReq 用于 POST /api/advance-state
+type AdvanceStateReq struct {
+	TaskID  string `json:"task_id"`
+	Comment string `json:"comment,omitempty"`
+}
+
+// AgentWakeReq 用于 POST /api/agent-wake
+type AgentWakeReq struct {
+	AgentID string `json:"agent_id"`
+	Message string `json:"message,omitempty"`
+}
+
+// SetModelReq 用于 POST /api/set-model
+type SetModelReq struct {
+	AgentID string `json:"agent_id"`
+	Model   string `json:"model"`
 }
 
 // APIResp 是一个通用的 {ok, message?, error?} 包络对象。
