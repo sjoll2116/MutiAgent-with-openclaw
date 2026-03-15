@@ -115,6 +115,10 @@ export const api = {
   createTask: (data: CreateTaskPayload) =>
     postJ<ActionResult & { taskId?: string }>(`${API_BASE}/api/create-task`, data),
 
+  // RAG 知识库
+  ragIngest: (data: IngestRequest) =>
+    postJ<ActionResult>(`${API_BASE}/api/rag/ingest`, data),
+
   // 认证
   login: async (password: string) => {
     const formData = new URLSearchParams();
@@ -420,6 +424,7 @@ export interface CreateTaskPayload {
   priority?: string;
   templateId?: string;
   params?: Record<string, string>;
+  meta?: Record<string, unknown>;
 }
 
 export interface RemoteSkillItem {
@@ -439,4 +444,11 @@ export interface RemoteSkillsListResult {
   count?: number;
   listedAt?: string;
   error?: string;
+}
+
+export interface IngestRequest {
+  doc_id: string;
+  content: string;
+  filename?: string;
+  metadata?: Record<string, unknown>;
 }

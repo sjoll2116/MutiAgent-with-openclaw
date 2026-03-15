@@ -57,7 +57,7 @@ STATE_TRANSITIONS = {
     TaskState.Blocked: {TaskState.Queued, TaskState.Planning, TaskState.PlanReview, TaskState.Dispatching, TaskState.Executing},
 }
 
-# 状态 → Agent 映射 (辅助)
+# 状态 → Agent 映射 
 STATE_AGENT_MAP = {
     TaskState.Queued: "coordinator",
     TaskState.Planning: "planner",
@@ -66,7 +66,7 @@ STATE_AGENT_MAP = {
     TaskState.ResultResultReview: "dispatcher",
 }
 
-# 组织 → Agent 映射 (辅助)
+# 名称 → Agent 映射 
 ORG_AGENT_MAP = {
     "文档编写员": "doc_writer",
     "数据分析师": "data_analyst",

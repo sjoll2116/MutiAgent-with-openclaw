@@ -12,6 +12,8 @@ export default function TemplatePanel() {
   const [formTpl, setFormTpl] = useState<Template | null>(null);
   const [formVals, setFormVals] = useState<Record<string, string>>({});
   const [previewCmd, setPreviewCmd] = useState('');
+  const [fileToIngest, setFileToIngest] = useState<{ name: string; content: string } | null>(null);
+  const [ingesting, setIngesting] = useState(false);
 
   let tpls = TEMPLATES;
   if (tplCatFilter !== '全部') tpls = tpls.filter((t) => t.cat === tplCatFilter);
@@ -62,6 +64,26 @@ export default function TemplatePanel() {
     if (!confirm(`确认下发任务？\n\n${cmd.substring(0, 200)}${cmd.length > 200 ? '…' : ''}`)) return;
 
     try {
+      // 1. 如果有上传文件，先执行 RAG 注入
+      if (fileToIngest) {
+        setIngesting(true);
+        toast(`📤 正在注入知识库: ${fileToIngest.name}...`, 'ok');
+        const ir = await api.ragIngest({
+          doc_id: `upload-${Date.now()}-${fileToIngest.name}`,
+          content: fileToIngest.content,
+          filename: fileToIngest.name,
+          metadata: { filename: fileToIngest.name, source: 'user-upload', at: new Date().toISOString() }
+        });
+        setIngesting(false);
+        if (!ir.ok) {
+          toast(`❌ 知识注入失败: ${ir.error}`, 'err');
+          if (!confirm('知识注入失败，是否仍要继续下发任务？')) return;
+        } else {
+          toast('✅ 知识库已更新', 'ok');
+        }
+      }
+
+      // 2. 下发任务
       const params: Record<string, string> = {};
       for (const p of formTpl.params) {
         params[p.key] = formVals[p.key] || p.default || '';
@@ -73,17 +95,35 @@ export default function TemplatePanel() {
         priority: 'normal',
         templateId: formTpl.id,
         params,
+        meta: fileToIngest ? { uploaded_files: [fileToIngest.name] } : {},
       });
       if (r.ok) {
         toast(`✅ 任务指令已下达`, 'ok');
         setFormTpl(null);
+        setFileToIngest(null);
         loadAll();
       } else {
         toast(r.error || '下发任务失败', 'err');
       }
-    } catch {
-      toast('⚠️ 服务器连接失败', 'err');
+    } catch (err) {
+      setIngesting(false);
+      toast('⚠️ 操作失败', 'err');
     }
+  };
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) {
+      setFileToIngest(null);
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      const content = ev.target?.result as string;
+      setFileToIngest({ name: file.name, content });
+      toast(`📄 文件已就绪: ${file.name} (${Math.round(content.length / 1024)} KB)`, 'ok');
+    };
+    reader.readAsText(file);
   };
 
   return (
@@ -127,7 +167,7 @@ export default function TemplatePanel() {
 
       {/* Template Form Modal */}
       {formTpl && (
-        <div className="modal-bg open" onClick={() => setFormTpl(null)}>
+        <div className="modal-bg open" onClick={() => { if (!ingesting) setFormTpl(null); }}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
             <button className="modal-close" onClick={() => setFormTpl(null)}>✕</button>
             <div className="modal-body">
@@ -184,6 +224,46 @@ export default function TemplatePanel() {
                   </div>
                 ))}
 
+                {/* 知识上传区域 */}
+                <div className="tpl-field" style={{ borderTop: '1px solid var(--line)', paddingTop: 16, marginTop: 8 }}>
+                  <label className="tpl-label">
+                    🧠 知识注入 (可选)
+                    <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)', marginLeft: 8 }}>
+                      将文档上传到 RAG 知识库，供 Agent 检索
+                    </span>
+                  </label>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+                    <input
+                      type="file"
+                      accept=".txt,.md,.json,.py,.go"
+                      onChange={handleFileChange}
+                      id="rag-file-upload"
+                      style={{ display: 'none' }}
+                    />
+                    <label
+                      htmlFor="rag-file-upload"
+                      style={{
+                        padding: '8px 14px',
+                        background: 'var(--panel)',
+                        border: '1px solid var(--line)',
+                        borderRadius: 8,
+                        cursor: 'pointer',
+                        fontSize: 12,
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: 6
+                      }}
+                    >
+                      {fileToIngest ? '📁 更改文件' : '➕ 选择文档'}
+                    </label>
+                    {fileToIngest && (
+                      <span style={{ fontSize: 11, color: 'var(--ok)' }}>
+                        {fileToIngest.name}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
                 {previewCmd && (
                   <div
                     style={{
@@ -203,12 +283,12 @@ export default function TemplatePanel() {
                   </div>
                 )}
 
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end' }}>
+                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
                   <button type="button" className="btn btn-g" onClick={preview} style={{ padding: '8px 16px', fontSize: 12 }}>
                     👁 预览指令
                   </button>
-                  <button type="submit" className="tpl-go" style={{ padding: '8px 20px', fontSize: 13 }}>
-                    🚀 下发任务
+                  <button type="submit" className="tpl-go" disabled={ingesting} style={{ padding: '8px 20px', fontSize: 13, opacity: ingesting ? 0.6 : 1 }}>
+                    {ingesting ? '📤 正在注入...' : '🚀 下发任务'}
                   </button>
                 </div>
               </form>
