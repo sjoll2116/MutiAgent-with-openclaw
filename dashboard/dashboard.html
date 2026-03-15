@@ -4298,7 +4298,7 @@
       if (!data || !data.ok) return;
       const gw = data.gateway || {};
       const agents = data.agents || [];
-      // 跳过 main（和 taizi 重复）
+      // 跳过 main
       const filtered = agents.filter(a => a.id !== 'main');
       const running = filtered.filter(a => a.status === 'running').length;
       const idle = filtered.filter(a => a.status === 'idle').length;
@@ -5841,7 +5841,7 @@
       } catch (e) { toast('服务器连接失败', 'err'); }
     }
 
-    /* ══ GLOBAL TAIZI SCAN ══ */
+    /* 任务巡检 */
     async function runGlobalSchedulerScan() {
       const btn = document.getElementById('btn-global-scan');
       const st = document.getElementById('global-scan-status');
