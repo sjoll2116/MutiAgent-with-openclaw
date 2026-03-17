@@ -15,4 +15,12 @@ openai>=1.14.0
 python-jose[cryptography]>=3.3.0
 passlib[bcrypt]>=1.7.4
 
+# API/Web
 python-multipart>=0.0.9
+
+# RAG Phase 3 Parsing & Data Cleaning
+pymupdf4llm>=0.0.17
+pandas>=2.0.0
+openpyxl>=3.1.0
+pillow>=10.2.0
+clean-text>=0.6.0

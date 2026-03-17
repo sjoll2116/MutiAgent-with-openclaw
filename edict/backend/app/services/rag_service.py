@@ -11,6 +11,7 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter, Language
 from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from ..models.document import Document, DocumentChunk, EvalSample
+from .cleaning_service import AdvancedCleaningService
 
 log = logging.getLogger("edict.rag_service")
 
@@ -45,19 +46,45 @@ class RAGService:
         """计算内容的 SHA-256 哈希值用于去重。"""
         return hashlib.sha256(text_content.encode("utf-8")).hexdigest()
 
-    def _clean_text(self, text_content: str) -> str:
-        """简单的文本清洗：去除多余空白、修复断行、剥离常见页眉页脚模板。"""
-        # 1. 基础清理
-        text_content = re.sub(r'\s+', ' ', text_content) # 压缩空白
-        text_content = text_content.strip()
+    def _markdown_semantic_split(self, text_content: str, file_name: str) -> List[Dict[str, str]]:
+        """针对 Markdown 的层级富化切片方案。
+        返回包含 'text' 和 'path' 的字典列表。
+        """
+        lines = text_content.split("\n")
+        header_stack = []
+        sections = []
+        current_content = []
         
-        # 2. 剥离简单页码 (如 "- 23 -")
-        text_content = re.sub(r'\s*-\s*\d+\s*-\s*', ' ', text_content)
+        for line in lines:
+            header_match = re.match(r'^(#+)\s+(.*)', line)
+            if header_match:
+                if current_content:
+                    path = " > ".join(header_stack) if header_stack else "Root"
+                    sections.append({"text": "\n".join(current_content), "path": path})
+                    current_content = []
+                
+                level = len(header_match.group(1))
+                title = header_match.group(2).strip()
+                while len(header_stack) >= level:
+                    header_stack.pop()
+                header_stack.append(title)
+            else:
+                current_content.append(line)
         
-        # 3. 剥离连续的特殊字符 (OCR 常见噪声)
-        text_content = re.sub(r'([_#*=-]){5,}', r'\1\1\1', text_content)
-        
-        return text_content
+        if current_content:
+            path = " > ".join(header_stack) if header_stack else "Root"
+            sections.append({"text": "\n".join(current_content), "path": path})
+            
+        final_chunks = []
+        for sec in sections:
+            if len(sec["text"]) > self.splitter._chunk_size:
+                sub_texts = self.splitter.split_text(sec["text"])
+                for st in sub_texts:
+                    final_chunks.append({"text": st, "path": sec["path"]})
+            else:
+                final_chunks.append(sec)
+                
+        return final_chunks
 
     async def _get_embedding(self, text_content: str) -> List[float]:
         """通过硅基流动 API 获取文本向量。"""
@@ -85,6 +112,7 @@ class RAGService:
         except Exception as e:
             log.error(f"硅基流动 Embedding 错误: {e}")
             return [0.0] * 1024
+        return [0.0] * 1024
 
     async def _rerank_results(self, query: str, documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """使用硅基流动 BGE-Reranker 对搜索结果进行重排序。"""
@@ -125,6 +153,7 @@ class RAGService:
         except Exception as e:
             log.error(f"硅基流动重排序错误: {e}")
             return documents
+        return documents
 
     async def _web_search_fallback(self, query: str) -> List[Dict[str, Any]]:
         """当本地知识库无结果时，调用 Tavily 搜索进行补充。"""
@@ -159,6 +188,7 @@ class RAGService:
         except Exception as e:
             log.error(f"Tavily search fallback failed: {e}")
             return []
+        return []
 
     async def ingest_document(self, doc_id: str, raw_text: str, metadata: Optional[Dict[str, Any]] = None, 
                                filename: Optional[str] = None, is_temporary: bool = False):
@@ -166,7 +196,7 @@ class RAGService:
         if metadata is None: metadata = {}
         
         # 0. 文本清洗
-        cleaned_text = self._clean_text(raw_text)
+        cleaned_text = AdvancedCleaningService.process(raw_text)
         
         # 1. 去重检查 (基于 SHA-256)
         file_hash = self._calculate_hash(cleaned_text)
@@ -212,23 +242,39 @@ class RAGService:
         self.db.add(new_doc)
         await self.db.flush()
 
-        # 4. 切片
-        if language:
+        # 4. 切片与元数据富化 (Structured Metadata)
+        if language == Language.MARKDOWN:
+            chunk_data = self._markdown_semantic_split(cleaned_text, file_name)
+        elif language:
             splitter = RecursiveCharacterTextSplitter.from_language(
                 language=language,
                 chunk_size=self.splitter._chunk_size,
                 chunk_overlap=self.splitter._chunk_overlap
             )
-            chunks = splitter.split_text(cleaned_text)
+            raw_chunks = splitter.split_text(cleaned_text)
+            chunk_data = [{"text": c, "path": "Code"} for c in raw_chunks]
         else:
-            chunks = self.splitter.split_text(cleaned_text)
+            raw_chunks = self.splitter.split_text(cleaned_text)
+            chunk_data = [{"text": c, "path": "General"} for c in raw_chunks]
         
-        for chunk in chunks:
-            embedding = await self._get_embedding(chunk)
+        for item in chunk_data:
+            chunk_text = item["text"]
+            section_path = item["path"]
+            
+            # --- 向量计算注入上下文 (Embedding-only Enrichment) ---
+            # 向量模型需要知道它属于哪个文档和章节，但存储时不强行拼接。
+            enrichment_for_embedding = f"Document: {file_name}\nSection: {section_path}\n{chunk_text}"
+            embedding = await self._get_embedding(enrichment_for_embedding)
+
+            # 更新本片段特有的元数据
+            chunk_metadata = metadata.copy()
+            chunk_metadata["section_path"] = section_path
+            chunk_metadata["file_name"] = file_name
+
             db_chunk = DocumentChunk(
                 doc_id=doc_id,
-                content=chunk,
-                metadata_json=json.dumps(metadata),
+                content=chunk_text, # 存储干净的文本，节约 Rerank/LLM Token
+                metadata_json=json.dumps(chunk_metadata),
                 file_name=file_name,
                 file_type=file_type,
                 source_agent=source_agent,
@@ -242,7 +288,7 @@ class RAGService:
                 text("UPDATE document_chunks SET fts = to_tsvector('simple', content) WHERE id = :id"),
                 {"id": db_chunk.id}
             )
-            
+        
         await self.db.commit()
 
     async def delete_document(self, doc_id: str):
@@ -281,8 +327,55 @@ class RAGService:
             ]
         }
 
+    async def rewrite_query(self, query: str, context: Optional[str] = None) -> Dict[str, Any]:
+        """使用 GLM-4-9B-Chat 进行查询意图分析与路由分发。
+        判断是否可以直接放行、仅需改写、还是需要深度幻觉。
+        """
+        if not openai_client:
+            return {"rewritten_query": query, "needs_hyde": False, "routing": "bypass"}
+        
+        try:
+            rewrite_system_prompt = (
+                "你是一个 RAG 系统的智能路由专家。请分析用户的原始查询和当前对话上下文。\n"
+                "你的任务是决定该查询的处理路径并输出 JSON。选项如下：\n"
+                "1. bypass: 查询本身已经非常清晰、完整，无需任何扩充即可精准命中数据库（如：“系统架构图在哪里”、“192.168.1.1 设备的文档”）。\n"
+                "2. rewrite_only: 存在指代不清（“修复它”、“那个任务”），或语句不够精炼，需要你结合上下文补全为独立搜索词，但属于明确的事实搜寻，不需要生成虚构答案。\n"
+                "3. hyde: 语义鸿沟大。用户问的是抽象概念、原理逻辑或寻求解决方案（如：“如何优化并发性能”、“为什么总是报超时错误”）。你需要标记为 hyde，系统会用假想答案去检索。\n"
+                "\n"
+                "要求：若判定为 bypass，rewritten_query 保持原样；若判定为其它，提供优化后的查询。\n"
+                "务必仅以 JSON 格式输出：{\"routing_decision\": \"bypass\"|\"rewrite_only\"|\"hyde\", \"rewritten_query\": \"...\"}"
+            )
+            
+            user_msg = f"上下文: {context}\n问题: {query}" if context else f"问题: {query}"
+            
+            response = await openai_client.chat.completions.create(
+                model="THUDM/glm-4-9b-chat", # 使用指定模型
+                messages=[
+                    {"role": "system", "content": rewrite_system_prompt},
+                    {"role": "user", "content": user_msg}
+                ],
+                temperature=0.1,
+                response_format={"type": "json_object"}
+            )
+            
+            result = json.loads(response.choices[0].message.content)
+            routing = result.get("routing_decision", "bypass")
+            rewritten_query = result.get("rewritten_query", query)
+            
+            # 若判研为 bypass，强制使用原词以防 LLM 画蛇添足
+            if routing == "bypass":
+                rewritten_query = query
+                
+            needs_hyde = (routing == "hyde")
+            
+            log.info(f"Query Routing: [{routing}] {query} -> {rewritten_query}")
+            return {"rewritten_query": rewritten_query, "needs_hyde": needs_hyde, "routing": routing}
+        except Exception as e:
+            log.error(f"Query Rewrite error: {e}")
+            return {"rewritten_query": query, "needs_hyde": False, "routing": "bypass"}
+
     async def generate_hyde_draft(self, query: str) -> str:
-        """HyDE 模式：生成理想答案草稿。"""
+        """HyDE 模式：生成理想答案草案。"""
         if not openai_client: return query
         try:
             hyde_system_prompt = (
@@ -290,22 +383,31 @@ class RAGService:
                 "针对用户的查询生成一段详尽且准确的预想回答。仅输出文档内容，不包含引导语。"
             )
             response = await openai_client.chat.completions.create(
-                model=self.llm_model,
+                model="THUDM/glm-4-9b-chat", # 保持模型一致性
                 messages=[{"role": "system", "content": hyde_system_prompt}, {"role": "user", "content": query}],
                 temperature=0.3,
             )
             return response.choices[0].message.content
-        except Exception:
+        except Exception as e:
+            log.error(f"HyDE error: {e}")
             return query
 
-    async def answer_query(self, query: str, top_k: int = 5, metadata_filter: Optional[dict] = None) -> Dict[str, Any]:
+    async def answer_query(self, query: str, top_k: int = 5, metadata_filter: Optional[dict] = None, 
+                           context: Optional[str] = None) -> Dict[str, Any]:
         """执行 RAG 完整流程：检索 -> 综合 -> 生成回答。"""
-        chunks = await self.hybrid_search(query, top_k=top_k, metadata_filter=metadata_filter)
+        chunks = await self.hybrid_search(query, top_k=top_k, metadata_filter=metadata_filter, context=context)
         
         if not chunks:
             return {"answer": "知识库及网页搜索中均未找到相关信息，建议重新描述问题。", "sources": []}
             
-        context = "\n\n".join([f"--- 片段 {i+1} ---\n{c['content']}" for i, c in enumerate(chunks)])
+        # 综合参考资料：从元数据动态重建上下文头，保持 content 干净
+        context_parts = []
+        for i, c in enumerate(chunks):
+            m = c.get("metadata", {})
+            header = f"--- [来源: {m.get('file_name', '未知')}, 章节: {m.get('section_path', 'Root')}] ---"
+            context_parts.append(f"{header}\n{c['content']}")
+        
+        context = "\n\n".join(context_parts)
         synthesis_prompt = (
             f"基于提供的【参考知识】回答用户问题。若信息带 [来自网页搜索] 标记，请注明。\n\n"
             f"【参考知识】\n{context}\n\n"
@@ -346,12 +448,18 @@ class RAGService:
             return {"answer": f"合成回答错误: {e}", "sources": chunks}
 
     async def hybrid_search(self, query: str, top_k: int = 5, use_hyde: bool = True, 
-                            metadata_filter: Optional[dict] = None) -> List[Dict[str, Any]]:
+                            metadata_filter: Optional[dict] = None, context: Optional[str] = None) -> List[Dict[str, Any]]:
         """结合密集向量和全文检索，随后执行过滤、重排序、阈值筛选及 Web 兜底。支持软删除过滤。"""
-        search_text = await self.generate_hyde_draft(query) if use_hyde else query
+        # 1. 查询改写与动态 HyDE 决策
+        rewrite_res = await self.rewrite_query(query, context)
+        rewritten_query = rewrite_res.get("rewritten_query", query)
+        should_hyde = rewrite_res.get("needs_hyde", False) and use_hyde
+        
+        # 2. 生成向量搜索文本 (Rewritten or HyDE)
+        search_text = await self.generate_hyde_draft(rewritten_query) if should_hyde else rewritten_query
         query_embedding = await self._get_embedding(search_text)
         
-        # 动态拼接多维过滤
+        # 3. 动态拼接多维过滤
         filter_parts: List[str] = []
         params = {"embedding": str(query_embedding), "query": query}
         if metadata_filter:
@@ -401,7 +509,7 @@ class RAGService:
         reranked = await self._rerank_results(query, initial_chunks)
         
         if len(reranked) > self.rerank_top_k:
-            candidate_list = reranked[:self.rerank_top_k]
+            candidate_list = reranked[0:self.rerank_top_k]
         else:
             candidate_list = reranked
 

@@ -43,7 +43,6 @@ graph TD
 
 ---
 
-## 🚀 快速开始 (WSL2 推荐)
 
 ### 1. 基础环境
 确保本地已安装 `Go 1.21+`, `Python 3.11+`, `Docker` 以及 `OpenClaw`。
@@ -80,11 +79,6 @@ cd edict-go && go run main.go --port 7891
 ## 🛠️ 配置说明
 
 在 `edict/backend/app/.env` 中配置你的模型 API 密钥：
-```env
-OPENAI_API_KEY=sk-xxxx
-POSTGRES_HOST=localhost
-REDIS_URL=redis://localhost:6379/0
-```
 Agent 的模型切换可通过看板界面一键完成。
 
 ---
@@ -97,7 +91,3 @@ Agent 的模型切换可通过看板界面一键完成。
 - **`agents/`**: OpenClaw 各引擎的人格定义（SOUL.md）与工作协议。
 - **`scripts/`**: 运维及同步辅助工具集。
 
----
-
-## ⚖️ 开源协议
-[MIT License](LICENSE)
