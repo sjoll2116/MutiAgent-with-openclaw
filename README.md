@@ -47,41 +47,46 @@ graph TD
 ### 1. 基础环境
 确保本地已安装 `Go 1.21+`, `Python 3.11+`, `Docker` 以及 `OpenClaw`。
 
-### 2. 启动基础服务
-使用 Docker 一键拉起持久化层（Redis & Pgvector）：
-```bash
-docker compose -f docker-compose.dev.yml up -d
-```
+1. 生产环境一键部署 (推荐)
 
-### 3. 一键初始化集群
-运行安装脚本，自动注册 Agent 到 OpenClaw 并配置工作协议：
-```bash
-chmod +x install.sh && ./install.sh
-```
+配置密钥： 在根目录下创建 .env 文件（或修改已有的），确保填入以下关键 API Key：
+SILICONFLOW_API_KEY=你的硅基流动KEY
+TAVILY_API_KEY=你的搜索KEY
+JWT_SECRET=一个随机的长字符串
+一键启动： 在根目录下执行：
+docker-compose -f docker-compose.prod.yml up -d
+验证状态： 启动后，访问 http://localhost:80 (或 Caddy 指定的域名) 即可看到看板。
 
-### 4. 启动后端组件
-**终端 A (RAG 服务):**
-```bash
-cd edict/backend && pip install -r requirements.txt
-uvicorn app.main:app --port 8000
-```
+2. 开发者模式部署 (源码级手动)
+如果你需要进行开发调试，可以使用 install.sh脚本进行本地安装：
+环境检查： 确保本地已安装 Go 1.21+、Python 3.11+ 和 Node.js 18+。安装 openclaw CLI 工具。
+运行安装脚本：
+bash
+bash install.sh
+该脚本会自动：
+创建 Agent 专属的 workspace。
+在 OpenClaw 中自动注册所有异构智能体服务。
+初始化预设任务队列。
+构建 React 前端产物。
+分别启动服务：
+终端 A (调度层)：cd edict-go && go run main.go
+终端 B (RAG 层)：cd edict/backend && uvicorn app.main:app --reload
+终端 C (看板服务器)：python3 dashboard/server.py
+3. 部署后关键验证
+部署完成后，建议执行以下三项检查确保 RAG 链路通畅：
 
-**终端 B (Go 调度大盘):**
-```bash
-cd edict-go && go run main.go --port 7891
-```
+数据库初始化：访问 /healthz 检查 Postgres 连接是否正常，特别是 pgvector 扩展是否已激活。
+模型联通性：在前端看板发送测试提问，观察 python-api 的日志，确认 
 
-### 5. 访问看板
-打开浏览器访问：[http://localhost:7891](http://localhost:7891)
+rewrite_query
+ 和 
 
----
+hybrid_search
+ 是否已正确调用硅基流动接口。
+实时同步：确认 
 
-## 🛠️ 配置说明
-
-在 `edict/backend/app/.env` 中配置你的模型 API 密钥：
-Agent 的模型切换可通过看板界面一键完成。
-
----
+scripts/refresh_live_data.py
+ 循环正在运行，这是 Agent 思考过程（Thought Stream）能够实时推送到看板的关键。
 
 ## 📂 项目结构
 

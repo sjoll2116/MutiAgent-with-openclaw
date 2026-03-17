@@ -9,7 +9,7 @@ data/tasks_source.json
 data/tasks.json
 data/bitable_source.json
 data/mission_control_tasks.json
-
+.env
 # Logs
 *.log
 /tmp/
