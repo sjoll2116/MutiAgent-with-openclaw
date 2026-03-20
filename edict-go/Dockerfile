@@ -8,7 +8,9 @@ ENV GOPROXY=https://goproxy.cn,direct
 
 # 复制 go.mod 和 go.sum
 COPY go.mod go.sum ./
-RUN go mod download
+# 更换 Alpine 镜像源 (USTC) 并下载依赖
+RUN sed -i 's/dl-cdn.alpinelinux.org/mirrors.ustc.edu.cn/g' /etc/apk/repositories \
+    && go mod download
 
 # 复制源码
 COPY . .
@@ -22,7 +24,14 @@ FROM python:3.11-slim-bookworm
 WORKDIR /app
 
 # 安装必要系统工具，包括 openssh-client 和构建工具
-RUN apt-get update && apt-get install -y --no-install-recommends \
+# 强制将所有 debian 源切换为 USTC 并增加重载重试
+RUN set -ex; \
+    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources || true; \
+    sed -i 's/security.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources || true; \
+    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list || true; \
+    sed -i 's/security.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list || true; \
+    for i in 1 2 3; do apt-get update && break || sleep 5; done; \
+    apt-get install -y --no-install-recommends \
     ca-certificates \
     tzdata \
     git \
@@ -30,14 +39,21 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
     openssh-client \
     build-essential \
-    && git config --global url."https://kkgithub.com/".insteadOf https://github.com/ \
-    && git config --global url."https://kkgithub.com/".insteadOf git@github.com: \
-    && git config --global url."https://kkgithub.com/".insteadOf ssh://git@github.com/ \
-    && curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
-    && apt-get install -y nodejs \
-    && npm config set registry https://mirrors.cloud.tencent.com/npm/ \
-    && npm install -g openclaw@latest \
     && rm -rf /var/lib/apt/lists/*
+
+# 设置 Git 镜像
+RUN git config --global url."https://kkgithub.com/".insteadOf https://github.com/ \
+    && git config --global url."https://kkgithub.com/".insteadOf git@github.com: \
+    && git config --global url."https://kkgithub.com/".insteadOf ssh://git@github.com/
+
+# 安装 Node.js (使用更稳健的 nodesource 节点)
+RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
+    && rm -rf /var/lib/apt/lists/*
+
+# 安装 OpenClaw CLI
+RUN npm config set registry https://mirrors.cloud.tencent.com/npm/ \
+    && npm install -g openclaw@latest
 
 # 从 builder 阶段复制编译好的执行文件 (静态链接的可在 debian 运行)
 COPY --from=builder /app/edict-go .

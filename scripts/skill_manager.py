@@ -4,17 +4,17 @@ Skill 管理工具
 支持从本地或远程 URL 添加、更新、查看和移除 skills
 
 Usage:
-  python3 scripts/skill_manager.py add-remote --agent zhongshu --name code_review \\
-    --source https://raw.githubusercontent.com/org/skills/main/code_review/SKILL.md \\
+  python3 scripts/skill_manager.py add-remote --agent planner --name code_review \
+    --source https://raw.githubusercontent.com/org/skills/main/code_review/SKILL.md \
     --description "代码审查"
   
   python3 scripts/skill_manager.py list-remote
   
-  python3 scripts/skill_manager.py update-remote --agent zhongshu --name code_review
+  python3 scripts/skill_manager.py update-remote --agent planner --name code_review
   
-  python3 scripts/skill_manager.py remove-remote --agent zhongshu --name code_review
+  python3 scripts/skill_manager.py remove-remote --agent planner --name code_review
   
-  python3 scripts/skill_manager.py import-official-hub --agents zhongshu,menxia,shangshu
+  python3 scripts/skill_manager.py import-official-hub --agents planner,reviewer,dispatcher
 """
 import sys
 import json

@@ -22,10 +22,9 @@ ID_LABEL = {
     'dispatcher': {'label': '任务调度引擎', 'role': '调度指挥官',   'duty': '派单与升级裁决',      'emoji': '📮'},
     'doc_writer':     {'label': '文档编写员',   'role': '文档编写员调度', 'duty': '文档/汇报/规范',      'emoji': '📝'},
     'data_analyst':     {'label': '数据分析师',   'role': '数据分析师调度', 'duty': '资源/预算/成本',      'emoji': '💰'},
-    'software_engineer':   {'label': '代码架构师',   'role': '代码架构师调度', 'duty': '应急与巡检',          'emoji': '⚔️'},
-    'qa_engineer':   {'label': '质量保证师',   'role': '质量保证师调度', 'duty': '合规/审计/红线',      'emoji': '⚖️'},
-    'software_engineer':   {'label': '代码架构师',   'role': '代码架构师调度', 'duty': '工程交付与自动化',    'emoji': '🔧'},
-    'libu_hr':  {'label': '资源调配员',   'role': '资源调配员调度', 'duty': '人事/培训/Agent管理',  'emoji': '👔'},
+    'software_engineer':   {'label': '代码架构师',   'role': '代码架构师调度', 'duty': '工程开发、架构设计与自动化', 'emoji': '🔧'},
+    'qa_engineer':   {'label': '质量保证师',   'role': '质量保证师调度', 'duty': '合规/审计/红线/测试',      'emoji': '⚖️'},
+    'hr_manager':  {'label': '资源调配员',   'role': '资源调配员调度', 'duty': '人事/培训/Agent管理',  'emoji': '👔'},
     'monitor':  {'label': '情报监控员', 'role': '监控组长',   'duty': '每日新闻采集与简报',  'emoji': '📰'},
 }
 
@@ -112,13 +111,13 @@ def main():
 
     # 补充不在 openclaw.json agents list 中的 agent（兼容旧版 main）
     EXTRA_AGENTS = {
-        'coordinator':   {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-taizi'),
+        'coordinator':   {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-coordinator'),
                     'allowAgents': ['planner']},
         'main':    {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-main'),
-                    'allowAgents': ['planner','reviewer','dispatcher','data_analyst','doc_writer','software_engineer','qa_engineer','software_engineer','libu_hr']},
-        'monitor': {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-zaochao'),
+                    'allowAgents': ['planner','reviewer','dispatcher','data_analyst','doc_writer','software_engineer','qa_engineer','hr_manager']},
+        'monitor': {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-monitor'),
                     'allowAgents': []},
-        'libu_hr': {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-libu_hr'),
+        'hr_manager': {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-hr_manager'),
                     'allowAgents': ['dispatcher']},
     }
     for ag_id, extra in EXTRA_AGENTS.items():
@@ -162,8 +161,7 @@ _SOUL_DEPLOY_MAP = {
     'data_analyst': 'data_analyst',
     'software_engineer': 'software_engineer',
     'qa_engineer': 'qa_engineer',
-    'software_engineer': 'software_engineer',
-    'libu_hr': 'libu_hr',
+    'hr_manager': 'hr_manager',
     'monitor': 'monitor',
 }
 

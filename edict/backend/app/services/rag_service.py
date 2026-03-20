@@ -10,6 +10,8 @@ from openai import AsyncOpenAI
 from langchain_text_splitters import RecursiveCharacterTextSplitter, Language
 from sqlalchemy import select, text, update
 from sqlalchemy.ext.asyncio import AsyncSession
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+
 from ..models.document import Document, DocumentChunk, EvalSample
 from .cleaning_service import AdvancedCleaningService
 
@@ -27,8 +29,9 @@ else:
     openai_client = None
 
 class RAGService:
-    def __init__(self, db: AsyncSession):
+    def __init__(self, db: AsyncSession, http_client: httpx.AsyncClient):
         self.db = db
+        self.http_client = http_client
         # 硅基流动模型配置
         self.encoder_model = "BAAI/bge-m3"
         self.reranker_model = "BAAI/bge-reranker-v2-m3"
@@ -86,75 +89,101 @@ class RAGService:
                 
         return final_chunks
 
-    async def _get_embedding(self, text_content: str) -> List[float]:
-        """通过硅基流动 API 获取文本向量。"""
+    @retry(
+        wait=wait_exponential(multiplier=1, max=10),
+        stop=stop_after_attempt(5),
+        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.TimeoutException)),
+        reraise=True
+    )
+    async def _get_embedding(self, input_texts: List[str]) -> List[List[float]]:
+        """通过硅基流动 API 获取批量文本向量。极大地提高并发处理速度并避免 429。"""
         if not SILICONFLOW_API_KEY:
-            log.warning("未找到 SILICONFLOW_API_KEY。")
-            return [0.0] * 1024
+            log.warning("未找到 SILICONFLOW_API_KEY。返回空向量池。")
+            return [[0.0] * 1024 for _ in input_texts]
             
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{SILICONFLOW_API_URL}/embeddings",
-                    headers={
-                        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": self.encoder_model,
-                        "input": text_content
-                    },
-                    timeout=30.0
-                )
-                response.raise_for_status()
-                data = response.json()
-                return data["data"][0]["embedding"]
+            response = await self.http_client.post(
+                f"{SILICONFLOW_API_URL}/embeddings",
+                headers={
+                    "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": self.encoder_model,
+                    "input": input_texts
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+            # 保证返回的向量顺序与输入严格一致
+            embeddings = [item["embedding"] for item in sorted(data["data"], key=lambda x: x["index"])]
+            return embeddings
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (429, 502, 503, 504):
+                log.warning(f"Embedding API Rate Limit or Server Error ({e.response.status_code}), retrying...")
+                raise e # 触发 tenacity 重新尝试
+            log.error(f"硅基流动 Embedding 致命错误: {e.response.text}")
+            return [[0.0] * 1024 for _ in input_texts]
         except Exception as e:
             log.error(f"硅基流动 Embedding 错误: {e}")
-            return [0.0] * 1024
-        return [0.0] * 1024
+            raise e
 
+    @retry(
+        wait=wait_exponential(multiplier=1, max=10),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.TimeoutException)),
+        reraise=True
+    )
     async def _rerank_results(self, query: str, documents: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """使用硅基流动 BGE-Reranker 对搜索结果进行重排序。"""
         if not SILICONFLOW_API_KEY or not documents:
             return documents
             
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{SILICONFLOW_API_URL}/rerank",
-                    headers={
-                        "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
-                        "Content-Type": "application/json"
-                    },
-                    json={
-                        "model": self.reranker_model,
-                        "query": query,
-                        "documents": [doc["content"] for doc in documents],
-                        "top_n": len(documents)
-                    },
-                    timeout=30.0
-                )
-                response.raise_for_status()
-                data = response.json()
-                
-                reranked_results = data.get("results", [])
-                
-                final_results = []
-                for res in reranked_results:
-                    idx = res["index"]
-                    doc = documents[idx].copy()
-                    doc["rerank_score"] = res["relevance_score"]
-                    final_results.append(doc)
-                
-                final_results.sort(key=lambda x: x.get("rerank_score", 0), reverse=True)
-                return final_results
-                
+            response = await self.http_client.post(
+                f"{SILICONFLOW_API_URL}/rerank",
+                headers={
+                    "Authorization": f"Bearer {SILICONFLOW_API_KEY}",
+                    "Content-Type": "application/json"
+                },
+                json={
+                    "model": self.reranker_model,
+                    "query": query,
+                    "documents": [doc["content"] for doc in documents],
+                    "top_n": len(documents)
+                }
+            )
+            response.raise_for_status()
+            data = response.json()
+            
+            reranked_results = data.get("results", [])
+            
+            final_results = []
+            for res in reranked_results:
+                idx = res["index"]
+                doc = documents[idx].copy()
+                doc["rerank_score"] = res["relevance_score"]
+                final_results.append(doc)
+            
+            final_results.sort(key=lambda x: x.get("rerank_score", 0), reverse=True)
+            return final_results
+            
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (429, 502, 503, 504):
+                log.warning(f"Rerank API Rate Limit or Error ({e.response.status_code}). Retrying...")
+                raise e
+            log.error(f"硅基流动重排序致命错误: {e.response.text}")
+            return documents
         except Exception as e:
             log.error(f"硅基流动重排序错误: {e}")
-            return documents
-        return documents
+            raise e
 
+    @retry(
+        wait=wait_exponential(multiplier=1, max=10),
+        stop=stop_after_attempt(3),
+        retry=retry_if_exception_type((httpx.HTTPStatusError, httpx.TimeoutException)),
+        reraise=True
+    )
     async def _web_search_fallback(self, query: str) -> List[Dict[str, Any]]:
         """当本地知识库无结果时，调用 Tavily 搜索进行补充。"""
         if not TAVILY_API_KEY:
@@ -170,25 +199,29 @@ class RAGService:
                 "search_depth": "smart",
                 "max_results": 3
             }
-            async with httpx.AsyncClient() as client:
-                response = await client.post(url, json=payload, timeout=20.0)
-                response.raise_for_status()
-                data = response.json()
-                
-                web_results = []
-                for res in data.get("results", []):
-                    web_results.append({
-                        "content": f"[来自网页搜索] {res['title']}\n{res['content']}",
-                        "doc_id": f"web:{res['url']}",
-                        "score": 0.5,
-                        "rerank_score": 0.5,
-                        "is_web": True
-                    })
-                return web_results
+            response = await self.http_client.post(url, json=payload, timeout=20.0)
+            response.raise_for_status()
+            data = response.json()
+            
+            web_results = []
+            for res in data.get("results", []):
+                web_results.append({
+                    "content": f"[外部互联网参考资料] {res['title']}\n{res['content']}",
+                    "doc_id": f"web:{res['url']}",
+                    "score": 0.5,
+                    "rerank_score": 0.5,
+                    "is_web": True
+                })
+            return web_results
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code in (429, 502, 503, 504):
+                log.warning(f"Tavily API Limit ({e.response.status_code}), retrying...")
+                raise e
+            log.error(f"Tavily error: {e.response.text}")
+            return []
         except Exception as e:
             log.error(f"Tavily search fallback failed: {e}")
-            return []
-        return []
+            raise e
 
     async def ingest_document(self, doc_id: str, raw_text: str, metadata: Optional[Dict[str, Any]] = None, 
                                filename: Optional[str] = None, is_temporary: bool = False):
@@ -257,37 +290,49 @@ class RAGService:
             raw_chunks = self.splitter.split_text(cleaned_text)
             chunk_data = [{"text": c, "path": "General"} for c in raw_chunks]
         
+        # --- 批量获取向量并写入  ---
+        enrichment_texts = []
         for item in chunk_data:
             chunk_text = item["text"]
             section_path = item["path"]
+            enrichment_texts.append(f"Document: {file_name}\nSection: {section_path}\n{chunk_text}")
+        
+        # 批量请求向量池，硅基流动上限可切分页，这里做保护性的分组 (每批 50)
+        embeddings = []
+        for i in range(0, len(enrichment_texts), 50):
+            batch_texts = enrichment_texts[i:i+50]
+            batch_emb = await self._get_embedding(batch_texts)
+            embeddings.extend(batch_emb)
+        
+        db_chunks = []
+        for item, emb in zip(chunk_data, embeddings):
+            chunk_text = item["text"]
+            section_path = item["path"]
             
-            # --- 向量计算注入上下文 (Embedding-only Enrichment) ---
-            # 向量模型需要知道它属于哪个文档和章节，但存储时不强行拼接。
-            enrichment_for_embedding = f"Document: {file_name}\nSection: {section_path}\n{chunk_text}"
-            embedding = await self._get_embedding(enrichment_for_embedding)
-
-            # 更新本片段特有的元数据
             chunk_metadata = metadata.copy()
             chunk_metadata["section_path"] = section_path
             chunk_metadata["file_name"] = file_name
 
             db_chunk = DocumentChunk(
                 doc_id=doc_id,
-                content=chunk_text, # 存储干净的文本，节约 Rerank/LLM Token
+                content=chunk_text,
                 metadata_json=json.dumps(chunk_metadata),
                 file_name=file_name,
                 file_type=file_type,
                 source_agent=source_agent,
                 project_id=project_id,
-                embedding=embedding
+                embedding=emb
             )
-            self.db.add(db_chunk)
-            await self.db.flush()
+            db_chunks.append(db_chunk)
             
-            await self.db.execute(
-                text("UPDATE document_chunks SET fts = to_tsvector('simple', content) WHERE id = :id"),
-                {"id": db_chunk.id}
-            )
+        self.db.add_all(db_chunks)
+        await self.db.flush() # 生成全部 ID
+        
+        # 完美解决 N+1，聚合单条 Update 彻底完成 FTS 更新
+        await self.db.execute(
+            text("UPDATE document_chunks SET fts = to_tsvector('simple', content) WHERE doc_id = :doc_id"),
+            {"doc_id": doc_id}
+        )
         
         await self.db.commit()
 
@@ -400,18 +445,36 @@ class RAGService:
         if not chunks:
             return {"answer": "知识库及网页搜索中均未找到相关信息，建议重新描述问题。", "sources": []}
             
-        # 综合参考资料：从元数据动态重建上下文头，保持 content 干净
-        context_parts = []
+        # 综合参考资料：区分内部授权知识和外部参考知识
+        internal_context = []
+        external_context = []
+        
         for i, c in enumerate(chunks):
             m = c.get("metadata", {})
-            header = f"--- [来源: {m.get('file_name', '未知')}, 章节: {m.get('section_path', 'Root')}] ---"
-            context_parts.append(f"{header}\n{c['content']}")
+            header = f"[来源: {m.get('file_name', '未知')}, 章节: {m.get('section_path', 'Root')}]"
+            
+            if c.get("is_web", False):
+                external_context.append(f"{header}\n{c['content']}")
+            else:
+                internal_context.append(f"{header}\n{c['content']}")
         
-        context = "\n\n".join(context_parts)
+        context_parts = []
+        if internal_context:
+            context_parts.append("【企业内部授权知识】\n" + "\n\n".join(internal_context))
+        if external_context:
+            context_parts.append("【外部互联网参考资料】\n" + "\n\n".join(external_context))
+            
+        context = "\n\n============\n\n".join(context_parts)
+        
         synthesis_prompt = (
-            f"基于提供的【参考知识】回答用户问题。若信息带 [来自网页搜索] 标记，请注明。\n\n"
-            f"【参考知识】\n{context}\n\n"
-            f"问题：{query}"
+            f"你是一个严谨的企业知识库助理。\n"
+            f"请基于下方提供的【参考知识】回答用户问题。\n\n"
+            f"【核心约束】：\n"
+            f"1. 必须优先且主要立足于『企业内部授权知识』进行解答。\n"
+            f"2. 当『内部知识』与『外部资料』存在任何事实冲突时，永远以『内部知识』为绝对基准。\n"
+            f"3. 『外部互联网参考资料』仅用于补充定义、公理或填补非冲突领域的空白，并在使用时显式注明。\n\n"
+            f"{context}\n\n"
+            f"用户问题：{query}"
         )
         
         if not openai_client:
@@ -420,8 +483,8 @@ class RAGService:
         try:
             response = await openai_client.chat.completions.create(
                 model=self.llm_model,
-                messages=[{"role": "system", "content": "你是一个严谨的助理。"}, {"role": "user", "content": synthesis_prompt}],
-                temperature=0.5,
+                messages=[{"role": "user", "content": synthesis_prompt}],
+                temperature=0.3,
             )
             answer = response.choices[0].message.content
             
@@ -515,7 +578,17 @@ class RAGService:
 
         final_results = [c for c in candidate_list if c.get("rerank_score", 0) >= self.rerank_threshold]
         
+        # 智能双阈值 Web 兜底逻辑：
+        # 如果没有任何一条结果过硬阈值 (0.4)，或者通过的结果最高分低于置信阈值 (0.70) 或条目过少 (<3)，主动请求网搜进行融合。
+        needs_fallback = False
         if not final_results:
-            final_results = await self._web_search_fallback(query)
+            needs_fallback = True
+        elif final_results[0].get("rerank_score", 0) < 0.70 or len(final_results) < 3:
+            needs_fallback = True
+            
+        if needs_fallback:
+            web_results = await self._web_search_fallback(query)
+            # 将互联网数据拼接在最后面作为外脑参考
+            final_results.extend(web_results)
             
         return final_results

@@ -35,20 +35,20 @@ log = logging.getLogger("migrate")
 
 # 旧版状态 → Edict TaskState
 STATE_MAP = {
-    "Taizi": TaskState.TAIZI,
-    "planner": TaskState.ZHONGSHU,
-    "reviewer": TaskState.MENXIA,
-    "Assigned": TaskState.ASSIGNED,
-    "Next": TaskState.NEXT,
-    "Doing": TaskState.DOING,
-    "Review": TaskState.REVIEW,
-    "Done": TaskState.DONE,
-    "Blocked": TaskState.BLOCKED,
-    "Cancelled": TaskState.CANCELLED,
-    "Pending": TaskState.PENDING,
+    "Taizi": TaskState.Queued,
+    "planner": TaskState.Planning,
+    "reviewer": TaskState.PlanReview,
+    "Assigned": TaskState.Dispatching,
+    "Next": TaskState.Next,
+    "Doing": TaskState.Executing,
+    "Review": TaskState.ResultReview,
+    "Done": TaskState.Completed,
+    "Blocked": TaskState.Blocked,
+    "Cancelled": TaskState.Cancelled,
+    "Pending": TaskState.Pending,
     # Fallbacks
-    "Inbox": TaskState.TAIZI,
-    "": TaskState.TAIZI,
+    "Inbox": TaskState.Queued,
+    "": TaskState.Queued,
 }
 
 

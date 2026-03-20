@@ -195,7 +195,7 @@ func detectOfficial(agentID string) (string, string) {
 		"doc_writer":        {"文档编写员", "执行部门"},
 		"software_engineer": {"代码架构师", "执行部门"},
 		"qa_engineer":       {"质量保证师", "执行部门"},
-		"libu_hr":           {"资源调配员", "人力支撑"},
+		"hr_manager":        {"资源调配员", "人力支撑"},
 		"monitor":           {"监控主管", "系统监控员"},
 	}
 	res, ok := mapping[agentID]

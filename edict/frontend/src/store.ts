@@ -1,4 +1,4 @@
-﻿/**
+/**
  * Zustand Store — OpenClaw MAS看板状态管理
  * HTTP 5s 轮询，无 WebSocket
  */
@@ -37,7 +37,7 @@ export const PIPE_STATE_IDX: Record<string, number> = {
 export const DEPT_COLOR: Record<string, string> = {
   '协调中枢': '#e8a040', '任务编排引擎': '#a07aff', '安全审查引擎': '#6a9eff', '任务调度引擎': '#6aef9a',
   '文档编写员': '#f5c842', '数据分析师': '#ff9a6a', '代码架构师': '#ff5270', '质量保证师': '#cc4444',
-  '部署运维师': '#44aaff', '资源调配员': '#9b59b6', '用户': '#ffd700', '任务汇报': '#2ecc8a',
+  '资源调配员': '#9b59b6', '情报监控员': '#44aaff', '用户': '#ffd700', '任务汇报': '#2ecc8a',
 };
 
 export const STATE_LABEL: Record<string, string> = {

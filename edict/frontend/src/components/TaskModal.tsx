@@ -12,16 +12,16 @@ import type {
 
 const AGENT_LABELS: Record<string, string> = {
   main: '协调中枢',
-  zhongshu: '任务编排引擎',
-  menxia: '安全审查引擎',
-  shangshu: '任务调度引擎',
-  libu: '文档编写员',
-  hubu: '数据分析师',
-  bingbu: '代码架构师',
-  xingbu: '质量保证师',
-  gongbu: '部署运维师',
-  libu_hr: '资源调配员',
-  zaochao: '情报监控员',
+  coordinator: '协调中枢',
+  planner: '任务编排引擎',
+  reviewer: '安全审查引擎',
+  dispatcher: '任务调度引擎',
+  doc_writer: '文档编写员',
+  data_analyst: '数据分析师',
+  software_engineer: '代码架构师',
+  qa_engineer: '质量保证师',
+  hr_manager: '资源调配员',
+  monitor: '情报监控员',
 };
 
 const NEXT_LABELS: Record<string, string> = {

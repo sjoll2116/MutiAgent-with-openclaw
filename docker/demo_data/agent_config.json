@@ -1,119 +1,12 @@
-﻿{
-  "generatedAt": "2026-02-24 22:13:06",
+{
+  "generatedAt": "2026-03-18 10:00:00",
   "defaultModel": "anthropic/claude-sonnet-4-6",
   "knownModels": [
-    {
-      "id": "anthropic/claude-sonnet-4-6",
-      "label": "Claude Sonnet 4.6",
-      "provider": "Anthropic"
-    },
-    {
-      "id": "anthropic/claude-opus-4-5",
-      "label": "Claude Opus 4.5",
-      "provider": "Anthropic"
-    },
-    {
-      "id": "anthropic/claude-haiku-3-5",
-      "label": "Claude Haiku 3.5",
-      "provider": "Anthropic"
-    },
-    {
-      "id": "openai/gpt-4o",
-      "label": "GPT-4o",
-      "provider": "OpenAI"
-    },
-    {
-      "id": "openai/gpt-4o-mini",
-      "label": "GPT-4o Mini",
-      "provider": "OpenAI"
-    },
-    {
-      "id": "openai-codex/gpt-5.3-codex",
-      "label": "GPT-5.3 Codex",
-      "provider": "OpenAI Codex"
-    },
-    {
-      "id": "google/gemini-2.0-flash",
-      "label": "Gemini 2.0 Flash",
-      "provider": "Google"
-    },
-    {
-      "id": "google/gemini-2.5-pro",
-      "label": "Gemini 2.5 Pro",
-      "provider": "Google"
-    },
-    {
-      "id": "copilot/claude-sonnet-4",
-      "label": "Claude Sonnet 4",
-      "provider": "Copilot"
-    },
-    {
-      "id": "github-copilot/claude-opus-4.6",
-      "label": "Claude Opus 4.6",
-      "provider": "GitHub Copilot"
-    },
-    {
-      "id": "copilot/claude-opus-4.5",
-      "label": "Claude Opus 4.5",
-      "provider": "Copilot"
-    },
-    {
-      "id": "copilot/gpt-4o",
-      "label": "GPT-4o",
-      "provider": "Copilot"
-    },
-    {
-      "id": "copilot/gemini-2.5-pro",
-      "label": "Gemini 2.5 Pro",
-      "provider": "Copilot"
-    },
-    {
-      "id": "copilot/o3-mini",
-      "label": "o3-mini",
-      "provider": "Copilot"
-    }
+    { "id": "anthropic/claude-sonnet-4-6", "label": "Claude Sonnet 4.6", "provider": "Anthropic" },
+    { "id": "openai/gpt-4o", "label": "GPT-4o", "provider": "OpenAI" },
+    { "id": "google/gemini-2.0-flash", "label": "Gemini 2.0 Flash", "provider": "Google" }
   ],
   "agents": [
-    {
-      "id": "dispatcher",
-      "label": "任务调度引擎",
-      "role": "调度指挥官",
-      "duty": "派单与升级裁决",
-      "emoji": "📮",
-      "model": "anthropic/claude-sonnet-4-6",
-      "defaultModel": "anthropic/claude-sonnet-4-6",
-      "isDefaultModel": true,
-      "workspace": "/Users/bingsen/.openclaw/workspace-shangshu",
-      "skills": [
-        {
-          "name": "dispatch",
-          "path": "/Users/bingsen/.openclaw/workspace-shangshu/skills/dispatch/SKILL.md",
-          "exists": true,
-          "description": "---"
-        },
-        {
-          "name": "kanban-local",
-          "path": "/Users/bingsen/.openclaw/workspace-shangshu/skills/kanban-local/SKILL.md",
-          "exists": true,
-          "description": "---"
-        },
-        {
-          "name": "organization-governance",
-          "path": "/Users/bingsen/.openclaw/workspace-shangshu/skills/organization-governance/SKILL.md",
-          "exists": true,
-          "description": "---"
-        }
-      ],
-      "allowAgents": [
-        "planner",
-        "reviewer",
-        "data_analyst",
-        "doc_writer",
-        "software_engineer",
-        "qa_engineer",
-        "software_engineer"
-      ]
-    },
     {
       "id": "planner",
       "label": "任务编排引擎",
@@ -121,21 +14,11 @@
       "duty": "起草任务令与优先级",
       "emoji": "📜",
       "model": "anthropic/claude-sonnet-4-6",
-      "defaultModel": "anthropic/claude-sonnet-4-6",
-      "isDefaultModel": true,
-      "workspace": "/Users/bingsen/.openclaw/workspace-zhongshu",
+      "workspace": "/app/workspace-planner",
       "skills": [
-        {
-          "name": "planning",
-          "path": "/Users/bingsen/.openclaw/workspace-zhongshu/skills/planning/SKILL.md",
-          "exists": true,
-          "description": "---"
-        }
+        { "name": "planning", "path": "/app/workspace-planner/skills/planning/SKILL.md", "exists": true }
       ],
-      "allowAgents": [
-        "reviewer",
-        "dispatcher"
-      ]
+      "allowAgents": ["reviewer", "dispatcher"]
     },
     {
       "id": "reviewer",
@@ -144,43 +27,25 @@
       "duty": "审议与退回机制",
       "emoji": "🔍",
       "model": "anthropic/claude-sonnet-4-6",
-      "defaultModel": "anthropic/claude-sonnet-4-6",
-      "isDefaultModel": true,
-      "workspace": "/Users/bingsen/.openclaw/workspace-menxia",
+      "workspace": "/app/workspace-reviewer",
       "skills": [
-        {
-          "name": "review",
-          "path": "/Users/bingsen/.openclaw/workspace-menxia/skills/review/SKILL.md",
-          "exists": true,
-          "description": "---"
-        }
+        { "name": "review", "path": "/app/workspace-reviewer/skills/review/SKILL.md", "exists": true }
       ],
-      "allowAgents": [
-        "dispatcher",
-        "planner"
-      ]
+      "allowAgents": ["dispatcher", "planner"]
     },
     {
-      "id": "data_analyst",
-      "label": "数据分析师",
-      "role": "数据分析师主管",
-      "duty": "资源/预算/成本",
-      "emoji": "💰",
+      "id": "dispatcher",
+      "label": "任务调度引擎",
+      "role": "调度指挥官",
+      "duty": "派单与升级裁决",
+      "emoji": "📮",
       "model": "anthropic/claude-sonnet-4-6",
-      "defaultModel": "anthropic/claude-sonnet-4-6",
-      "isDefaultModel": true,
-      "workspace": "/Users/bingsen/.openclaw/workspace-hubu",
+      "workspace": "/app/workspace-dispatcher",
       "skills": [
-        {
-          "name": "data-analysis",
-          "path": "/Users/bingsen/.openclaw/workspace-hubu/skills/data-analysis/SKILL.md",
-          "exists": true,
-          "description": "---"
-        }
+        { "name": "dispatch", "path": "/app/workspace-dispatcher/skills/dispatch/SKILL.md", "exists": true },
+        { "name": "kanban-local", "path": "/app/workspace-dispatcher/skills/kanban-local/SKILL.md", "exists": true }
       ],
-      "allowAgents": [
-        "dispatcher"
-      ]
+      "allowAgents": ["planner", "reviewer", "data_analyst", "doc_writer", "software_engineer", "qa_engineer"]
     },
     {
       "id": "doc_writer",
@@ -189,86 +54,74 @@
       "duty": "文档/汇报/规范",
       "emoji": "📝",
       "model": "anthropic/claude-sonnet-4-6",
-      "defaultModel": "anthropic/claude-sonnet-4-6",
-      "isDefaultModel": true,
-      "workspace": "/Users/bingsen/.openclaw/workspace-libu",
+      "workspace": "/app/workspace-doc_writer",
       "skills": [
-        {
-          "name": "doc-writer",
-          "path": "/Users/bingsen/.openclaw/workspace-libu/skills/doc-writer/SKILL.md",
-          "exists": true,
-          "description": "---"
-        }
+        { "name": "doc-writer", "path": "/app/workspace-doc_writer/skills/doc-writer/SKILL.md", "exists": true }
       ],
-      "allowAgents": [
-        "dispatcher"
-      ]
+      "allowAgents": ["dispatcher"]
+    },
+    {
+      "id": "data_analyst",
+      "label": "数据分析师",
+      "role": "数据分析师主管",
+      "duty": "资源/预算/成本",
+      "emoji": "💰",
+      "model": "anthropic/claude-sonnet-4-6",
+      "workspace": "/app/workspace-data_analyst",
+      "skills": [
+        { "name": "data-analysis", "path": "/app/workspace-data_analyst/skills/data-analysis/SKILL.md", "exists": true }
+      ],
+      "allowAgents": ["dispatcher"]
     },
     {
       "id": "software_engineer",
       "label": "代码架构师",
       "role": "代码架构师主管",
-      "duty": "应急与巡检",
-      "emoji": "⚔️",
+      "duty": "工程开发、架构设计与自动化",
+      "emoji": "🔧",
       "model": "anthropic/claude-sonnet-4-6",
-      "defaultModel": "anthropic/claude-sonnet-4-6",
-      "isDefaultModel": true,
-      "workspace": "/Users/bingsen/.openclaw/workspace-bingbu",
+      "workspace": "/app/workspace-software_engineer",
       "skills": [
-        {
-          "name": "coding",
-          "path": "/Users/bingsen/.openclaw/workspace-bingbu/skills/coding/SKILL.md",
-          "exists": true,
-          "description": "---"
-        }
+        { "name": "coding", "path": "/app/workspace-software_engineer/skills/coding/SKILL.md", "exists": true }
       ],
-      "allowAgents": [
-        "dispatcher"
-      ]
+      "allowAgents": ["dispatcher"]
     },
     {
       "id": "qa_engineer",
       "label": "质量保证师",
       "role": "质量保证师主管",
-      "duty": "合规/审计/红线",
+      "duty": "合规/审计/红线/测试",
       "emoji": "⚖️",
       "model": "anthropic/claude-sonnet-4-6",
-      "defaultModel": "anthropic/claude-sonnet-4-6",
-      "isDefaultModel": true,
-      "workspace": "/Users/bingsen/.openclaw/workspace-xingbu",
+      "workspace": "/app/workspace-qa_engineer",
       "skills": [
-        {
-          "name": "security-review",
-          "path": "/Users/bingsen/.openclaw/workspace-xingbu/skills/security-review/SKILL.md",
-          "exists": true,
-          "description": "---"
-        }
+        { "name": "security-review", "path": "/app/workspace-qa_engineer/skills/security-review/SKILL.md", "exists": true }
       ],
-      "allowAgents": [
-        "dispatcher"
-      ]
+      "allowAgents": ["dispatcher"]
     },
     {
-      "id": "software_engineer",
-      "label": "代码架构师",
-      "role": "代码架构师主管",
-      "duty": "工程交付与自动化",
-      "emoji": "🔧",
+      "id": "hr_manager",
+      "label": "资源调配员",
+      "role": "资源调配员调度",
+      "duty": "人事/培训/Agent管理",
+      "emoji": "👔",
       "model": "anthropic/claude-sonnet-4-6",
-      "defaultModel": "anthropic/claude-sonnet-4-6",
-      "isDefaultModel": true,
-      "workspace": "/Users/bingsen/.openclaw/workspace-gongbu",
+      "workspace": "/app/workspace-hr_manager",
+      "skills": [],
+      "allowAgents": ["dispatcher"]
+    },
+    {
+      "id": "monitor",
+      "label": "情报监控员",
+      "role": "监控组长",
+      "duty": "每日新闻采集与简报",
+      "emoji": "📰",
+      "model": "anthropic/claude-sonnet-4-6",
+      "workspace": "/app/workspace-monitor",
       "skills": [
-        {
-          "name": "ops",
-          "path": "/Users/bingsen/.openclaw/workspace-gongbu/skills/ops/SKILL.md",
-          "exists": true,
-          "description": "---"
-        }
+        { "name": "monitor", "path": "/app/workspace-monitor/skills/monitor/SKILL.md", "exists": true }
       ],
-      "allowAgents": [
-        "dispatcher"
-      ]
+      "allowAgents": []
     }
   ]
 }

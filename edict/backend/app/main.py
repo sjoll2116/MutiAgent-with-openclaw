@@ -15,6 +15,7 @@ Lifespan 管理：
 import logging
 from contextlib import asynccontextmanager
 
+import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -36,6 +37,13 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     log.info(f"🚀 Edict Backend (RAG Only) starting on port {settings.port}...")
 
+    # 全局 HTTP Client — 复用 TCP/TLS 连接池，避免每次请求重建开销
+    app.state.http_client = httpx.AsyncClient(
+        limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
+        timeout=httpx.Timeout(30.0, connect=10.0),
+    )
+    log.info("✅ Global HTTP Client initialized (pool=100, keepalive=20)")
+
     # 如果 RAG 仍需 Event Bus，则保持连接
     bus = await get_event_bus()
     log.info("✅ Event Bus connected")
@@ -43,6 +51,8 @@ async def lifespan(app: FastAPI):
     yield
 
     # 清理
+    await app.state.http_client.aclose()
+    log.info("✅ Global HTTP Client closed")
     await bus.close()
     log.info("Edict Backend shutdown complete")
 

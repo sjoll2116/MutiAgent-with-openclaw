@@ -12,33 +12,46 @@ SERVICE_TOKEN = os.environ.get('SERVICE_TOKEN', 'edict-internal-service-token-20
 log = logging.getLogger('kanban')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(message)s', datefmt='%H:%M:%S')
 
-def _api_call(endpoint, payload):
-    """通用 API 调用逻辑。"""
+def _api_call(endpoint, method='POST', payload=None):
+    """通用 API 调用逻辑，支持 GET 和 POST。"""
     headers = {
         'Content-Type': 'application/json',
         'X-Service-Token': SERVICE_TOKEN
     }
+    url = f"{EDICT_API_URL}/api/{endpoint}"
     try:
         import httpx
-        url = f"{EDICT_API_URL}/api/{endpoint}"
         with httpx.Client(timeout=10.0) as client:
-            resp = client.post(url, json=payload, headers=headers)
+            if method.upper() == 'GET':
+                resp = client.get(url, headers=headers)
+            else:
+                resp = client.post(url, json=payload, headers=headers)
             resp.raise_for_status()
             return resp.json()
     except ImportError:
         import json, urllib.request
         try:
-            url = f"{EDICT_API_URL}/api/{endpoint}"
-            req = urllib.request.Request(url, data=json.dumps(payload).encode('utf-8'), 
-                                         headers=headers, method='POST')
+            data = json.dumps(payload).encode('utf-8') if payload else None
+            req = urllib.request.Request(url, data=data, 
+                                         headers=headers, method=method.upper())
             with urllib.request.urlopen(req) as f:
                 return json.loads(f.read().decode('utf-8'))
         except Exception as e:
-            log.error(f"Fallback API 调用失败: {e}")
+            log.error(f"Fallback API 调用失败 [{method} {endpoint}]: {e}")
             return {"ok": False, "error": str(e)}
     except Exception as e:
-        log.error(f"API 调用失败 [{endpoint}]: {e}")
+        log.error(f"API 调用失败 [{method} {endpoint}]: {e}")
         return {"ok": False, "error": str(e)}
+
+def cmd_read(task_id):
+    """读取并打印任务详情，供 Agent 解析上下文。"""
+    res = _api_call(f"tasks/{task_id}", method='GET')
+    if isinstance(res, dict) and res.get("id"):
+        # 格式化输出 JSON，方便 LLM 解析
+        import json
+        print(json.dumps(res, indent=2, ensure_ascii=False))
+    else:
+        log.error(f"❌ 读取任务失败: {res.get('error') if isinstance(res, dict) else '未知错误'}")
 
 def cmd_create(task_id, title, state, org, official, remark=None):
     payload = {
@@ -92,3 +105,4 @@ if __name__ == '__main__':
     elif cmd == 'block': cmd_block(*args[1:])
     elif cmd == 'todo': cmd_todo(*args[1:])
     elif cmd == 'progress': cmd_progress(*args[1:])
+    elif cmd == 'read': cmd_read(*args[1:])

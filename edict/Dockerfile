@@ -3,13 +3,19 @@ FROM python:3.12-slim
 WORKDIR /app
 
 # 安装系统依赖
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
+# 1. 深度镜像劫持 (USTC) & 增加重试逻辑 (应对 security.debian.org 无法访问的问题)
+RUN set -ex; \
+    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources || true; \
+    sed -i 's/security.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list.d/debian.sources || true; \
+    sed -i 's/deb.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list || true; \
+    sed -i 's/security.debian.org/mirrors.ustc.edu.cn/g' /etc/apt/sources.list || true; \
+    for i in 1 2 3; do apt-get update && break || sleep 5; done; \
+    apt-get install -y --no-install-recommends build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # 安装 Python 依赖
 COPY edict/backend/requirements.txt /tmp/requirements.txt
-RUN pip install --no-cache-dir -r /tmp/requirements.txt
+RUN pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ -r /tmp/requirements.txt
 
 # 复制后端代码
 COPY edict/backend/ /app/

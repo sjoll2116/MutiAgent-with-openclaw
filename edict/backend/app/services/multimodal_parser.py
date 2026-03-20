@@ -17,7 +17,6 @@ class MultiModalParser:
     - PDF：优先使用 PyMuPDF4LLM 提取原生 Markdown。
     - Excel/CSV：使用 pandas 提取 Markdown。
     - 纯图片/极其复杂的图表：使用 GLM-Z1-9B-0414 进行视觉解析。
-    - 弃用 PaddleOCR。
     """
 
     def __init__(self):
@@ -34,7 +33,22 @@ class MultiModalParser:
             return await self._parse_with_pandas(file_bytes, ext)
             
         elif ext in ("png", "jpg", "jpeg", "bmp", "tiff"):
-            prompt = "请详细描述并提取这张图片的所有内容。如果是图表，请提取核心数值和结构；如果是文字，请准确识别并按原排版输出 Markdown。"
+            prompt = """
+                # Role: 多模态数据提取专家
+                # Task: 分析并提取上传图片的所有关键信息。
+                # Constraints:
+                1. 识别与分类：首先判断图片属于（纯文字文档、数据图表、自然实景、还是技术架构图）。
+                2. 视觉描述：简述图片主体内容、场景。
+                3. 文字识别：若有文字，必须按原排版输出 Markdown 格式，严禁漏字、错字。
+                4. 数据提取：若含图表/表格，请将其转化为 Markdown 表格，并提取核心趋势或异常数值。
+                5. 逻辑结构：使用清晰的分级标题组织输出。
+                # Output Format:
+                ---
+                ### 1. 场景概述
+                ### 2. 文字/代码内容
+                ### 3. 数据与图表分析
+                ---
+            """
             return await self._parse_with_glm(file_bytes, prompt)
         
         # 兜底：纯文本尝试解码
@@ -55,7 +69,6 @@ class MultiModalParser:
             
             # --- 阶段 2: 扫描件检测与 VLM 补偿 ---
             # 判研逻辑：如果提取文本极少且页数大于 0，或者文本包含大量乱码/占位符，执行视觉补偿
-            # 为防止成本激增，我们仅对前几页进行采样或限制总页数
             if len(md_text.strip()) < 100 * doc.page_count and doc.page_count > 0:
                 log.info(f"Detecting potential scanned PDF ({doc.page_count} pages). Falling back to VLM.")
                 vlm_results = []

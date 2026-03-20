@@ -64,7 +64,7 @@ safe_run() {
 }
 while true; do
   rotate_log
-  safe_run "$SCRIPT_DIR/sync_from_openclaw_runtime.py"
+  # sync_from_openclaw_runtime 已集成至 Go 后端协程，此处不再调用
   safe_run "$SCRIPT_DIR/sync_agent_config.py"
   safe_run "$SCRIPT_DIR/apply_model_changes.py"
   safe_run "$SCRIPT_DIR/sync_officials_stats.py"

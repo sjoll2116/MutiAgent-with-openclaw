@@ -31,7 +31,7 @@ OFFICIALS = [
     {'id':'data_analyst',    'label':'数据分析师',  'role':'分析员', 'emoji':'📊','rank':'L8'},
     {'id':'software_engineer',  'label':'代码架构师',  'role':'架构师', 'emoji':'💻','rank':'L8'},
     {'id':'qa_engineer',  'label':'质量保证师',  'role':'测试员', 'emoji':'⚖️','rank':'L8'},
-    {'id':'libu_hr', 'label':'资源调配员',  'role':'行政员', 'emoji':'👔','rank':'L8'},
+    {'id':'hr_manager', 'label':'资源调配员',  'role':'行政员', 'emoji':'👔','rank':'L8'},
     {'id':'monitor', 'label':'情报监控员','role':'监控主管',  'emoji':'🌐','rank':'L7'},
 ]
 
