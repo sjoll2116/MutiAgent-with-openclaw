@@ -55,6 +55,10 @@ func InitDB() {
 		&models.GormEvalResult{},
 	)
 
+	// 强制补充主键约束 (解决 ON CONFLICT 报错)
+	// 如果表已存在但没有主键，AutoMigrate 有时无法自动补全
+	db.Exec(`ALTER TABLE tasks ADD PRIMARY KEY (id)` ) // 忽略报错 (如果已存在)
+
 	DB = db
 	log.Printf("🔌 Connected to PostgreSQL via GORM & Schema Migrated")
 }

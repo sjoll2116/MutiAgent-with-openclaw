@@ -220,8 +220,8 @@ func mapGormToTask(gt models.GormTask) models.Task {
 		UpdatedAt:   gt.UpdatedAt.Format(time.RFC3339),
 		CreatedAt:   gt.CreatedAt.Format(time.RFC3339),
 	}
-	if gt.ETA != nil {
-		t.ETA = gt.ETA.Format(time.RFC3339)
+	if gt.ETA != "" {
+		t.ETA = gt.ETA
 	}
 	if gt.ArchivedAt != nil {
 		t.ArchivedAt = gt.ArchivedAt.Format(time.RFC3339)
@@ -268,8 +268,7 @@ func mapTaskToGorm(t models.Task) models.GormTask {
 		BlockReason: t.Block, Output: t.Output, Archived: t.Archived,
 	}
 	if t.ETA != "" {
-		parsed, _ := time.Parse(time.RFC3339, t.ETA)
-		gt.ETA = &parsed
+		gt.ETA = t.ETA
 	}
 	if t.ArchivedAt != "" {
 		parsed, _ := time.Parse(time.RFC3339, t.ArchivedAt)

@@ -34,6 +34,11 @@ services:
 
       - "7891:7891"
     environment:
+      - POSTGRES_HOST=postgres-rag
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=edict
+      - POSTGRES_PASSWORD=edict_secret_change_me
+      - POSTGRES_DB=edict
       - REDIS_URL=redis://redis:6379/0
       - PORT=7891
       - OPENCLAW_PROJECT_DIR=/app

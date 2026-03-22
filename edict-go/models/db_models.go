@@ -13,9 +13,9 @@ type GormTask struct {
 	Org         string    `gorm:"type:varchar(100)"`
 	Priority    string    `gorm:"type:varchar(20);default:Normal"`
 	Official    string    `gorm:"type:varchar(100)"`
-	NowText     string    `gorm:"column:now_text"`
-	ETA         *time.Time `gorm:"column:eta"`
-	BlockReason string    `gorm:"column:block_reason"`
+	NowText     string    `gorm:"column:now"`          // 对齐 Python 侧字段名 'now'
+	ETA         string    `gorm:"column:eta;type:varchar(64)"` // 改为 string 兼容 Python 侧 "-" 或其它格式
+	BlockReason string    `gorm:"column:block"`        // 对齐 Python 侧字段名 'block'
 	Output      string    `gorm:"column:output"`
 	Archived    bool      `gorm:"default:false"`
 	ArchivedAt  *time.Time
@@ -29,9 +29,9 @@ func (GormTask) TableName() string {
 }
 
 type GormFlowEntry struct {
-	ID       uint      `gorm:"primaryKey"`
-	TaskID   string    `gorm:"type:varchar(100);not null"`
-	At       time.Time `gorm:"default:now()"`
+	ID       uint       `gorm:"primaryKey"`
+	TaskID   string    `gorm:"type:varchar(100);not null;index"` // 增加索引优化删除/查询
+	At       time.Time `gorm:"default:now();index"`              // 增加按时间排序索引
 	FromDept string    `gorm:"column:from_dept;type:varchar(100)"`
 	ToDept   string    `gorm:"column:to_dept;type:varchar(100)"`
 	Remark   string
@@ -43,8 +43,8 @@ func (GormFlowEntry) TableName() string {
 
 type GormProgressEntry struct {
 	ID         uint      `gorm:"primaryKey"`
-	TaskID     string    `gorm:"type:varchar(100);not null"`
-	At         time.Time `gorm:"default:now()"`
+	TaskID     string    `gorm:"type:varchar(100);not null;index"` // 增加索引
+	At         time.Time `gorm:"default:now();index"`              // 增加索引
 	Agent      string    `gorm:"type:varchar(100)"`
 	AgentLabel string    `gorm:"column:agent_label;type:varchar(100)"`
 	Text       string
@@ -61,9 +61,9 @@ func (GormProgressEntry) TableName() string {
 
 type GormTodoItem struct {
 	ID     uint   `gorm:"primaryKey"`
-	TaskID string `gorm:"type:varchar(100);not null"`
+	TaskID string `gorm:"type:varchar(100);not null;index"` // 增加索引
 	TodoID string `gorm:"column:todo_id;type:varchar(100)"`
-	Title  string `gorm:"type:varchar(255)"`
+	Title  string    `gorm:"type:varchar(255)"`
 	Status string `gorm:"type:varchar(50);default:not-started"`
 	Detail string
 }
