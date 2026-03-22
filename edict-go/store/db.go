@@ -55,9 +55,9 @@ func InitDB() {
 		&models.GormEvalResult{},
 	)
 
-	// 强制补充主键约束 (解决 ON CONFLICT 报错)
-	// 如果表已存在但没有主键，AutoMigrate 有时无法自动补全
-	db.Exec(`ALTER TABLE tasks ADD PRIMARY KEY (id)` ) // 忽略报错 (如果已存在)
+	// 强制补充唯一索引 (解决 ON CONFLICT 报错)
+	// 由于 Python 侧可能已经将 task_id 设为主键，这里通过唯一索引确保 Go 的 id 字段也可用于 ON CONFLICT
+	db.Exec(`CREATE UNIQUE INDEX IF NOT EXISTS idx_tasks_id ON tasks(id)`)
 
 	DB = db
 	log.Printf("🔌 Connected to PostgreSQL via GORM & Schema Migrated")

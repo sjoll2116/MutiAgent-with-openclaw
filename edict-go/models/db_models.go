@@ -7,7 +7,7 @@ import (
 // GORM Models for PostgreSQL persistence
 
 type GormTask struct {
-	ID          string    `gorm:"primaryKey;type:varchar(100)"`
+	ID          string    `gorm:"uniqueIndex:idx_tasks_id;type:varchar(100)"` // 使用唯一索引替代主键，避免与 Python 侧 task_id 主键冲突
 	Title       string    `gorm:"not null;type:varchar(500)"`
 	State       string    `gorm:"not null;type:varchar(50)"`
 	Org         string    `gorm:"type:varchar(100)"`
