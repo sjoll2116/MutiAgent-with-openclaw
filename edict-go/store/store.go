@@ -208,6 +208,7 @@ func WithTasks(fn func([]models.Task) ([]models.Task, error)) error {
 func mapGormToTask(gt models.GormTask) models.Task {
 	t := models.Task{
 		ID:          gt.ID,
+		TraceID:     gt.TraceID,
 		Title:       gt.Title,
 		State:       gt.State,
 		Org:         gt.Org,
@@ -263,7 +264,7 @@ func mapGormToTask(gt models.GormTask) models.Task {
 
 func mapTaskToGorm(t models.Task) models.GormTask {
 	gt := models.GormTask{
-		ID: t.ID, Title: t.Title, State: t.State, Org: t.Org,
+		ID: t.ID, TraceID: t.TraceID, Title: t.Title, State: t.State, Org: t.Org,
 		Official: t.Official, NowText: t.Now, Priority: t.Priority,
 		BlockReason: t.Block, Output: t.Output, Archived: t.Archived,
 	}

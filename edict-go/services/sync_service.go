@@ -156,6 +156,7 @@ func buildTaskFromSession(agentID, sessionKey string, row map[string]interface{}
 
 	return models.Task{
 		ID:        id,
+		TraceID:   sessionID,
 		Title:     title,
 		Official:  official,
 		Org:       org,

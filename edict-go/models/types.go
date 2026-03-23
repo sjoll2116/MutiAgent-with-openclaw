@@ -36,6 +36,7 @@ type TodoItem struct {
 // JSON 标签必须完全匹配 Python dashboard 生成的键。
 type Task struct {
 	ID             string          `json:"id"`
+	TraceID        string          `json:"trace_id"`
 	Title          string          `json:"title"`
 	State          string          `json:"state"`
 	Org            string          `json:"org"`
