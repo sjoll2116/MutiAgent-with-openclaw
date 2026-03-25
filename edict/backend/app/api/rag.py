@@ -88,16 +88,20 @@ async def ingest_file(
         # 创建一个独立于当前 Request 生命周期的 Service
         from ..db import async_session
         async def _background_ingest():
-            async with async_session() as bg_db:
-                service = RAGService(bg_db, http_client=request.app.state.http_client)
-                await service.ingest_document(
-                    doc_id=doc_id,
-                    raw_text=text_content,
-                    metadata={"project_id": project_id, "source_agent": "user"},
-                    filename=file.filename,
-                    is_temporary=is_temporary
-                )
-                await bg_db.commit()
+            try:
+                async with async_session() as bg_db:
+                    service = RAGService(bg_db, http_client=request.app.state.http_client)
+                    await service.ingest_document(
+                        doc_id=doc_id,
+                        raw_text=text_content,
+                        metadata={"project_id": project_id, "source_agent": "user"},
+                        filename=file.filename,
+                        is_temporary=is_temporary
+                    )
+                    await bg_db.commit()
+                    log.info(f"Successfully ingested document {doc_id} in background.")
+            except Exception as bg_err:
+                log.error(f"Background ingestion failed for {doc_id} ({file.filename}): {bg_err}", exc_info=True)
 
         background_tasks.add_task(_background_ingest)
         

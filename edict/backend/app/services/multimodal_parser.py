@@ -20,7 +20,8 @@ class MultiModalParser:
     """
 
     def __init__(self):
-        self.glm_model = "THUDM/GLM-Z1-9B-0414"
+        # 注意：THUDM/GLM-Z1-9B-0414 主要用于 Reason/Code，视觉解析建议用专门的 VLM
+        self.glm_model = "THUDM/GLM-4.1V-9B-Thinking" 
 
     async def parse(self, file_bytes: bytes, filename: str) -> str:
         """解析文件内容为 Markdown 字符串。"""
@@ -36,6 +37,7 @@ class MultiModalParser:
             return await self._parse_with_docx(file_bytes)
             
         elif ext in ("png", "jpg", "jpeg", "bmp", "tiff"):
+            mime_type = f"image/{ext}" if ext != "jpg" else "image/jpeg"
             prompt = """
                 # Role: 多模态数据提取专家
                 # Task: 分析并提取上传图片的所有关键信息。
@@ -46,7 +48,7 @@ class MultiModalParser:
                 4. 数据提取：若含图表/表格，请将其转化为 Markdown 表格，并提取核心趋势或异常数值。
                 5. 逻辑结构：使用清晰的分级标题组织输出。
             """
-            return await self._parse_with_glm(file_bytes, prompt)
+            return await self._parse_with_glm(file_bytes, prompt, mime_type)
         
         # 兜底：纯文本尝试解码
         try:
@@ -79,7 +81,7 @@ class MultiModalParser:
                     img_bytes = pix.tobytes("jpg")
                     
                     prompt = f"这是文档的第 {i+1} 页。请准确提取所有文字、表格和图表内容，并以 Markdown 格式输出。如果是表格，请保持排版。"
-                    page_text = await self._parse_with_glm(img_bytes, prompt)
+                    page_text = await self._parse_with_glm(img_bytes, prompt, "image/jpeg")
                     vlm_results.append(f"## Page {i+1}\n\n{page_text}")
                 
                 return "\n\n".join(vlm_results)
@@ -159,7 +161,7 @@ class MultiModalParser:
             log.error(f"Docx parsing error: {e}")
             return f"[Word解析失败: {e}]"
 
-    async def _call_vlm(self, model: str, prompt: str, image_b64: str) -> str:
+    async def _call_vlm(self, model: str, prompt: str, image_b64: str, mime_type: str = "image/jpeg") -> str:
         """通用的 VLM 调用逻辑。"""
         if not SILICONFLOW_API_KEY:
             return "错误：未发现 SILICONFLOW_API_KEY，无法解析多模态文件。"
@@ -173,7 +175,7 @@ class MultiModalParser:
                         {"type": "text", "text": prompt},
                         {
                             "type": "image_url",
-                            "image_url": {"url": f"data:image/jpeg;base64,{image_b64}"}
+                            "image_url": {"url": f"data:{mime_type};base64,{image_b64}"}
                         }
                     ]
                 }
@@ -198,7 +200,7 @@ class MultiModalParser:
         return ""
 
 
-    async def _parse_with_glm(self, file_bytes: bytes, prompt: str) -> str:
-        """使用 GLM-Z1-9B-0414 进行视觉深度解析。"""
+    async def _parse_with_glm(self, file_bytes: bytes, prompt: str, mime_type: str = "image/jpeg") -> str:
+        """使用 GLM 进行视觉深度解析。"""
         b64 = base64.b64encode(file_bytes).decode("utf-8")
-        return await self._call_vlm(self.glm_model, prompt, b64)
+        return await self._call_vlm(self.glm_model, prompt, b64, mime_type)
