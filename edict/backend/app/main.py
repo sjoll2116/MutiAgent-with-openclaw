@@ -37,6 +37,9 @@ async def lifespan(app: FastAPI):
     settings = get_settings()
     log.info(f"🚀 Edict Backend (RAG Only) starting on port {settings.port}...")
 
+    from .db import init_db
+    await init_db()
+    
     # 全局 HTTP Client — 复用 TCP/TLS 连接池，避免每次请求重建开销
     app.state.http_client = httpx.AsyncClient(
         limits=httpx.Limits(max_connections=100, max_keepalive_connections=20),
