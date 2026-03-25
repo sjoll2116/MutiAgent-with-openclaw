@@ -13,7 +13,7 @@ SECRET_KEY = os.getenv("JWT_SECRET", "edict-super-secret-key-2026")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
-SERVICE_TOKEN = os.getenv("SERVICE_TOKEN", "edict-internal-service-token-2026")
+SERVICE_TOKEN = os.getenv("SERVICE_TOKEN", "0a7f3132c662cd8327e190f3f77681c689ca2ede7de8756f")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)

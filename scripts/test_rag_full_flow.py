@@ -7,7 +7,7 @@ from typing import Dict, Any
 
 # 配置
 API_BASE = "http://localhost:8000/api/rag"
-TOKEN = "edict-internal-service-token-2026"
+TOKEN = "0a7f3132c662cd8327e190f3f77681c689ca2ede7de8756f"
 HEADERS = {"X-Service-Token": TOKEN}
 
 # 测试数据

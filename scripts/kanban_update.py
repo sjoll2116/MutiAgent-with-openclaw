@@ -7,7 +7,7 @@ import os, sys, logging, datetime
 
 # 配置
 EDICT_API_URL = os.environ.get('EDICT_API_URL', 'http://localhost:7891')
-SERVICE_TOKEN = os.environ.get('SERVICE_TOKEN', 'edict-internal-service-token-2026')
+SERVICE_TOKEN = os.environ.get('SERVICE_TOKEN', '0a7f3132c662cd8327e190f3f77681c689ca2ede7de8756f')
 
 log = logging.getLogger('kanban')
 logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(name)s] %(message)s', datefmt='%H:%M:%S')

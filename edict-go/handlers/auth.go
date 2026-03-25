@@ -26,7 +26,7 @@ func init() {
 		adminPass = "admin123"
 	}
 	if serviceToken == "" {
-		serviceToken = "edict-internal-service-token-2026"
+		serviceToken = "0a7f3132c662cd8327e190f3f77681c689ca2ede7de8756f"
 	}
 }
 

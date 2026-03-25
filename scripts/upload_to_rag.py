@@ -6,7 +6,7 @@ from typing import Optional
 
 # 默认配置
 DEFAULT_URL = "http://localhost:8000/api/rag/ingest-file"
-DEFAULT_TOKEN = "edict-internal-service-token-2026"
+DEFAULT_TOKEN = "0a7f3132c662cd8327e190f3f77681c689ca2ede7de8756f"
 
 async def upload_file(
     file_path: str, 
