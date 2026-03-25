@@ -11,7 +11,7 @@ class Settings(BaseSettings):
     postgres_db: str = "edict"
     postgres_user: str = "edict"
     postgres_password: str = "edict_secret_change_me"
-    database_url_override: str | None = None  # 直接设置 DATABASE_URL 环境变量时用
+    database_url: str | None = None  # 直接从 DATABASE_URL 环境变量读取
 
     # ── Redis ──
     redis_url: str = "redis://localhost:6379/0"
@@ -44,9 +44,9 @@ class Settings(BaseSettings):
     feishu_channel: str = "feishu"
 
     @property
-    def database_url(self) -> str:
-        if self.database_url_override:
-            return self.database_url_override
+    def db_url(self) -> str:
+        if self.database_url:
+            return self.database_url
         return (
             f"postgresql+asyncpg://{self.postgres_user}:{self.postgres_password}"
             f"@{self.postgres_host}:{self.postgres_port}/{self.postgres_db}"
