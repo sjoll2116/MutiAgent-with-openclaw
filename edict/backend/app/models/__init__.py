@@ -4,6 +4,6 @@ from .task import Task, TaskState
 from .event import Event
 from .thought import Thought
 from .todo import Todo
-from .document import DocumentChunk
+from .document import Document, DocumentChunk
 
-__all__ = ["Task", "TaskState", "Event", "Thought", "Todo", "DocumentChunk"]
+__all__ = ["Task", "TaskState", "Event", "Thought", "Todo", "Document", "DocumentChunk"]
