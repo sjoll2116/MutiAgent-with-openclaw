@@ -249,7 +249,7 @@ class RAGService:
                 "py": Language.PYTHON, "go": Language.GO, "js": Language.JS, "ts": Language.TS,
                 "tsx": Language.TS, "jsx": Language.JS, "java": Language.JAVA,
                 "cpp": Language.CPP, "c": Language.C, "html": Language.HTML,
-                "md": Language.MARKDOWN, "sol": Language.SOLIDITY, "sh": Language.PROTO,
+                "md": Language.MARKDOWN,
             }
             language = lang_map.get(ext)
             if ext in ("pdf", "docx", "pptx"): file_type = ext
