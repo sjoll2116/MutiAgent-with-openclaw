@@ -108,6 +108,25 @@ class AdvancedCleaningService:
             
         return text
 
+    @staticmethod
+    def strip_html_tags(text: str) -> str:
+        """5. 移除残余的 HTML 标签（如 <br>, <p> 等），PDF 解析常有此类残留。"""
+        # 将换行类标签替换为换行符
+        text = re.sub(r'<(br|p|div)[^>]*>', '\n', text, flags=re.IGNORECASE)
+        # 移除其他所有 HTML 标签
+        text = re.sub(r'<[^>]+>', '', text)
+        return text
+
+    @staticmethod
+    def fix_table_format(text: str) -> str:
+        """6. 修复 Markdown 表格乱象：处理多余的管道符 || 或不规范的对齐线。"""
+        # 移除行首或行尾多余的 ||
+        text = re.sub(r'^\|{2,}', '|', text, flags=re.MULTILINE)
+        text = re.sub(r'\|{2,}$', '|', text, flags=re.MULTILINE)
+        # 移除行中的 || 替换为单 |
+        text = re.sub(r'\|{2,}', '|', text)
+        return text
+
     @classmethod
     def process(cls, text: str) -> str:
         """执行完整的高级清洗流水线"""
@@ -115,6 +134,8 @@ class AdvancedCleaningService:
             return ""
             
         text = cls.normalize_text(text)
+        text = cls.strip_html_tags(text) # 新增：移除 HTML 标签
+        text = cls.fix_table_format(text) # 新增：修复表格
         text = cls.remove_boilerplate(text)
         text = cls.consolidate_cross_page(text)
         text = cls.lint_markdown(text)

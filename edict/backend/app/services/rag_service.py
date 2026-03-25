@@ -37,7 +37,7 @@ class RAGService:
         self.reranker_model = "BAAI/bge-reranker-v2-m3"
         self.llm_model = "THUDM/GLM-Z1-9B-0414"
         self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1200,    # Parent Size 扩大，提供更完整的语义段落
+            chunk_size=2000,    # Parent Size 扩大，针对通用文档
             chunk_overlap=200,  # 合理重叠，保持连贯
             separators=["\n# ", "\n## ", "\n### ", "\n\n", "\n", " ", ""] # 优先保障 Markdown 结构
         )
@@ -280,7 +280,7 @@ class RAGService:
         # Parent: 保持 1024 (用于 LLM 阅读), Child: 256 (用于精准检索)
         parent_splitter = self.splitter 
         child_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=400,    # Child Size 扩大，确保语义原子性
+            chunk_size=500,    # Child Size 微调，适应 BGE-M3 更好的语义捕捉能力
             chunk_overlap=50,   # 适度重叠
             separators=["\n\n", "\n", " ", ""]
         )
@@ -290,7 +290,9 @@ class RAGService:
             parent_chunks_raw = self._markdown_semantic_split(cleaned_text, file_name)
         elif language:
             code_splitter = RecursiveCharacterTextSplitter.from_language(
-                language=language, chunk_size=1024, chunk_overlap=128
+                language=language, 
+                chunk_size=5000,    # Code Parent: 扩大到 5000，确保函数逻辑不被切断
+                chunk_overlap=0     # Code Overlap: 设为 0，防止逻辑重复干扰，依赖语法边界切割
             )
             raw = code_splitter.split_text(cleaned_text)
             parent_chunks_raw = [{"text": c, "path": "Code"} for c in raw]

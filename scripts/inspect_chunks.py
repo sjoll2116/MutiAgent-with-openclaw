@@ -43,7 +43,7 @@ async def list_recent_documents(limit=10):
     
     await engine.dispose()
 
-async def inspect_hierarchy(doc_id=None, limit=100):
+async def inspect_hierarchy(doc_id=None, limit=50):
     """层级化展示切片内容，清晰看到 Parent-Child 关系。"""
     engine = get_engine()
     if not engine: return
@@ -90,22 +90,20 @@ async def inspect_hierarchy(doc_id=None, limit=100):
             if not is_child:
                 # Parent 样式：深红色背景或醒目边框 (模拟)
                 print(f"\n\033[1;34m[PARENT] ID: {row.id}\033[0m")
-                content = row.content.replace("\n", " ")
-                print(f"   | {content[:300]}...")
+                print(f"   | {row.content}")
             else:
                 # Child 样式：缩进并弱化
                 print(f"   \033[2m└── [CHILD] ID: {row.id} (Parent: {row.parent_id})\033[0m")
-                content = row.content.replace("\n", " ")
-                print(f"       > {content[:150]}...")
+                print(f"       > {row.content}")
     
-    print(f"\n💡 提示：以上内容仅为预览。Parent 块通常为 1024 字符，用于 LLM 阅读；Child 块为 256 字符，用于精准检索。")
+    print(f"\n💡 提示：以上内容为完整预览。Parent 块最大可达 5000 字符（代码）或 2000 字符（文本），用于 LLM 阅读；Child 块为 500 字符，用于精准检索。")
     await engine.dispose()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Edict RAG 增强型层级化切片检视工具")
     parser.add_argument("--doc-id", help="查看特定文档的切片结构")
     parser.add_argument("--list", action="store_true", help="列出最近文档")
-    parser.add_argument("--limit", type=int, default=100, help="限制显示数量")
+    parser.add_argument("--limit", type=int, default=50, help="限制显示数量")
 
     args = parser.parse_args()
 
