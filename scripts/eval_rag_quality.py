@@ -49,8 +49,7 @@ class RAGEvaluator:
 
     async def run_suite(self):
         """运行全量评估任务（从数据库读取待评测样本）。"""
-        # 注意：这里假设 document_chunks 表中存储了最近的 RAG 交互记录
-        # 在真实场景中，我们会在 answer_query 时将记录存入 eval_samples 表
+
         log.info("开始 RAG 质量闭环评估...")
         
         # 模拟样本数据 (实际应从 eval_samples 或日志中提取)

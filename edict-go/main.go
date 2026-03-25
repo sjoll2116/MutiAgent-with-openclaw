@@ -133,7 +133,7 @@ func main() {
 	// ── GET 路由 ──
 	r.GET("/healthz", handlers.Healthz)
 	r.GET("/ws", services.WsLiveStatusHandler)
-	r.GET("/ws/live-status", services.WsLiveStatusHandler) // Alias for dashboard
+	r.GET("/ws/live-status", services.WsLiveStatusHandler) // 仪表盘别名
 	r.GET("/ws/task/:taskId", services.WsLiveStatusHandler)
 	
 	// ── Auth 路由 ──
@@ -152,7 +152,7 @@ func main() {
 	authorized := r.Group("/api")
 	authorized.Use(handlers.AuthMiddleware())
 	{
-		// Task Read
+		// 读取任务
 		authorized.GET("/tasks", handlers.ListTasks)
 		authorized.GET("/tasks/:taskId", handlers.GetTask)
 		authorized.GET("/tasks-stats", handlers.GetTaskStats)
@@ -176,7 +176,7 @@ func main() {
 		authorized.POST("/morning-config", handlers.SaveMorningConfig)
 		authorized.POST("/morning-brief/refresh", handlers.RefreshMorningBrief)
 		
-		// Skills
+		// 技能
 		authorized.GET("/remote-skills-list", handlers.GetRemoteSkillsList)
 		authorized.GET("/skill-content/:agentId/:skillName", handlers.GetSkillContent)
 		authorized.POST("/add-skill", handlers.AddSkill)
@@ -185,7 +185,7 @@ func main() {
 		authorized.POST("/update-remote-skill", handlers.UpdateRemoteSkill)
 		authorized.POST("/remove-remote-skill", handlers.RemoveRemoteSkill)
 		
-		// Scheduler
+		// 调度器
 		authorized.POST("/scheduler-scan", handlers.SchedulerScan)
 		authorized.POST("/scheduler-retry", handlers.SchedulerRetry)
 		authorized.POST("/scheduler-escalate", handlers.SchedulerEscalate)

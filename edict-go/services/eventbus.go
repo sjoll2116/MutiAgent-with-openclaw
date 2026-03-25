@@ -150,30 +150,31 @@ func runPollCycle() {
 func handleEvent(topic string, msg redis.XMessage) {
 	// 1. 广播到 WebSockets
 	BroadcastToWebSockets(topic, msg)
-
+ 
 	// 2. 调度器逻辑
 	eventType := msg.Values["event_type"].(string)
+	traceID, _ := msg.Values["trace_id"].(string)
 	payloadStr := msg.Values["payload"].(string)
-
+ 
 	var payload EventPayload
 	if err := json.Unmarshal([]byte(payloadStr), &payload); err != nil {
 		log.Printf("⚠️ Failed to unmarshal event payload from %s: %v", topic, err)
 		return
 	}
-
-	log.Printf("📥 Event received: topic=%s type=%s", topic, eventType)
-
+ 
+	log.Printf("📥 Event received: topic=%s type=%s trace=%s", topic, eventType, traceID)
+ 
 	switch topic {
 	case TopicTaskCreated:
-		onTaskCreated(payload)
+		onTaskCreated(payload, traceID)
 	case TopicTaskStatus:
-		onTaskStatus(eventType, payload)
+		onTaskStatus(eventType, payload, traceID)
 	case TopicTaskCompleted:
 		// 记录日志
 	case TopicTaskStalled:
-		onTaskStalled(payload)
+		onTaskStalled(payload, traceID)
 	}
-
+ 
 	// 3. 确认消息
 	store.RDB.XAck(store.Ctx, topic, OrchestratorGroup, msg.ID)
 }
@@ -197,23 +198,28 @@ func detectStalledTasks() {
 	if err != nil {
 		return
 	}
-
+ 
 	threshold := 5 * time.Minute
 	now := time.Now()
-
+ 
 	for _, t := range tasks {
 		if models.TerminalStates[t.State] || t.State == "Blocked" {
 			continue
 		}
-
+ 
 		updatedAt, err := time.Parse(time.RFC3339, t.UpdatedAt)
 		if err != nil {
 			continue
 		}
-
+ 
 		if now.Sub(updatedAt) > threshold {
 			log.Printf("⚠️ Task %s is STALLED (state: %s, last update: %s)", t.ID, t.State, t.UpdatedAt)
-			PublishEvent(TopicTaskStalled, t.ID, "task.stalled", "stall-detector", EventPayload{
+			// 使用任务已有的 TraceID，若无则使用 taskID 本身作为追踪起点
+			traceID := t.TraceID
+			if traceID == "" {
+				traceID = t.ID
+			}
+			PublishEvent(TopicTaskStalled, traceID, "task.stalled", "stall-detector", EventPayload{
 				"task_id": t.ID,
 				"state":   t.State,
 				"since":   t.UpdatedAt,
@@ -221,17 +227,17 @@ func detectStalledTasks() {
 		}
 	}
 }
-
-func onTaskStalled(payload EventPayload) {
+ 
+func onTaskStalled(payload EventPayload, traceID string) {
 	taskID, _ := payload["task_id"].(string)
-
+	
 	// 对停滞任务进行升级：增加 FlowLog 并标记 Now 状态
 	store.WithTasks(func(tasks []models.Task) ([]models.Task, error) {
 		t := store.FindTask(tasks, taskID)
 		if t == nil {
 			return tasks, nil
 		}
-
+ 
 		remark := "🧭 检测到任务长时间未进展，系统已发布停滞告警"
 		t.Now = "⚠️ 运行异常：" + remark
 		t.FlowLog = append(t.FlowLog, models.FlowEntry{
@@ -244,34 +250,34 @@ func onTaskStalled(payload EventPayload) {
 		return tasks, nil
 	})
 }
-
-func onTaskCreated(payload EventPayload) {
+ 
+func onTaskCreated(payload EventPayload, traceID string) {
 	taskID, _ := payload["task_id"].(string)
 	title, _ := payload["title"].(string)
 	state, ok := payload["state"].(string)
 	if !ok {
 		state = "Queued"
 	}
-
+ 
 	// 根据状态查找对应的 agent
 	agent := store.GetAgentForState(state) // TODO: 在 store 中实现
 	if agent == "" {
 		agent = "coordinator"
 	}
-
-	log.Printf("⚡ Triggering dispatch for new task %s (state: %s) -> agent: %s", taskID, state, agent)
-	PublishEvent(TopicTaskDispatch, "go-orch", "task.dispatch.request", "orchestrator", EventPayload{
+ 
+	log.Printf("⚡ Triggering dispatch for new task %s (state: %s) -> agent: %s trace=%s", taskID, state, agent, traceID)
+	PublishEvent(TopicTaskDispatch, traceID, "task.dispatch.request", "orchestrator", EventPayload{
 		"task_id": taskID,
 		"agent":   agent,
 		"state":   state,
 		"message": "新任务已创建: " + title,
 	})
 }
-
-func onTaskStatus(eventType string, payload EventPayload) {
+ 
+func onTaskStatus(eventType string, payload EventPayload, traceID string) {
 	taskID, _ := payload["task_id"].(string)
 	toStateStr, _ := payload["to"].(string)
-
+ 
 	agent := store.GetAgentForState(toStateStr)
 	// 若状态没有固定映射的 agent，则按 org 查找（如 Executing 状态按部门分配执行 agent）
 	if agent == "" {
@@ -288,10 +294,10 @@ func onTaskStatus(eventType string, payload EventPayload) {
 			agent = orgAgent
 		}
 	}
-
+ 
 	if agent != "" {
-		log.Printf("⚡ Triggering dispatch for task %s (status change: %s) -> agent: %s", taskID, toStateStr, agent)
-		PublishEvent(TopicTaskDispatch, "go-orch", "task.dispatch.request", "orchestrator", EventPayload{
+		log.Printf("⚡ Triggering dispatch for task %s (status change: %s) -> agent: %s trace=%s", taskID, toStateStr, agent, traceID)
+		PublishEvent(TopicTaskDispatch, traceID, "task.dispatch.request", "orchestrator", EventPayload{
 			"task_id": taskID,
 			"agent":   agent,
 			"state":   toStateStr,

@@ -9,11 +9,11 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 
 # 配置
-SECRET_KEY = os.getenv("JWT_SECRET", "edict-super-secret-key-2024")
+SECRET_KEY = os.getenv("JWT_SECRET", "edict-super-secret-key-2026")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "1440"))
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD", "admin123")
-SERVICE_TOKEN = os.getenv("SERVICE_TOKEN", "edict-internal-service-token-2024")
+SERVICE_TOKEN = os.getenv("SERVICE_TOKEN", "edict-internal-service-token-2026")
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="api/auth/login", auto_error=False)

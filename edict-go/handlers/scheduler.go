@@ -11,7 +11,7 @@ import (
 	"edict-go/store"
 )
 
-// SchedulerScan 处理 POST /api/scheduler-scan。
+// 调度器Scan 处理 POST /api/scheduler-scan。
 func SchedulerScan(c *gin.Context) {
 	var body struct {
 		ThresholdSec int `json:"thresholdSec"`
@@ -77,7 +77,7 @@ func SchedulerScan(c *gin.Context) {
 	})
 }
 
-// SchedulerRetry 处理 POST /api/scheduler-retry。
+// 调度器Retry 处理 POST /api/scheduler-retry。
 func SchedulerRetry(c *gin.Context) {
 	var body struct {
 		TaskID string `json:"taskId"`
@@ -125,7 +125,7 @@ func SchedulerRetry(c *gin.Context) {
 	c.JSON(http.StatusOK, models.APIResp{OK: true, Message: resultMsg})
 }
 
-// SchedulerEscalate 处理 POST /api/scheduler-escalate。
+// 调度器Escalate 处理 POST /api/scheduler-escalate。
 func SchedulerEscalate(c *gin.Context) {
 	var body struct {
 		TaskID string `json:"taskId"`
@@ -165,7 +165,7 @@ func SchedulerEscalate(c *gin.Context) {
 	c.JSON(http.StatusOK, models.APIResp{OK: true, Message: resultMsg})
 }
 
-// SchedulerRollback 处理 POST /api/scheduler-rollback。
+// 调度器Rollback 处理 POST /api/scheduler-rollback。
 func SchedulerRollback(c *gin.Context) {
 	var body struct {
 		TaskID string `json:"taskId"`

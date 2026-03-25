@@ -264,7 +264,7 @@ func AgentWake(c *gin.Context) {
 		msg = "🔔 系统心跳检测 — 请回复 OK 确认在线。当前时间: " + store.NowISO()
 	}
 
-	// Async wake
+	// 异步唤醒
 	go func() {
 		cmd := exec.Command("openclaw", "agent", "--agent", body.AgentID, "-m", msg, "--timeout", "120")
 		env := os.Environ()
@@ -309,7 +309,7 @@ func SetModel(c *gin.Context) {
 	if data, err := os.ReadFile(pendingPath); err == nil {
 		_ = json.Unmarshal(data, &pending)
 	}
-	// Remove existing entry for this agent
+	// 移除该智能体的现有条目
 	filtered := make([]map[string]string, 0, len(pending))
 	for _, item := range pending {
 		if item["agentId"] != body.AgentID {
@@ -321,7 +321,7 @@ func SetModel(c *gin.Context) {
 		_ = os.WriteFile(pendingPath, data, 0644)
 	}
 
-	// Async apply
+	// 异步应用
 	go func() {
 		scriptsDir := filepath.Join(store.DataDir(), "..", "scripts")
 		python := findPython()
@@ -418,7 +418,7 @@ func parseActivityEntry(item map[string]any, agentID, session string) map[string
 	var kind, text string
 	switch role {
 	case "assistant":
-		// Extract thinking from content
+		// 从内容中提取思考过程
 		content, _ := msg["content"].(string)
 		if content == "" {
 			return nil

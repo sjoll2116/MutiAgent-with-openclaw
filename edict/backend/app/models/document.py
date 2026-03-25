@@ -35,11 +35,13 @@ class DocumentChunk(Base):
     file_type = Column(String(50), index=True)
     source_agent = Column(String(100))
     project_id = Column(String(100), index=True)
+    parent_id = Column(Integer, ForeignKey("document_chunks.id", ondelete="CASCADE"), nullable=True, index=True) # 父块 ID，用于 Parent-Child 检索
 
     embedding = Column(Vector(1024))
     fts = Column(TSVECTOR)
 
     document = relationship("Document", back_populates="chunks")
+    parent = relationship("DocumentChunk", remote_side=[id], backref="children")
 
 class Task(Base):
     """任务主表"""

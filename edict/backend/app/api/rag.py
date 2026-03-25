@@ -38,7 +38,7 @@ async def search(request: Request, search_req: SearchRequest, db: AsyncSession =
 
 @router.post("/ask")
 async def ask(request: Request, ask_req: SearchRequest, db: AsyncSession = Depends(get_db)):
-    """RAG 问答接口。"""
+    """RAG 问答接口"""
     service = RAGService(db, http_client=request.app.state.http_client)
     return await service.answer_query(
         ask_req.query, 
@@ -53,13 +53,13 @@ async def list_documents(
     limit: int = Query(10, ge=1, le=50),
     db: AsyncSession = Depends(get_db)
 ):
-    """罗列知识库中的文档。"""
+    """罗列知识库中的文档"""
     service = RAGService(db, http_client=request.app.state.http_client)
     return await service.list_documents(page, limit)
 
 @router.delete("/documents/{doc_id}")
 async def delete_document(request: Request, doc_id: str, db: AsyncSession = Depends(get_db)):
-    """从知识库中删除特定文档及其切片。"""
+    """从知识库中删除特定文档及其切片"""
     service = RAGService(db, http_client=request.app.state.http_client)
     await service.delete_document(doc_id)
     return {"status": "success", "message": f"Document {doc_id} deleted."}

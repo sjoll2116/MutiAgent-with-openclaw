@@ -20,13 +20,13 @@ var (
 
 func init() {
 	if jwtSecret == "" {
-		jwtSecret = "edict-super-secret-key-2024"
+		jwtSecret = "edict-super-secret-key-2026"
 	}
 	if adminPass == "" {
 		adminPass = "admin123"
 	}
 	if serviceToken == "" {
-		serviceToken = "edict-internal-service-token-2024"
+		serviceToken = "edict-internal-service-token-2026"
 	}
 }
 

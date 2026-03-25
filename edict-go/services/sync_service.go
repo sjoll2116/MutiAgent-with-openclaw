@@ -15,7 +15,6 @@ import (
 
 	"edict-go/models"
 	"edict-go/store"
-	"gorm.io/gorm"
 )
 
 // StartRuntimeSync starts the background goroutine for syncing OpenClaw sessions.
@@ -44,7 +43,7 @@ func SyncRuntime() error {
 	}
 	sessionsRoot := filepath.Join(home, ".openclaw", "agents")
 	if _, err := os.Stat(sessionsRoot); os.IsNotExist(err) {
-		return nil // No OpenClaw installed
+		return nil // 未安装 OpenClaw环境
 	}
 
 	dirs, err := ioutil.ReadDir(sessionsRoot)
@@ -85,7 +84,7 @@ func SyncRuntime() error {
 	// Filter tasks to avoid noise (similar to Python logic)
 	filtered := filterTasks(tasks, nowMs)
 
-	// Update DB
+	// 更新数据库
 	for _, t := range filtered {
 		if err := updateDBTask(t); err != nil {
 			log.Printf("Failed to update task %s: %v", t.ID, err)
@@ -166,7 +165,7 @@ func buildTaskFromSession(agentID, sessionKey string, row map[string]interface{}
 		Block:     ifThenElse(aborted, "上次运行中断", "无").(string),
 		Output:    sessionFile,
 		UpdatedAt: nowISO,
-		CreatedAt: nowISO, // Fallback
+		CreatedAt: nowISO, // 降级兜底
 		AC:        "来自 OpenClaw runtime sessions 的实时映射",
 		ProgressLog: mapActivityToProgress(activity),
 	}
@@ -217,7 +216,7 @@ func loadActivity(sessionFile string, limit int) []models.ActivityEntry {
 
 	lines := strings.Split(string(data), "\n")
 	var entries []models.ActivityEntry
-	// Process from latest to oldest
+	// 倒序处理最新数据
 	for i := len(lines) - 1; i >= 0; i-- {
 		ln := strings.TrimSpace(lines[i])
 		if ln == "" {
@@ -315,20 +314,21 @@ func filterTasks(tasks []models.Task, nowMs int64) []models.Task {
 }
 
 func updateDBTask(task models.Task) error {
-	// Check if exists and is newer
-	var existing models.GormTask
-	err := store.DB.First(&existing, "id = ?", task.ID).Error
-	if err == nil {
-		// If existing is newer, don't update from sync
+	// 检查是否存在且是否更新
+	var results []models.GormTask
+	err := store.DB.Limit(1).Find(&results, "id = ?", task.ID).Error
+	if err == nil && len(results) > 0 {
+		existing := results[0]
+		// 如果 existing 更新时间更晚，则不更新
 		updatedAt, _ := time.Parse(time.RFC3339, task.UpdatedAt)
 		if existing.UpdatedAt.After(updatedAt) || existing.UpdatedAt.Equal(updatedAt) {
 			return nil
 		}
-	} else if err != gorm.ErrRecordNotFound {
+	} else if err != nil {
 		return err
 	}
 
-	// Save
+	// 保存记录
 	return store.SaveTasks([]models.Task{task})
 }
 
@@ -341,7 +341,7 @@ func mapActivityToProgress(activity []models.ActivityEntry) []models.ProgressEnt
 			Agent: ifThenElse(a.Kind == "tool", "Tool", a.Kind).(string),
 		})
 	}
-	// Sort by At ascending for GORM
+	// 按时间升序排序供 GORM 存储
 	sort.Slice(progs, func(i, j int) bool {
 		return progs[i].At < progs[j].At
 	})

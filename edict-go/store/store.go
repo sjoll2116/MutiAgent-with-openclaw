@@ -138,7 +138,7 @@ func LoadTasks() ([]models.Task, error) {
 	return QueryTasks("", "", "", -1, -1)
 }
 
-// SaveTasks 将任务保存到 PostgreSQL。
+// 保存记录Tasks 将任务保存到 PostgreSQL。
 func SaveTasks(tasks []models.Task) error {
 	for _, t := range tasks {
 		if err := saveSingleTask(t); err != nil {
@@ -203,7 +203,7 @@ func WithTasks(fn func([]models.Task) ([]models.Task, error)) error {
 	return SaveTasks(modified)
 }
 
-// Helper Mappings
+// 辅助映射函数
 
 func mapGormToTask(gt models.GormTask) models.Task {
 	t := models.Task{
@@ -355,7 +355,7 @@ func EnsureScheduler(task *models.Task) map[string]any {
 	return s
 }
 
-// SchedulerSnapshot 将当前状态保存为快照。
+// 调度器Snapshot 将当前状态保存为快照。
 func SchedulerSnapshot(task *models.Task, note string) {
 	s := EnsureScheduler(task)
 	if note == "" {
@@ -370,7 +370,7 @@ func SchedulerSnapshot(task *models.Task, note string) {
 	}
 }
 
-// SchedulerMarkProgress 重置停滞计数器并记录进度。
+// 调度器MarkProgress 重置停滞计数器并记录进度。
 func SchedulerMarkProgress(task *models.Task, note string) {
 	s := EnsureScheduler(task)
 	s["lastProgressAt"] = NowISO()
@@ -383,7 +383,7 @@ func SchedulerMarkProgress(task *models.Task, note string) {
 	}
 }
 
-// SchedulerAddFlow 追加一个源于调度器的 flow_log 条目。
+// 调度器AddFlow 追加一个源于调度器的 flow_log 条目。
 func SchedulerAddFlow(task *models.Task, remark string) {
 	to := task.Org
 	if to == "" {
@@ -396,7 +396,7 @@ func SchedulerAddFlow(task *models.Task, remark string) {
 		Remark: "🧭 " + remark,
 	})
 }
-// SaveEvalSample 异步保存评估样本。
+// 保存记录EvalSample 异步保存评估样本。
 func SaveEvalSample(sampleType, taskID, query, context, answer, metadata string) {
 	go func() {
 		gs := models.GormEvalSample{

@@ -78,7 +78,7 @@ func WsLiveStatusHandler(c *gin.Context) {
 	}()
 }
 
-// BroadcastToWebSockets parses a message from Redis Streams and sends it over WS
+// BroadcastToWebSockets 解析 Redis Streams 数据并广播至 WebSocket
 func BroadcastToWebSockets(topic string, msg redis.XMessage) {
 	payloadStr, ok := msg.Values["payload"].(string)
 	if !ok {

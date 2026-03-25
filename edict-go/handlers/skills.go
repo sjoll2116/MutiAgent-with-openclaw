@@ -48,7 +48,7 @@ func GetSkillContent(c *gin.Context) {
 		break
 	}
 	if skillPath == "" {
-		// Fallback: check workspace directly
+		// 降级兜底: check workspace directly
 		skillPath = filepath.Join(oclawHome(), "workspace-"+agentID, "skills", skillName, "SKILL.md")
 	}
 
@@ -111,7 +111,7 @@ func AddSkill(c *gin.Context) {
 		return
 	}
 
-	// Async re-sync
+	// 异步重新同步
 	go syncAgentConfig()
 
 	c.JSON(http.StatusOK, gin.H{
@@ -148,7 +148,7 @@ func AddRemoteSkill(c *gin.Context) {
 
 	url := strings.TrimSpace(body.SourceURL)
 
-	// Download content
+	// 下载内容
 	var content string
 	var fetchErr error
 	if strings.HasPrefix(url, "https://") {
@@ -299,7 +299,7 @@ func UpdateRemoteSkill(c *gin.Context) {
 	}
 	desc, _ := info["description"].(string)
 
-	// Re-download by calling AddRemoteSkill logic inline
+	// 通过内联调用 AddRemoteSkill 逻辑重新下载
 	c.Request.Body = io.NopCloser(strings.NewReader(
 		fmt.Sprintf(`{"agentId":"%s","skillName":"%s","sourceUrl":"%s","description":"%s"}`,
 			body.AgentID, body.SkillName, sourceURL, desc)))
@@ -342,7 +342,7 @@ func RemoveRemoteSkill(c *gin.Context) {
 // ── Helpers ──
 
 func downloadURL(url string) (string, error) {
-	client := &http.Client{Timeout: 10 * 1000 * 1000 * 1000} // 10s
+	client := &http.Client{Timeout: 10 * 1000 * 1000 * 1000} // 10秒
 	req, _ := http.NewRequest("GET", url, nil)
 	req.Header.Set("User-Agent", "OpenClaw-SkillManager/1.0")
 	resp, err := client.Do(req)

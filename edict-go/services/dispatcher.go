@@ -131,10 +131,20 @@ func handleDispatch(ctx context.Context, msg redis.XMessage, sem chan struct{}) 
 		return
 	}
 
-	log.Printf("🔄 Dispatching task %s → agent '%s' (state: %s)", taskID, agent, state)
+	// 1. 获取超时设置（从调度器配置读取，默认为 30 分钟）
+	timeoutSec := 1800 // 默认 30 分钟
+	tasks, _ := store.LoadTasks()
+	task := store.FindTask(tasks, taskID)
+	if task != nil && task.Scheduler != nil {
+		if val, ok := task.Scheduler["stallThresholdSec"].(float64); ok && val > 0 {
+			timeoutSec = int(val)
+		} else if val, ok := task.Scheduler["stallThresholdSec"].(int); ok && val > 0 {
+			timeoutSec = val
+		}
+	}
 
-	// 1. 发布心跳开始
-	PublishEvent(TopicAgentHeartbeat, "dispatcher", "agent.dispatch.start", traceID, EventPayload{
+	// 发布心跳开始
+	PublishEvent(TopicAgentHeartbeat, traceID, "agent.dispatch.start", "dispatcher", EventPayload{
 		"task_id": taskID,
 		"agent":   agent,
 	})
@@ -149,10 +159,20 @@ func handleDispatch(ctx context.Context, msg redis.XMessage, sem chan struct{}) 
 			time.Sleep(time.Duration(retryCount*5) * time.Second) // 指数退避
 		}
 
-		result = callOpenClaw(ctx, agent, message, taskID, traceID)
+		// 创建带超时的上下文
+		runCtx, cancel := context.WithTimeout(ctx, time.Duration(timeoutSec)*time.Second)
+		result = callOpenClaw(runCtx, agent, message, taskID, traceID)
+		cancel()
 
 		if result.ReturnCode == 0 {
 			break
+		}
+
+		// 如果是超时导致的（或者 context 被取消），通常不建议盲目重试
+		if runCtx.Err() == context.DeadlineExceeded {
+			log.Printf("⏳ Task %s TIMEOUT after %d seconds", taskID, timeoutSec)
+			result.Stderr = fmt.Sprintf("Execution timeout after %ds", timeoutSec)
+			break 
 		}
 
 		retryCount++
@@ -171,14 +191,14 @@ func handleDispatch(ctx context.Context, msg redis.XMessage, sem chan struct{}) 
 
 	if result.ReturnCode == 0 {
 		log.Printf("✅ Agent '%s' completed task %s", agent, taskID)
-		checkAndPublishStateChange(taskID, state, agent)
+		checkAndPublishStateChange(taskID, state, agent, traceID)
 	} else {
 		log.Printf("❌ Dispatch EXHAUSTED for task %s (Agent: %s) after %d retries", taskID, agent, retryCount)
 		// 最终失败，标记任务阻塞
-		markTaskBlocked(taskID, agent, result)
+		markTaskBlocked(taskID, agent, result, traceID)
 	}
 
-	// ACK
+	// 确认
 	store.RDB.XAck(ctx, TopicTaskDispatch, DispatchGroup, msg.ID)
 }
 
@@ -194,20 +214,20 @@ func updateTaskRetryInfo(taskID, agent string, res openclawResult, attempt int) 
 	store.SaveTasks([]models.Task{*task})
 }
 
-func markTaskBlocked(taskID, agent string, res openclawResult) {
+func markTaskBlocked(taskID, agent string, res openclawResult, traceID string) {
 	tasks, _ := store.LoadTasks()
 	task := store.FindTask(tasks, taskID)
 	if task == nil {
 		return
 	}
-
+ 
 	task.State = "Blocked"
 	task.Block = fmt.Sprintf("Agent %s 最终执行失败: %s", agent, res.Stderr)
 	task.UpdatedAt = store.NowISO()
 	store.SaveTasks([]models.Task{*task})
-
+ 
 	// 发布状态变更事件，以便 Dashboard 监控
-	PublishEvent(TopicTaskStatus, taskID, "task.status", "dispatcher-retry", EventPayload{
+	PublishEvent(TopicTaskStatus, traceID, "task.status", "dispatcher-retry", EventPayload{
 		"task_id": taskID,
 		"from":    "Executing",
 		"to":      "Blocked",
@@ -218,7 +238,7 @@ func markTaskBlocked(taskID, agent string, res openclawResult) {
 // checkAndPublishStateChange 检查 Agent 执行后任务状态是否发生变化。
 // - 若已变化：发布 task.status 事件驱动后续流转。
 // - 若未变化：使用 StateFlow 自动推进到下一状态，写入 JSON，再发布事件。
-func checkAndPublishStateChange(taskID, dispatchedState, agent string) {
+func checkAndPublishStateChange(taskID, dispatchedState, agent, traceID string) {
 	tasks, err := store.LoadTasks()
 	if err != nil {
 		log.Printf("⚠️ checkAndPublishStateChange: failed to load tasks: %v", err)
@@ -229,20 +249,20 @@ func checkAndPublishStateChange(taskID, dispatchedState, agent string) {
 		log.Printf("⚠️ checkAndPublishStateChange: task %s not found", taskID)
 		return
 	}
-
+ 
 	currentState := task.State
-
+ 
 	// 终态不再流转
 	if models.TerminalStates[currentState] {
 		log.Printf("ℹ️ Task %s reached terminal state %s, no further dispatch", taskID, currentState)
 		return
 	}
-
+ 
 	// 情况 1：Agent 已经推进了状态 → 直接发布事件
 	if currentState != dispatchedState && currentState != "" {
 		log.Printf("🔁 Task %s state changed: %s → %s (by agent '%s'), publishing event to continue flow",
 			taskID, dispatchedState, currentState, agent)
-		PublishEvent(TopicTaskStatus, taskID, "task.status", "dispatcher-auto", EventPayload{
+		PublishEvent(TopicTaskStatus, traceID, "task.status", "dispatcher-auto", EventPayload{
 			"task_id":      taskID,
 			"from":         dispatchedState,
 			"to":           currentState,
@@ -250,17 +270,17 @@ func checkAndPublishStateChange(taskID, dispatchedState, agent string) {
 		})
 		return
 	}
-
+ 
 	// 情况 2：Agent 完成但未推进状态 → 使用 StateFlow 自动推进
 	flow, ok := models.StateFlow[currentState]
 	if !ok {
 		log.Printf("⚠️ Task %s state %s has no defined next step in StateFlow, cannot auto-advance", taskID, currentState)
 		return
 	}
-
+ 
 	log.Printf("🔁 Auto-advancing task %s: %s → %s (agent '%s' completed but didn't advance state)",
 		taskID, currentState, flow.Next, agent)
-
+ 
 	// 写入新状态到 tasks_source.json
 	err = store.WithTasks(func(allTasks []models.Task) ([]models.Task, error) {
 		t := store.FindTask(allTasks, taskID)
@@ -283,14 +303,14 @@ func checkAndPublishStateChange(taskID, dispatchedState, agent string) {
 		log.Printf("❌ Auto-advance failed for task %s: %v", taskID, err)
 		return
 	}
-
+ 
 	// 终态不发布事件
 	if models.TerminalStates[flow.Next] {
 		log.Printf("ℹ️ Task %s auto-advanced to terminal state %s", taskID, flow.Next)
 		return
 	}
-
-	PublishEvent(TopicTaskStatus, taskID, "task.status", "dispatcher-auto", EventPayload{
+ 
+	PublishEvent(TopicTaskStatus, traceID, "task.status", "dispatcher-auto", EventPayload{
 		"task_id":      taskID,
 		"from":         currentState,
 		"to":           flow.Next,

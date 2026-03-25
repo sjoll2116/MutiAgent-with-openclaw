@@ -32,6 +32,9 @@ class MultiModalParser:
         elif ext in ("xlsx", "xls", "csv"):
             return await self._parse_with_pandas(file_bytes, ext)
             
+        elif ext == "docx":
+            return await self._parse_with_docx(file_bytes)
+            
         elif ext in ("png", "jpg", "jpeg", "bmp", "tiff"):
             prompt = """
                 # Role: 多模态数据提取专家
@@ -42,12 +45,6 @@ class MultiModalParser:
                 3. 文字识别：若有文字，必须按原排版输出 Markdown 格式，严禁漏字、错字。
                 4. 数据提取：若含图表/表格，请将其转化为 Markdown 表格，并提取核心趋势或异常数值。
                 5. 逻辑结构：使用清晰的分级标题组织输出。
-                # Output Format:
-                ---
-                ### 1. 场景概述
-                ### 2. 文字/代码内容
-                ### 3. 数据与图表分析
-                ---
             """
             return await self._parse_with_glm(file_bytes, prompt)
         
@@ -110,6 +107,57 @@ class MultiModalParser:
         except Exception as e:
             log.error(f"Pandas parsing error: {e}")
             return f"[表格解析失败: {e}]"
+
+    async def _parse_with_docx(self, file_bytes: bytes) -> str:
+        """使用 python-docx 提取 Word 文档内容，按顺序保留段落和表格。"""
+        try:
+            from docx import Document
+            from docx.table import Table
+            from docx.text.paragraph import Paragraph
+            
+            doc = Document(io.BytesIO(file_bytes))
+            md_sections = []
+            
+            from docx.oxml.table import CT_Tbl
+            from docx.oxml.text.paragraph import CT_P
+
+            for child in doc.element.body:
+                if isinstance(child, CT_P):
+                    para = Paragraph(child, doc)
+                    text = para.text.strip()
+                    if text:
+                        # 尝试映射标题
+                        style = para.style.name if para.style else ""
+                        if "Heading" in style:
+                            level_match = [s for s in style if s.isdigit()]
+                            level = int(level_match[0]) if level_match else 1
+                            md_sections.append(f"{'#' * level} {text}")
+                        else:
+                            md_sections.append(text)
+                elif isinstance(child, CT_Tbl):
+                    table = Table(child, doc)
+                    table_md = []
+                    for i, row in enumerate(table.rows):
+                        cells = [cell.text.strip().replace("\n", " ") for cell in row.cells]
+                        table_md.append("| " + " | ".join(cells) + " |")
+                        if i == 0:
+                            table_md.append("| " + " | ".join(["---"] * len(cells)) + " |")
+                    md_sections.append("\n".join(table_md))
+            
+            # 兜底：如果上述遍历落空，使用标准遍历
+            if not md_sections:
+                for para in doc.paragraphs:
+                    if para.text.strip():
+                        md_sections.append(para.text.strip())
+            
+            return "\n\n".join(md_sections)
+            
+        except ImportError:
+            log.error("python-docx is not installed.")
+            return "[解析失败: python-docx 依赖缺失]"
+        except Exception as e:
+            log.error(f"Docx parsing error: {e}")
+            return f"[Word解析失败: {e}]"
 
     async def _call_vlm(self, model: str, prompt: str, image_b64: str) -> str:
         """通用的 VLM 调用逻辑。"""

@@ -37,8 +37,8 @@ class RAGService:
         self.reranker_model = "BAAI/bge-reranker-v2-m3"
         self.llm_model = "THUDM/GLM-Z1-9B-0414"
         self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=512,
-            chunk_overlap=128
+            chunk_size=1024,
+            chunk_overlap=256
         )
         
         # Reranker 配置：Top 5 封顶 + 0.4 硬阈值
@@ -275,58 +275,120 @@ class RAGService:
         self.db.add(new_doc)
         await self.db.flush()
 
-        # 4. 切片与元数据富化 (Structured Metadata)
+        # 4. 切片策略升级：Parent-Child (Small-to-Big)
+        # Parent: 保持 1024 (用于 LLM 阅读), Child: 256 (用于精准检索)
+        parent_splitter = self.splitter # 默认 1024
+        child_splitter = RecursiveCharacterTextSplitter(chunk_size=256, chunk_overlap=32)
+        
+        parent_chunks_raw = []
         if language == Language.MARKDOWN:
-            chunk_data = self._markdown_semantic_split(cleaned_text, file_name)
+            parent_chunks_raw = self._markdown_semantic_split(cleaned_text, file_name)
         elif language:
-            splitter = RecursiveCharacterTextSplitter.from_language(
-                language=language,
-                chunk_size=self.splitter._chunk_size,
-                chunk_overlap=self.splitter._chunk_overlap
+            code_splitter = RecursiveCharacterTextSplitter.from_language(
+                language=language, chunk_size=1024, chunk_overlap=128
             )
-            raw_chunks = splitter.split_text(cleaned_text)
-            chunk_data = [{"text": c, "path": "Code"} for c in raw_chunks]
+            raw = code_splitter.split_text(cleaned_text)
+            parent_chunks_raw = [{"text": c, "path": "Code"} for c in raw]
         else:
-            raw_chunks = self.splitter.split_text(cleaned_text)
-            chunk_data = [{"text": c, "path": "General"} for c in raw_chunks]
+            raw = parent_splitter.split_text(cleaned_text)
+            parent_chunks_raw = [{"text": c, "path": "General"} for c in raw]
+
+        # 生成 Child 块并构建扁平化数据结构以便统一打流 (Embedding)
+        # 结构: {"text": str, "path": str, "type": "parent"|"child", "parent_idx": int|None, "idx": int}
+        flat_chunk_data = []
+        for p_idx, p_item in enumerate(parent_chunks_raw):
+            flat_chunk_data.append({
+                "text": p_item["text"], 
+                "path": p_item["path"], 
+                "type": "parent", 
+                "parent_idx": None,
+                "idx": p_idx
+            })
+            
+            # 对较长的 Parent 进行 Child 切分
+            if len(p_item["text"]) > 256:
+                child_texts = child_splitter.split_text(p_item["text"])
+                for c_text in child_texts:
+                    flat_chunk_data.append({
+                        "text": c_text,
+                        "path": p_item["path"],
+                        "type": "child",
+                        "parent_idx": p_idx,
+                        "idx": len(flat_chunk_data) # Global flat index
+                    })
         
         # --- 批量获取向量并写入  ---
         enrichment_texts = []
-        for item in chunk_data:
+        for item in flat_chunk_data:
             chunk_text = item["text"]
             section_path = item["path"]
             enrichment_texts.append(f"Document: {file_name}\nSection: {section_path}\n{chunk_text}")
         
-        # 批量请求向量池，硅基流动上限可切分页，这里做保护性的分组 (每批 50)
+        # 批量请求向量池 (每批 50)
         embeddings = []
         for i in range(0, len(enrichment_texts), 50):
             batch_texts = enrichment_texts[i:i+50]
             batch_emb = await self._get_embedding(batch_texts)
             embeddings.extend(batch_emb)
         
-        db_chunks = []
-        for item, emb in zip(chunk_data, embeddings):
-            chunk_text = item["text"]
-            section_path = item["path"]
-            
-            chunk_metadata = metadata.copy()
-            chunk_metadata["section_path"] = section_path
-            chunk_metadata["file_name"] = file_name
+        # 分离 parent 和 child，实现两段式入库
+        parent_db_chunks = []
+        child_flat_items = [] # 保留 child 的原始 flat 信息以映射 embedding
+        
+        # 构建 Parent Chunks
+        for i, item in enumerate(flat_chunk_data):
+            if item["type"] == "parent":
+                chunk_metadata = metadata.copy()
+                chunk_metadata["section_path"] = item["path"]
+                chunk_metadata["file_name"] = file_name
+                
+                db_chunk = DocumentChunk(
+                    doc_id=doc_id,
+                    content=item["text"],
+                    metadata_json=json.dumps(chunk_metadata),
+                    file_name=file_name,
+                    file_type=file_type,
+                    source_agent=source_agent,
+                    project_id=project_id,
+                    embedding=embeddings[i]
+                )
+                parent_db_chunks.append((item["idx"], db_chunk))
+            else:
+                child_flat_items.append((i, item)) # (global_idx, item)
 
+        # 1. 先插入 Parent 获取 ID
+        db_parents_only = [chunk for _, chunk in parent_db_chunks]
+        self.db.add_all(db_parents_only)
+        await self.db.flush() 
+        
+        # 建立 idx -> parent_id 映射
+        parent_idx_to_db_id = {idx: chunk.id for idx, chunk in parent_db_chunks}
+        
+        # 2. 构建并插入 Child Chunks
+        child_db_chunks = []
+        for global_i, item in child_flat_items:
+            chunk_metadata = metadata.copy()
+            chunk_metadata["section_path"] = item["path"]
+            chunk_metadata["file_name"] = file_name
+            
+            parent_db_id = parent_idx_to_db_id.get(item["parent_idx"])
+            
             db_chunk = DocumentChunk(
                 doc_id=doc_id,
-                content=chunk_text,
+                content=item["text"],
                 metadata_json=json.dumps(chunk_metadata),
                 file_name=file_name,
                 file_type=file_type,
                 source_agent=source_agent,
                 project_id=project_id,
-                embedding=emb
+                embedding=embeddings[global_i],
+                parent_id=parent_db_id
             )
-            db_chunks.append(db_chunk)
+            child_db_chunks.append(db_chunk)
             
-        self.db.add_all(db_chunks)
-        await self.db.flush() # 生成全部 ID
+        if child_db_chunks:
+            self.db.add_all(child_db_chunks)
+            await self.db.flush()
         
         # 完美解决 N+1，聚合单条 Update 彻底完成 FTS 更新
         await self.db.execute(
@@ -546,11 +608,15 @@ class RAGService:
             ORDER BY ts_rank(fts, plainto_tsquery('simple', :query)) DESC
             LIMIT 50
         )
-        SELECT c.id, c.doc_id, c.content, c.metadata_json,
+        SELECT c.id, 
+               COALESCE(p.doc_id, c.doc_id) as doc_id, 
+               COALESCE(p.content, c.content) as content, 
+               COALESCE(p.metadata_json, c.metadata_json) as metadata_json,
                COALESCE(1.0 / (60 + v.vector_rank), 0.0) + COALESCE(1.0 / (60 + f.fts_rank), 0.0) AS rrf_score
         FROM document_chunks c
         LEFT JOIN vector_search v ON c.id = v.id
         LEFT JOIN fts_search f ON c.id = f.id
+        LEFT JOIN document_chunks p ON c.parent_id = p.id
         JOIN documents d ON c.doc_id = d.doc_id
         WHERE (v.id IS NOT NULL OR f.id IS NOT NULL) 
           AND d.is_deleted = false 
@@ -561,13 +627,23 @@ class RAGService:
         result = await self.db.execute(text(rrf_query), params)
         rows = result.fetchall()
         
-        initial_chunks = []
+        # 使用字典去重：多个小块可能会命中同一个 Parent 块，导致最终上下文冗余
+        unique_chunks_map = {}
         for row in rows:
-            initial_chunks.append({
-                "id": row.id, "doc_id": row.doc_id, "content": row.content,
-                "metadata": json.loads(row.metadata_json) if row.metadata_json else {},
-                "score": float(row.rrf_score)
-            })
+            # 使用 content 的哈希作为唯一标识进行去重更稳妥
+            content_hash = hashlib.md5(row.content.encode('utf-8')).hexdigest()
+            if content_hash not in unique_chunks_map:
+                unique_chunks_map[content_hash] = {
+                    "doc_id": row.doc_id, "content": row.content,
+                    "metadata": json.loads(row.metadata_json) if row.metadata_json else {},
+                    "score": float(row.rrf_score)
+                }
+            else:
+                # 保留最高分
+                if float(row.rrf_score) > float(unique_chunks_map[content_hash]["score"]):
+                    unique_chunks_map[content_hash]["score"] = float(row.rrf_score)
+                    
+        initial_chunks = list(unique_chunks_map.values())
             
         reranked = await self._rerank_results(query, initial_chunks)
         
@@ -587,8 +663,15 @@ class RAGService:
             needs_fallback = True
             
         if needs_fallback:
-            web_results = await self._web_search_fallback(query)
-            # 将互联网数据拼接在最后面作为外脑参考
-            final_results.extend(web_results)
+            # 意图路由机制 (Intent Guardrail): 检查是否包含强制内部词汇
+            internal_keywords = ["我司", "本项目", "保密", "内部", "公司", "规章", "架构"]
+            is_strictly_internal = any(kw in query for kw in internal_keywords)
+            
+            if is_strictly_internal:
+                log.info(f"Query '{query}' detected as strictly internal. Blocking web fallback.")
+            else:
+                web_results = await self._web_search_fallback(query)
+                # 将互联网数据拼接在最后面作为外脑参考
+                final_results.extend(web_results)
             
         return final_results

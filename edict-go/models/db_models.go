@@ -4,7 +4,7 @@ import (
 	"time"
 )
 
-// GORM Models for PostgreSQL persistence
+// 用于 PostgreSQL 持久化的 GORM 模型
 
 type GormTask struct {
 	ID          string    `gorm:"uniqueIndex:idx_tasks_id;type:varchar(100)"` // 使用唯一索引替代主键，避免与 Python 侧 task_id 主键冲突
@@ -20,7 +20,7 @@ type GormTask struct {
 	Output      string    `gorm:"column:output"`
 	Archived    bool      `gorm:"default:false"`
 	ArchivedAt  *time.Time
-	Scheduler   string    `gorm:"column:scheduler"` // JSON string for metadata
+	Scheduler   string    `gorm:"column:scheduler"` // 用于元数据的 JSON 字符串
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }

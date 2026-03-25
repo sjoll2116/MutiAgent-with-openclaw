@@ -41,13 +41,13 @@ func CreateTask(c *gin.Context) {
 	title = strings.TrimSpace(title)
 	title = prefixRe.ReplaceAllString(title, "")
 
-	// Truncate to 100 chars
+	// 截断为 100 个字符
 	if utf8.RuneCountInString(title) > 100 {
 		runes := []rune(title)
 		title = string(runes[:100]) + "…"
 	}
 
-	// Quality checks
+	// 质量检查
 	if utf8.RuneCountInString(title) < models.MinTitleLen {
 		c.JSON(http.StatusBadRequest, models.APIResp{
 			OK:    false,
@@ -63,7 +63,7 @@ func CreateTask(c *gin.Context) {
 		return
 	}
 
-	// Defaults
+	// 默认值
 	org := req.Org
 	if org == "" {
 		org = "任务编排引擎"
@@ -128,7 +128,7 @@ func CreateTask(c *gin.Context) {
 			newTask.TargetDept = req.TargetDept
 		}
 
-		// Initialise scheduler
+		// 初始化调度器
 		store.EnsureScheduler(&newTask)
 		store.SchedulerSnapshot(&newTask, "create-task-initial")
 		store.SchedulerMarkProgress(&newTask, "任务创建")

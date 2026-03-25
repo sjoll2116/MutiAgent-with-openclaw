@@ -326,7 +326,7 @@ func ReviewAction(c *gin.Context) {
 				remark = "✅ 批准：" + comment
 				toDept = "任务调度引擎"
 				fromDept = "安全审查引擎"
-			} else { // ResultReview
+			} else { // 结果审查
 				task.State = "Completed"
 				task.Now = "验收通过，任务完成"
 				comment := body.Comment
@@ -337,7 +337,7 @@ func ReviewAction(c *gin.Context) {
 				toDept = "用户"
 				fromDept = "系统"
 			}
-		} else { // reject
+		} else { // 驳回
 			round := task.ReviewRound + 1
 			task.ReviewRound = round
 			task.State = "Planning"

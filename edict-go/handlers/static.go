@@ -184,7 +184,7 @@ func ServeStaticOrSPA(c *gin.Context) {
 		return
 	}
 
-	// Try serving static file
+	// 尝试提供静态文件
 	safe := strings.TrimLeft(strings.ReplaceAll(p, "\\", "/"), "/")
 	if strings.Contains(safe, "..") {
 		c.AbortWithStatus(http.StatusForbidden)

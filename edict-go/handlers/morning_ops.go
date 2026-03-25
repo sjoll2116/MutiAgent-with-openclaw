@@ -46,7 +46,7 @@ func RefreshMorningBrief(c *gin.Context) {
 		return
 	}
 
-	// Async execution
+	// 异步执行
 	go func() {
 		args := []string{scriptPath}
 		if body.Force {
