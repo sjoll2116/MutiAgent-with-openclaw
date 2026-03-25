@@ -9,11 +9,10 @@ from dotenv import load_dotenv
 # 加载环境变量
 load_dotenv()
 
-# 数据库连接配置 (使用 asyncpg)
+# 数据库连接配置
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql+asyncpg://edict:edict_secret_change_me@localhost:5432/edict")
 
 def get_engine():
-    """获取 SQLAlchemy 异步引擎。"""
     try:
         return create_async_engine(DATABASE_URL)
     except Exception as e:
@@ -21,7 +20,6 @@ def get_engine():
         return None
 
 async def list_recent_documents(limit=10):
-    """异步列出最近上传的文档。"""
     engine = get_engine()
     if not engine: return
     
@@ -45,27 +43,28 @@ async def list_recent_documents(limit=10):
     
     await engine.dispose()
 
-async def inspect_chunks(doc_id=None, limit=50):
-    """异步直观查看切片内容。"""
+async def inspect_hierarchy(doc_id=None, limit=100):
+    """层级化展示切片内容，清晰看到 Parent-Child 关系。"""
     engine = get_engine()
     if not engine: return
     
+    # 检索逻辑：先按 doc_id 分组，再按 Parent 排序，子块紧跟父块
     if doc_id:
-        print(f"\n🔍 正在检索文档 [{doc_id}] 的切片...")
+        print(f"\n🔍 正在深度检视文档 [{doc_id}] 的层级结构...")
         query = text("""
-            SELECT id, content, metadata_json, parent_id
+            SELECT id, content, parent_id, metadata_json
             FROM document_chunks
             WHERE doc_id = :doc_id
-            ORDER BY id ASC
+            ORDER BY COALESCE(parent_id, id), parent_id IS NOT NULL, id
             LIMIT :limit
         """)
         params = {"doc_id": doc_id, "limit": limit}
     else:
-        print(f"\n🌍 正在检索全量切片 (前 {limit} 条)...")
+        print(f"\n🌍 正在检视全量层级结构 (前 {limit} 条)...")
         query = text("""
-            SELECT id, doc_id, content, metadata_json, parent_id
+            SELECT id, doc_id, content, parent_id, metadata_json
             FROM document_chunks
-            ORDER BY doc_id, id ASC
+            ORDER BY doc_id, COALESCE(parent_id, id), parent_id IS NOT NULL, id
             LIMIT :limit
         """)
         params = {"limit": limit}
@@ -79,32 +78,34 @@ async def inspect_chunks(doc_id=None, limit=50):
             await engine.dispose()
             return
 
+        current_doc = None
         for row in rows:
-            meta = json.loads(row.metadata_json) if row.metadata_json else {}
-            path = meta.get("section_path", "Root")
+            # 打印文档分割线
+            if not doc_id and row.doc_id != current_doc:
+                current_doc = row.doc_id
+                print(f"\n\n{'='*20} Document: {current_doc} {'='*20}")
+
             is_child = row.parent_id is not None
             
-            # 视觉样式增强
-            prefix = "   └── [Child]" if is_child else "📂 [Parent]"
-            color_prefix = "\033[94m" if not is_child else "\033[92m" # 蓝色 Parent, 绿色 Child
-            reset = "\033[0m"
-            
-            print(f"\n{color_prefix}{prefix} ID: {row.id} | Path: {path}{reset}")
-            if not doc_id:
-                print(f"   Document: {row.doc_id}")
-            
-            # 打印内容预览 (换行处理)
-            content_display = row.content.strip()
-            print(f"   Content: {content_display[:200]}..." if len(content_display) > 200 else f"   Content: {content_display}")
-            print("-" * 40)
+            if not is_child:
+                # Parent 样式：深红色背景或醒目边框 (模拟)
+                print(f"\n\033[1;34m[PARENT] ID: {row.id}\033[0m")
+                content = row.content.replace("\n", " ")
+                print(f"   | {content[:300]}...")
+            else:
+                # Child 样式：缩进并弱化
+                print(f"   \033[2m└── [CHILD] ID: {row.id} (Parent: {row.parent_id})\033[0m")
+                content = row.content.replace("\n", " ")
+                print(f"       > {content[:150]}...")
     
+    print(f"\n💡 提示：以上内容仅为预览。Parent 块通常为 1024 字符，用于 LLM 阅读；Child 块为 256 字符，用于精准检索。")
     await engine.dispose()
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Edict RAG 切片内容直观检视工具")
-    parser.add_argument("--doc-id", help="查看特定文档的切片 (不填则列出全量)")
-    parser.add_argument("--list", action="store_true", help="列出最近上传的文档清单")
-    parser.add_argument("--limit", type=int, default=50, help="显示数量限制 (默认 50)")
+    parser = argparse.ArgumentParser(description="Edict RAG 增强型层级化切片检视工具")
+    parser.add_argument("--doc-id", help="查看特定文档的切片结构")
+    parser.add_argument("--list", action="store_true", help="列出最近文档")
+    parser.add_argument("--limit", type=int, default=100, help="限制显示数量")
 
     args = parser.parse_args()
 
@@ -112,6 +113,6 @@ if __name__ == "__main__":
         if args.list:
             await list_recent_documents(args.limit)
         else:
-            await inspect_chunks(args.doc_id, args.limit)
+            await inspect_hierarchy(args.doc_id, args.limit)
             
     asyncio.run(main())

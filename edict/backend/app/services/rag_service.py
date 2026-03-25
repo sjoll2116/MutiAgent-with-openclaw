@@ -37,8 +37,9 @@ class RAGService:
         self.reranker_model = "BAAI/bge-reranker-v2-m3"
         self.llm_model = "THUDM/GLM-Z1-9B-0414"
         self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1024,
-            chunk_overlap=256
+            chunk_size=1200,    # Parent Size 扩大，提供更完整的语义段落
+            chunk_overlap=200,  # 合理重叠，保持连贯
+            separators=["\n# ", "\n## ", "\n### ", "\n\n", "\n", " ", ""] # 优先保障 Markdown 结构
         )
         
         # Reranker 配置：Top 5 封顶 + 0.4 硬阈值
@@ -277,8 +278,12 @@ class RAGService:
 
         # 4. 切片策略升级：Parent-Child (Small-to-Big)
         # Parent: 保持 1024 (用于 LLM 阅读), Child: 256 (用于精准检索)
-        parent_splitter = self.splitter # 默认 1024
-        child_splitter = RecursiveCharacterTextSplitter(chunk_size=256, chunk_overlap=32)
+        parent_splitter = self.splitter 
+        child_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=400,    # Child Size 扩大，确保语义原子性
+            chunk_overlap=50,   # 适度重叠
+            separators=["\n\n", "\n", " ", ""]
+        )
         
         parent_chunks_raw = []
         if language == Language.MARKDOWN:

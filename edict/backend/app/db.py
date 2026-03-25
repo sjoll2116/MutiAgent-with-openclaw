@@ -40,5 +40,7 @@ async def get_db() -> AsyncSession:
 
 async def init_db():
     """开发用 — 创建所有表（生产用 Alembic）。"""
+    from sqlalchemy import text
     async with engine.begin() as conn:
+        await conn.execute(text("CREATE EXTENSION IF NOT EXISTS vector"))
         await conn.run_sync(Base.metadata.create_all)
