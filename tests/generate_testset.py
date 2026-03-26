@@ -17,9 +17,15 @@ try:
         
     try:
         from ragas.testset.transforms import TitleExtractor, SummaryExtractor, EmbeddingExtractor
+        # 导入封装类以解决 'str' object has no attribute 'content' 报错问题
+        from ragas.llms import LangchainLLMWrapper
+        from ragas.embeddings import LangchainEmbeddingsWrapper
     except ImportError:
         # 0.2.12 某些环境可能直接从 .testset 导出
         from ragas.testset import TitleExtractor, SummaryExtractor, EmbeddingExtractor
+        # 0.2.12 兼容性导入
+        from ragas.llms.base import LangchainLLMWrapper
+        from ragas.embeddings.base import LangchainEmbeddingsWrapper
         
 except ImportError as e:
     print(f"Error: Could not import Ragas components: {e}")
@@ -54,6 +60,11 @@ async def generate_testset(count: int = 5):
     critic_llm = ChatOpenAI(model="Pro/deepseek-ai/DeepSeek-V3.2", openai_api_key=api_key, openai_api_base=api_url)
     embeddings = LangchainOpenAIEmbeddings(model="BAAI/bge-m3", openai_api_key=api_key, openai_api_base=api_url)
 
+    # 封装模型以适配 Ragas 0.2.x
+    generator_llm_wrapped = LangchainLLMWrapper(generator_llm)
+    critic_llm_wrapped = LangchainLLMWrapper(critic_llm)
+    embeddings_wrapped = LangchainEmbeddingsWrapper(embeddings)
+
     # 1. 从数据库读取文档片段作为知识源
     engine = create_async_engine(settings.db_url)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
@@ -75,23 +86,22 @@ async def generate_testset(count: int = 5):
             for c in chunks
         ]
 
-        # 2. 初始化生成器
+        # 2. 初始化 Ragas 生成器 (使用封装后的模型)
         generator = TestsetGenerator.from_langchain(
-            generator_llm,
-            critic_llm,
-            embeddings
+            generator_llm_wrapped,
+            critic_llm_wrapped,
+            embeddings_wrapped
         )
 
         # 3. 生成测试集
         logger.info(f"Generating {count} test samples (this may take a while)...")
         
         # 定义自定义转换流程，避开报错的 HeadlineSplitter
-        # 注意：在 0.2.x 中可以通过 transforms 参数自定义知识图谱的构建过程
-        # 为了支持 Persona 生成，必须包含 summary_embedding
+        # 注意：在 0.2.x 中必须使用 wrapped 版本的模型以兼容内部 Node 处理
         custom_transforms = [
-            TitleExtractor(llm=generator_llm),
-            SummaryExtractor(llm=generator_llm),
-            EmbeddingExtractor(embedding_model=embeddings, property_name="summary_embedding")
+            TitleExtractor(llm=generator_llm_wrapped),
+            SummaryExtractor(llm=generator_llm_wrapped),
+            EmbeddingExtractor(embedding_model=embeddings_wrapped, property_name="summary_embedding")
         ]
 
         
