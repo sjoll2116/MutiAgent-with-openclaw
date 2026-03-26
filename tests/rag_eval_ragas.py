@@ -50,9 +50,8 @@ async def run_evaluation(limit: int = 10):
     # Ragas 使用自己的 llm 包装
     from langchain_openai import ChatOpenAI, OpenAIEmbeddings as LangchainOpenAIEmbeddings
     
-    # 注意：GLM-4 在 Ragas 中可能需要特定的适配，这里使用标准的 OpenAI 兼容方式
     evaluator_llm = ChatOpenAI(
-        model="deepseek-ai/DeepSeek-R1-0528-Qwen3-8B",
+        model="Pro/deepseek-ai/DeepSeek-V3.2",
         openai_api_key=api_key,
         openai_api_base=api_url,
     )
