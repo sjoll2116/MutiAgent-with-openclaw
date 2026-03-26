@@ -596,9 +596,13 @@ class RAGService:
         params = {"embedding": str(query_embedding), "query": query}
         if metadata_filter:
             for key, val in metadata_filter.items():
-                if key in ("file_type", "project_id", "source_agent") and val:
+                if key in ("file_type", "project_id", "source_agent", "file_name", "doc_id") and val:
                     filter_parts.append(f"AND c.{key} = :{key}_val")
                     params[f"{key}_val"] = val
+                elif key == "year" and val:
+                    # 假定 val 是整数或字符串年份
+                    filter_parts.append(f"AND EXTRACT(YEAR FROM d.created_at) = :year_val")
+                    params["year_val"] = int(val)
         
         filter_sql = " ".join(filter_parts)
 
