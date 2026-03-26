@@ -7,19 +7,24 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from dotenv import load_dotenv
 
-# Ragas 相关导入 (自动适配 0.2.x)
-try:
-    from ragas.testset.generator import TestsetGenerator
-    from ragas.testset.graph import Node, KnowledgeGraph
-    # 导入转换器以解决 'headlines' 和 'summary_embedding' 报错问题
-    from ragas.testset.transforms import TitleExtractor, SummaryExtractor, EmbeddingExtractor
 
-except ImportError:
+try:
+    # 尝试 0.2.x 标准路径
     try:
-        from ragas.testset import TestsetGenerator
+        from ragas.testset.generator import TestsetGenerator
     except ImportError:
-        print("Error: Could not find TestsetGenerator in ragas. Please check installation.")
-        sys.exit(1)
+        from ragas.testset import TestsetGenerator
+        
+    try:
+        from ragas.testset.transforms import TitleExtractor, SummaryExtractor, EmbeddingExtractor
+    except ImportError:
+        # 0.2.12 某些环境可能直接从 .testset 导出
+        from ragas.testset import TitleExtractor, SummaryExtractor, EmbeddingExtractor
+        
+except ImportError as e:
+    print(f"Error: Could not import Ragas components: {e}")
+    sys.exit(1)
+
 
 
 # 导入项目模型
