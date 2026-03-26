@@ -34,8 +34,8 @@ async def generate_testset(count: int = 5):
 
     from langchain_openai import ChatOpenAI, OpenAIEmbeddings as LangchainOpenAIEmbeddings
     
-    generator_llm = ChatOpenAI(model="THUDM/glm-4-9b-chat", openai_api_key=api_key, openai_api_base=api_url)
-    critic_llm = ChatOpenAI(model="THUDM/glm-4-9b-chat", openai_api_key=api_key, openai_api_base=api_url)
+    generator_llm = ChatOpenAI(model="deepseek-ai/DeepSeek-R1-0528-Qwen3-8B", openai_api_key=api_key, openai_api_base=api_url)
+    critic_llm = ChatOpenAI(model="deepseek-ai/DeepSeek-R1-0528-Qwen3-8B", openai_api_key=api_key, openai_api_base=api_url)
     embeddings = LangchainOpenAIEmbeddings(model="BAAI/bge-m3", openai_api_key=api_key, openai_api_base=api_url)
 
     # 1. 从数据库读取文档片段作为知识源

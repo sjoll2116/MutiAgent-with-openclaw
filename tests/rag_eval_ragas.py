@@ -52,7 +52,7 @@ async def run_evaluation(limit: int = 10):
     
     # 注意：GLM-4 在 Ragas 中可能需要特定的适配，这里使用标准的 OpenAI 兼容方式
     evaluator_llm = ChatOpenAI(
-        model="THUDM/glm-4-9b-chat",
+        model="deepseek-ai/DeepSeek-R1-0528-Qwen3-8B",
         openai_api_key=api_key,
         openai_api_base=api_url,
     )
