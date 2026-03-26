@@ -7,9 +7,19 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from dotenv import load_dotenv
 
-# Ragas 相关导入 (兼容 0.2.x)
-from ragas.testset.generator import TestsetGenerator
-# 0.2.x 不再直接导入 simple, reasoning, multi_context，内部已集成
+# Ragas 相关导入 (自动适配 0.2.x)
+try:
+    from ragas.testset.generator import TestsetGenerator
+    from ragas.testset.graph import Node, KnowledgeGraph
+    # 导入转换器以解决 'headlines' 和 'summary_embedding' 报错问题
+    from ragas.testset.transforms import TitleExtractor, SummaryExtractor, EmbeddingExtractor
+
+except ImportError:
+    try:
+        from ragas.testset import TestsetGenerator
+    except ImportError:
+        print("Error: Could not find TestsetGenerator in ragas. Please check installation.")
+        sys.exit(1)
 
 
 # 导入项目模型
@@ -40,7 +50,7 @@ async def generate_testset(count: int = 5):
     embeddings = LangchainOpenAIEmbeddings(model="BAAI/bge-m3", openai_api_key=api_key, openai_api_base=api_url)
 
     # 1. 从数据库读取文档片段作为知识源
-    engine = create_async_engine(settings.database_url)
+    engine = create_async_engine(settings.db_url)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:
@@ -69,8 +79,23 @@ async def generate_testset(count: int = 5):
 
         # 3. 生成测试集
         logger.info(f"Generating {count} test samples (this may take a while)...")
-        # 0.2.x 版本默认会自动平衡题目类型，无需手动传入 distributions 列表
-        testset = generator.generate_with_langchain_docs(documents, test_size=count)
+        
+        # 定义自定义转换流程，避开报错的 HeadlineSplitter
+        # 注意：在 0.2.x 中可以通过 transforms 参数自定义知识图谱的构建过程
+        # 为了支持 Persona 生成，必须包含 summary_embedding
+        custom_transforms = [
+            TitleExtractor(llm=generator_llm),
+            SummaryExtractor(llm=generator_llm),
+            EmbeddingExtractor(embedding_model=embeddings, property_name="summary_embedding")
+        ]
+
+        
+        # 兼容 0.2.x 版本的新逻辑 (注意参数名为 testset_size)
+        testset = generator.generate_with_langchain_docs(
+            documents, 
+            testset_size=count,
+            transforms=custom_transforms
+        )
         
         
         # 4. 保存为 CSV 或 JSON

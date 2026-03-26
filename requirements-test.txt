@@ -1,6 +1,7 @@
-ragas>=0.2.0
+ragas>=0.2.12
 datasets>=3.0.0
 langchain-openai>=0.2.0
 pandas>=2.0.0
 tqdm>=4.66.0
 python-dotenv>=1.0.1
+rapidfuzz>=3.14.3
