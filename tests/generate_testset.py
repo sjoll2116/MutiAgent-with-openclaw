@@ -7,9 +7,10 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from dotenv import load_dotenv
 
-# Ragas 相关导入
-from ragas.testset import TestsetGenerator
-from ragas.testset.evolutions import simple, reasoning, multi_context
+# Ragas 相关导入 (兼容 0.2.x)
+from ragas.testset.generator import TestsetGenerator
+# 0.2.x 不再直接导入 simple, reasoning, multi_context，内部已集成
+
 
 # 导入项目模型
 import sys
@@ -68,14 +69,9 @@ async def generate_testset(count: int = 5):
 
         # 3. 生成测试集
         logger.info(f"Generating {count} test samples (this may take a while)...")
-        # 概率分布：简单题、推理题、多上下文题
-        distributions = {
-            simple: 0.5,
-            reasoning: 0.25,
-            multi_context: 0.25
-        }
+        # 0.2.x 版本默认会自动平衡题目类型，无需手动传入 distributions 列表
+        testset = generator.generate_with_langchain_docs(documents, test_size=count)
         
-        testset = generator.generate_with_langchain_docs(documents, test_size=count, distributions=distributions)
         
         # 4. 保存为 CSV 或 JSON
         output_file = "tests/synthetic_testset.csv"

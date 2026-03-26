@@ -61,7 +61,7 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
     
     # 评估器模型 (使用用户指定的 DeepSeek-V3)
     evaluator_llm = ChatOpenAI(
-        model="Pro/deepseek-ai/DeepSeek-V3", 
+        model="Pro/deepseek-ai/DeepSeek-V3.2", 
         openai_api_key=api_key, 
         openai_api_base=api_url
     )
