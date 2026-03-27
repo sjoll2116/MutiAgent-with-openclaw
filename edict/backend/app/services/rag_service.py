@@ -594,7 +594,10 @@ class RAGService:
         
         # 2. 生成向量搜索文本 (Rewritten or HyDE)
         search_text = await self.generate_hyde_draft(rewritten_query) if should_hyde else rewritten_query
-        query_embedding = await self._get_embedding(search_text)
+        # 修正：_get_embedding 期望 List[str]，且返回 List[List[float]]。
+        # 此处搜索只需要单个向量，应取返回列表的第一项。
+        embeddings = await self._get_embedding([search_text])
+        query_embedding = embeddings[0]
         
         # 3. 动态拼接多维过滤
         filter_parts: List[str] = []
