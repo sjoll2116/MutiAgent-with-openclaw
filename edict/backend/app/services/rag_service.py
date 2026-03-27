@@ -41,10 +41,10 @@ class RAGService:
         # 硅基流动模型配置
         self.encoder_model = "BAAI/bge-m3"
         self.reranker_model = "BAAI/bge-reranker-v2-m3"
-        self.llm_model = "THUDM/GLM-Z1-9B-0414"
+        self.llm_model = "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B"
         self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=2000,    # Parent Size 扩大，针对通用文档
-            chunk_overlap=200,  # 合理重叠，保持连贯
+            chunk_size=1600,    # Parent Size 扩大，针对通用文档
+            chunk_overlap=160,  # 合理重叠，保持连贯
             separators=["\n# ", "\n## ", "\n### ", "\n\n", "\n", " ", ""] # 优先保障 Markdown 结构
         )
         
