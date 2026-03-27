@@ -39,6 +39,7 @@ try:
     # Transforms
     from ragas.testset.transforms import (
         default_transforms,
+        TitleExtractor,
         SummaryExtractor,
         EmbeddingExtractor,
     )
@@ -129,6 +130,17 @@ async def generate_testset(count: int = 5):
             embedding_model=embeddings_wrapped,
         )
 
+        # 诊断：打印当前环境下 TestsetGenerator 拥有的所有方法
+        available_methods = [m for m in dir(generator) if 'generate' in m.lower()]
+        logger.info(f"Ragas TestsetGenerator available methods: {available_methods}")
+
+        # 定义自定义转换流程
+        custom_transforms = [
+            TitleExtractor(llm=llm_wrapped),
+            SummaryExtractor(llm=llm_wrapped),
+            EmbeddingExtractor(embedding_model=embeddings_wrapped, property_name="summary_embedding")
+        ]
+
         logger.info(f"Generating {count} test samples (this may take a while)...")
 
         # 使用 generate_with_chunks: 专为已切分数据设计
@@ -137,6 +149,7 @@ async def generate_testset(count: int = 5):
         testset = generator.generate_with_chunks(
             chunks=documents,
             testset_size=count,
+            transforms=custom_transforms, # Explicitly pass custom transforms
             transforms_llm=llm_wrapped,
             transforms_embedding_model=embeddings_wrapped,
             raise_exceptions=True,
