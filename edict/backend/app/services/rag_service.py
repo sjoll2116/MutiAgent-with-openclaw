@@ -41,7 +41,7 @@ class RAGService:
         # 硅基流动模型配置
         self.encoder_model = "BAAI/bge-m3"
         self.reranker_model = "BAAI/bge-reranker-v2-m3"
-        self.llm_model = "deepseek-ai/DeepSeek-R1-0528-Qwen3-8B"
+        self.llm_model = "THUDM/GLM-4-32B-0414"
         self.splitter = RecursiveCharacterTextSplitter(
             chunk_size=1600,    # Parent Size 扩大，针对通用文档
             chunk_overlap=160,  # 合理重叠，保持连贯
@@ -484,7 +484,7 @@ class RAGService:
             user_msg = f"上下文: {context}\n问题: {query}" if context else f"问题: {query}"
             
             response = await openai_client.chat.completions.create(
-                model="THUDM/GLM-4-32B-0414", # 使用指定模型
+                model=self.llm_model, # 使用动态引用
                 messages=[
                     {"role": "system", "content": rewrite_system_prompt},
                     {"role": "user", "content": user_msg}
@@ -518,7 +518,7 @@ class RAGService:
                 "针对用户的查询生成一段详尽且准确的预想回答。仅输出文档内容，不包含引导语。"
             )
             response = await openai_client.chat.completions.create(
-                model="THUDM/glm-4-9b-chat", # 保持模型一致性
+                model=self.llm_model, # 保持模型一致性
                 messages=[{"role": "system", "content": hyde_system_prompt}, {"role": "user", "content": query}],
                 temperature=0.3,
             )
@@ -661,7 +661,7 @@ class RAGService:
         WHERE (v.id IS NOT NULL OR f.id IS NOT NULL) 
           AND d.is_deleted = false 
           {filter_sql}
-        ORDER BY rrf_score DESC LIMIT 20
+        ORDER BY rrf_score DESC LIMIT 30
         """
         
         result = await self.db.execute(text(rrf_query), params)
