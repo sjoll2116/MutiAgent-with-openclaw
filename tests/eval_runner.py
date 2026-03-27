@@ -94,7 +94,9 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
         if "n" in kwargs:
             kwargs["n"] = 1
         return orig_bind(*args, **kwargs)
-    evaluator_llm.bind = patched_bind
+    
+    # 使用 object.__setattr__ 绕过 Pydantic v2 对 bind 的字段检查限制
+    object.__setattr__(evaluator_llm, "bind", patched_bind)
 
     evaluator_embeddings = LangchainOpenAIEmbeddings(
         model="BAAI/bge-m3", 
