@@ -19,7 +19,7 @@ nest_asyncio.apply()
 # ---------------------------------------------------------
 # 2. Ragas 0.4.3 规范导入
 # ---------------------------------------------------------
-from ragas import evaluate, EvaluationDataset
+from ragas import evaluate, EvaluationDataset, RunConfig
 from ragas.metrics import (
     Faithfulness,
     AnswerRelevancy,
@@ -78,15 +78,24 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
     engine = create_async_engine(settings.db_url)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
-    # 评估器 LLM：移除全局 json_object，让 Ragas 自行处理结构化输出
+    # 评估器 LLM
     evaluator_llm = ChatOpenAI(
         model="Pro/deepseek-ai/DeepSeek-V3.2", 
         openai_api_key=api_key, 
         openai_api_base=api_url,
         temperature=0.0,
-        timeout=120,
+        timeout=300, # 评估耗时较长，增加到 300s
         max_retries=3
     )
+
+    # Monkey Patch: 强制将 n 限制为 1，解决 SiliconFlow 不支持 n>1 的报错
+    orig_bind = evaluator_llm.bind
+    def patched_bind(*args, **kwargs):
+        if "n" in kwargs:
+            kwargs["n"] = 1
+        return orig_bind(*args, **kwargs)
+    evaluator_llm.bind = patched_bind
+
     evaluator_embeddings = LangchainOpenAIEmbeddings(
         model="BAAI/bge-m3", 
         openai_api_key=api_key, 
@@ -141,6 +150,7 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
         metrics=metrics,
         llm=evaluator_llm,
         embeddings=evaluator_embeddings,
+        run_config=RunConfig(max_workers=3, timeout=300) # 限制并发并增加全局超时
     )
     
     # --- 输出与保存 ---
