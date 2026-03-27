@@ -484,7 +484,7 @@ class RAGService:
             user_msg = f"上下文: {context}\n问题: {query}" if context else f"问题: {query}"
             
             response = await openai_client.chat.completions.create(
-                model="THUDM/glm-4-9b-chat", # 使用指定模型
+                model="THUDM/GLM-4-32B-0414", # 使用指定模型
                 messages=[
                     {"role": "system", "content": rewrite_system_prompt},
                     {"role": "user", "content": user_msg}
