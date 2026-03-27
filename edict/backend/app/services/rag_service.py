@@ -43,9 +43,9 @@ class RAGService:
         self.reranker_model = "BAAI/bge-reranker-v2-m3"
         self.llm_model = "THUDM/GLM-4-32B-0414"
         self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1600,    # Parent Size 扩大，针对通用文档
-            chunk_overlap=160,  # 合理重叠，保持连贯
-            separators=["\n# ", "\n## ", "\n### ", "\n\n", "\n", " ", ""] # 优先保障 Markdown 结构
+            chunk_size=1600,
+            chunk_overlap=160,
+            separators=["\n# ", "\n## ", "\n### ", "\n\n", "\n", " ", ""]
         )
         
         # Reranker 配置：Top 5 封顶 + 0.4 硬阈值
@@ -128,11 +128,11 @@ class RAGService:
         except httpx.HTTPStatusError as e:
             if e.response.status_code in (429, 502, 503, 504):
                 log.warning(f"Embedding API Rate Limit or Server Error ({e.response.status_code}), retrying...")
-                raise e # 触发 tenacity 重新尝试
-            log.error(f"硅基流动 Embedding 致命错误: {e.response.text}")
+                raise e
+            log.error(f"Embedding fatal error: {e.response.text}")
             return [[0.0] * 1024 for _ in input_texts]
         except Exception as e:
-            log.error(f"硅基流动 Embedding 错误: {e}")
+            log.error(f"Embedding error: {e}")
             raise e
 
     @retry(
@@ -179,10 +179,10 @@ class RAGService:
             if e.response.status_code in (429, 502, 503, 504):
                 log.warning(f"Rerank API Rate Limit or Error ({e.response.status_code}). Retrying...")
                 raise e
-            log.error(f"硅基流动重排序致命错误: {e.response.text}")
+            log.error(f"Rerank fatal error: {e.response.text}")
             return documents
         except Exception as e:
-            log.error(f"硅基流动重排序错误: {e}")
+            log.error(f"Rerank error: {e}")
             raise e
 
     @retry(
@@ -266,7 +266,6 @@ class RAGService:
         source_agent = metadata.get("source_agent", "user")
         project_id = metadata.get("project_id")
         
-        # 生命周期
         expire_at = datetime.now() + timedelta(hours=24) if is_temporary else None
 
         # 3. 创建主文档记录
@@ -282,12 +281,11 @@ class RAGService:
         self.db.add(new_doc)
         await self.db.flush()
 
-        # 4. 切片策略升级：Parent-Child (Small-to-Big)
-        # Parent: 保持 1024 (用于 LLM 阅读), Child: 256 (用于精准检索)
+        # Parent-Child (Small-to-Big) chunking
         parent_splitter = self.splitter 
         child_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,    # Child Size 微调，适应 BGE-M3 更好的语义捕捉能力
-            chunk_overlap=50,   # 适度重叠
+            chunk_size=500,
+            chunk_overlap=50,
             separators=["\n\n", "\n", " ", ""]
         )
         
@@ -297,8 +295,8 @@ class RAGService:
         elif language:
             code_splitter = RecursiveCharacterTextSplitter.from_language(
                 language=language, 
-                chunk_size=5000,    # Code Parent: 扩大到 5000，确保函数逻辑不被切断
-                chunk_overlap=0     # Code Overlap: 设为 0，防止逻辑重复干扰，依赖语法边界切割
+                chunk_size=5000,
+                chunk_overlap=0
             )
             raw = code_splitter.split_text(cleaned_text)
             parent_chunks_raw = [{"text": c, "path": "Code"} for c in raw]
@@ -327,7 +325,7 @@ class RAGService:
                         "path": p_item["path"],
                         "type": "child",
                         "parent_idx": p_idx,
-                        "idx": len(flat_chunk_data) # Global flat index
+                        "idx": len(flat_chunk_data)
                     })
         
         # --- 批量获取向量并写入  ---
@@ -463,25 +461,34 @@ class RAGService:
         }
 
     async def rewrite_query(self, query: str, context: Optional[str] = None) -> Dict[str, Any]:
-        """使用 GLM-4-9B-Chat 进行查询意图分析与路由分发。
-        判断是否可以直接放行、仅需改写、还是需要深度幻觉。
+        """Query routing - 3 mutually exclusive paths:
+          bypass: original query as-is
+          rewrite_only: rewrite only, no HyDE
+          hyde: hypothetical answer from original query, no rewrite
         """
         if not openai_client:
-            return {"rewritten_query": query, "needs_hyde": False, "routing": "bypass"}
+            return {"rewritten_query": query, "routing": "bypass"}
         
         try:
             rewrite_system_prompt = (
-                "你是一个 RAG 系统的智能路由专家。请分析用户的原始查询和当前对话上下文。\n"
-                "你的任务是决定该查询的处理路径并输出 JSON。选项如下：\n"
-                "1. bypass: 查询本身已经非常清晰、完整，无需任何扩充即可精准命中数据库（如：“系统架构图在哪里”、“192.168.1.1 设备的文档”）。\n"
-                "2. rewrite_only: 存在指代不清（“修复它”、“那个任务”），或语句不够精炼，需要你结合上下文补全为独立搜索词，但属于明确的事实搜寻，不需要生成虚构答案。\n"
-                "3. hyde: 语义鸿沟大。用户问的是抽象概念、原理逻辑或寻求解决方案（如：“如何优化并发性能”、“为什么总是报超时错误”）。你需要标记为 hyde，系统会用假想答案去检索。\n"
-                "\n"
-                "要求：若判定为 bypass，rewritten_query 保持原样；若判定为其它，提供优化后的查询。\n"
-                "务必仅以 JSON 格式输出：{\"routing_decision\": \"bypass\"|\"rewrite_only\"|\"hyde\", \"rewritten_query\": \"...\"}"
+                "You are an intelligent routing expert for a RAG system. "
+                "Analyze the user query and context.\n"
+                "Decide the processing path. Three MUTUALLY EXCLUSIVE paths:\n"
+                "1. bypass: Query is already clear and specific.\n"
+                "2. rewrite_only: Query has unclear references or needs refinement. "
+                "Rewrite into a standalone search term. For factual lookups.\n"
+                "3. hyde: Large semantic gap. User asks about abstract concepts, "
+                "principles, or solutions. System will generate a hypothetical "
+                "answer from the ORIGINAL question. Do NOT rewrite.\n\n"
+                "Rules:\n"
+                "- bypass: rewritten_query = original query unchanged.\n"
+                "- rewrite_only: rewritten_query = your optimized query.\n"
+                "- hyde: rewritten_query = original query unchanged.\n"
+                'Output ONLY JSON: {"routing_decision": "bypass"|"rewrite_only"|"hyde", '
+                '"rewritten_query": "..."}'
             )
             
-            user_msg = f"上下文: {context}\n问题: {query}" if context else f"问题: {query}"
+            user_msg = f"Context: {context}\nQuery: {query}" if context else f"Query: {query}"
             
             response = await openai_client.chat.completions.create(
                 model=self.llm_model, # 使用动态引用
@@ -497,32 +504,33 @@ class RAGService:
             routing = result.get("routing_decision", "bypass")
             rewritten_query = result.get("rewritten_query", query)
             
-            # 若判研为 bypass，强制使用原词以防 LLM 画蛇添足
-            if routing == "bypass":
+            # bypass and hyde: force original query
+            if routing in ("bypass", "hyde"):
                 rewritten_query = query
-                
-            needs_hyde = (routing == "hyde")
             
             log.info(f"Query Routing: [{routing}] {query} -> {rewritten_query}")
-            return {"rewritten_query": rewritten_query, "needs_hyde": needs_hyde, "routing": routing}
+            return {"rewritten_query": rewritten_query, "routing": routing}
         except Exception as e:
             log.error(f"Query Rewrite error: {e}")
-            return {"rewritten_query": query, "needs_hyde": False, "routing": "bypass"}
+            return {"rewritten_query": query, "routing": "bypass"}
 
     async def generate_hyde_draft(self, query: str) -> str:
         """HyDE 模式：生成理想答案草案。"""
         if not openai_client: return query
         try:
             hyde_system_prompt = (
-                "你是一个专业技术文档专家。\n"
-                "针对用户的查询生成一段详尽且准确的预想回答。仅输出文档内容，不包含引导语。"
+                "You are a professional technical documentation expert.\n"
+                "Generate a detailed and accurate hypothetical answer to the user's query. "
+                "Output ONLY the document content, no introductory text."
             )
             response = await openai_client.chat.completions.create(
                 model=self.llm_model, # 保持模型一致性
                 messages=[{"role": "system", "content": hyde_system_prompt}, {"role": "user", "content": query}],
                 temperature=0.3,
             )
-            return response.choices[0].message.content
+            draft = response.choices[0].message.content
+            log.info(f"HyDE draft generated ({len(draft)} chars): {draft[:200]}...")
+            return draft
         except Exception as e:
             log.error(f"HyDE error: {e}")
             return query
@@ -597,26 +605,36 @@ class RAGService:
                     })
                 )
                 self.db.add(sample)
-                await self.db.flush() # 确保在当前事务中生效，或者可以用独立 session
+                await self.db.flush()
             except Exception as eval_err:
                 log.warning(f"Failed to save eval sample: {eval_err}")
 
             return {"answer": answer, "sources": chunks, "routing_info": routing_info}
         except Exception as e:
-            return {"answer": f"合成回答错误: {e}", "sources": chunks}
+            return {"answer": f"Synthesis error: {e}", "sources": chunks}
 
     async def hybrid_search(self, query: str, top_k: int = 5, use_hyde: bool = True, 
                             metadata_filter: Optional[dict] = None, context: Optional[str] = None) -> Dict[str, Any]:
-        """结合密集向量和全文检索，随后执行过滤、重排序、阈值筛选及 Web 兜底。支持软删除过滤。"""
-        # 1. 查询改写与动态 HyDE 决策
+        """Hybrid vector + FTS search with 3-way mutually exclusive routing."""
+        # 1. Three-way mutually exclusive routing
         rewrite_res = await self.rewrite_query(query, context)
+        routing = rewrite_res.get("routing", "bypass")
         rewritten_query = rewrite_res.get("rewritten_query", query)
-        should_hyde = rewrite_res.get("needs_hyde", False) and use_hyde
         
-        # 2. 生成向量搜索文本 (Rewritten or HyDE)
-        search_text = await self.generate_hyde_draft(rewritten_query) if should_hyde else rewritten_query
-        # 修正：_get_embedding 期望 List[str]，且返回 List[List[float]]。
-        # 此处搜索只需要单个向量，应取返回列表的第一项。
+        # 2. Generate search text based on routing decision
+        #    bypass:       original query as-is
+        #    rewrite_only: use rewritten query
+        #    hyde:         generate hypothetical answer from ORIGINAL query (no rewrite)
+        if routing == "hyde" and use_hyde:
+            search_text = await self.generate_hyde_draft(query)
+            used_hyde = True
+        elif routing == "rewrite_only":
+            search_text = rewritten_query
+            used_hyde = False
+        else:  # bypass
+            search_text = query
+            used_hyde = False
+        
         embeddings = await self._get_embedding([search_text])
         query_embedding = embeddings[0]
         
@@ -629,7 +647,6 @@ class RAGService:
                     filter_parts.append(f"AND c.{key} = :{key}_val")
                     params[f"{key}_val"] = val
                 elif key == "year" and val:
-                    # 假定 val 是整数或字符串年份
                     filter_parts.append(f"AND EXTRACT(YEAR FROM d.created_at) = :year_val")
                     params["year_val"] = int(val)
         
@@ -706,8 +723,8 @@ class RAGService:
         return {
             "chunks": final_results,
             "routing_info": {
-                "routing": rewrite_res.get("routing", "bypass"),
+                "routing": routing,
                 "rewritten_query": rewritten_query,
-                "used_hyde": should_hyde
+                "used_hyde": used_hyde
             }
         }

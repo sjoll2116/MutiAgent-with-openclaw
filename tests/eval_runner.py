@@ -77,26 +77,33 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
     # --- 初始化 RAG 服务与评估器 ---
     engine = create_async_engine(settings.db_url)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+    # -----------------------------------------------------------------
+    # Class-level Monkey Patch: force n=1 at the _generate/_agenerate
+    # level, which is the deepest interception point before API calls.
+    # This catches ALL Ragas code paths (bind, generate, invoke, etc.)
+    # -----------------------------------------------------------------
+    _orig_generate = ChatOpenAI._generate
+    _orig_agenerate = ChatOpenAI._agenerate
+
+    def _patched_generate(self_llm, messages, stop=None, run_manager=None, **kwargs):
+        kwargs.pop("n", None)
+        return _orig_generate(self_llm, messages, stop=stop, run_manager=run_manager, **kwargs)
     
-    # 评估器 LLM
+    async def _patched_agenerate(self_llm, messages, stop=None, run_manager=None, **kwargs):
+        kwargs.pop("n", None)
+        return await _orig_agenerate(self_llm, messages, stop=stop, run_manager=run_manager, **kwargs)
+
+    ChatOpenAI._generate = _patched_generate
+    ChatOpenAI._agenerate = _patched_agenerate
+
     evaluator_llm = ChatOpenAI(
         model="Pro/deepseek-ai/DeepSeek-V3.2", 
         openai_api_key=api_key, 
         openai_api_base=api_url,
         temperature=0.0,
-        timeout=300, # 评估耗时较长，增加到 300s
+        timeout=300,
         max_retries=3
     )
-
-    # Monkey Patch: 强制将 n 限制为 1，解决 SiliconFlow 不支持 n>1 的报错
-    orig_bind = evaluator_llm.bind
-    def patched_bind(*args, **kwargs):
-        if "n" in kwargs:
-            kwargs["n"] = 1
-        return orig_bind(*args, **kwargs)
-    
-    # 使用 object.__setattr__ 绕过 Pydantic v2 对 bind 的字段检查限制
-    object.__setattr__(evaluator_llm, "bind", patched_bind)
 
     evaluator_embeddings = LangchainOpenAIEmbeddings(
         model="BAAI/bge-m3", 
