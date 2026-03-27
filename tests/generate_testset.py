@@ -58,6 +58,8 @@ async def generate_testset(count: int = 5):
         openai_api_base=api_url,
         max_tokens=2048,
         temperature=0.3,
+        model_kwargs={"response_format": {"type": "json_object"}},
+        timeout=120
     )
     embeddings = LangchainOpenAIEmbeddings(
         model="BAAI/bge-m3",
