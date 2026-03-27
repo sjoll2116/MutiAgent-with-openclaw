@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 import sys
 import httpx
 import nest_asyncio
+load_dotenv()
 
 # ---------------------------------------------------------
 # 1. 解决异步事件循环冲突 (Ragas evaluate 内置了 loop)
@@ -57,7 +58,6 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
     """读取测试集，跑完 RAG 流程，最后给出打分结果。"""
     
     # --- 环境准备 ---
-    load_dotenv()
     settings = get_settings()
     api_key = os.getenv("SILICONFLOW_API_KEY")
     api_url = os.getenv("SILICONFLOW_API_URL", "https://api.siliconflow.cn/v1")

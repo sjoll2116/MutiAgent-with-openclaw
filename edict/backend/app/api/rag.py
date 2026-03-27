@@ -59,10 +59,17 @@ async def list_documents(
 
 @router.delete("/documents/{doc_id}")
 async def delete_document(request: Request, doc_id: str, db: AsyncSession = Depends(get_db)):
-    """从知识库中删除特定文档及其切片"""
+    """从知识库中(软)删除特定文档及其切片"""
     service = RAGService(db, http_client=request.app.state.http_client)
     await service.delete_document(doc_id)
-    return {"status": "success", "message": f"Document {doc_id} deleted."}
+    return {"status": "success", "message": f"Document {doc_id} soft deleted."}
+
+@router.delete("/documents/{doc_id}/hard")
+async def hard_delete_document(request: Request, doc_id: str, db: AsyncSession = Depends(get_db)):
+    """从知识库中(硬)彻底删除特定文档及其所有物理切片"""
+    service = RAGService(db, http_client=request.app.state.http_client)
+    await service.hard_delete_document(doc_id)
+    return {"status": "success", "message": f"Document {doc_id} hard deleted permanently."}
 
 @router.post("/ingest-file")
 async def ingest_file(

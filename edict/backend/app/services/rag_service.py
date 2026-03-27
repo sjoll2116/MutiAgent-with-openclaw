@@ -412,6 +412,21 @@ class RAGService:
         )
         await self.db.commit()
 
+    async def hard_delete_document(self, doc_id: str):
+        """硬删除文档及其所有切片，释放空间。"""
+        # 1. 先删除所有的 DocumentChunk (如果有外键约束或关联关系)
+        from sqlalchemy import delete
+        from ..models.document import DocumentChunk
+        await self.db.execute(
+            delete(DocumentChunk).where(DocumentChunk.doc_id == doc_id)
+        )
+        
+        # 2. 删除主 Document
+        await self.db.execute(
+            delete(Document).where(Document.doc_id == doc_id)
+        )
+        await self.db.commit()
+
     async def list_documents(self, page: int = 1, limit: int = 10) -> Dict[str, Any]:
         """分页查看未删除的文档，返回列表及总数。"""
         offset = (page - 1) * limit
