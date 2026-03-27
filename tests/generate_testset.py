@@ -1,14 +1,13 @@
 """
-Ragas 0.2.x 测试集生成脚本
+Ragas 0.4.3 测试集生成脚本
 ==========================
 从数据库读取已入库的文档片段 (pre-chunked)，使用 Ragas TestsetGenerator
 生成合成评估问答对，保存为 CSV 供后续 eval_runner.py 使用。
 
-核心 API 说明 :
-- generate_with_chunks(): 用于已经分片的数据
-- generate_with_langchain_docs(): 用于原始完整文档 (Ragas 会自行切分)
-- 两个方法都在内部自动完成: KG构建 -> Transforms -> Persona生成 -> 测试集生成
-- 自定义 transforms 通过 transforms 参数直接传入即可
+核心 API (基于 Ragas 0.4.3 源码验证):
+- TestsetGenerator.from_langchain(llm, embedding_model): 自动封装 Langchain 模型
+- generate_with_chunks(chunks, testset_size, ...): 专用于已分片数据
+- default_transforms_for_prechunked(llm, embedding_model): 官方预分片转换流水线
 """
 
 import os
@@ -16,7 +15,6 @@ import sys
 import asyncio
 import json
 import logging
-from typing import List
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
@@ -25,38 +23,9 @@ from dotenv import load_dotenv
 # 禁用 noisy 日志，确保进度条不被干扰
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-# ── Ragas 导入 (兼容 0.2.x 不同子版本的路径差异) ──────────────────────
-try:
-    # 核心生成器
-    try:
-        from ragas.testset.synthesizers.generate import TestsetGenerator
-    except ImportError:
-        try:
-            from ragas.testset.generator import TestsetGenerator
-        except ImportError:
-            from ragas.testset import TestsetGenerator
-
-    # Transforms
-    from ragas.testset.transforms import (
-        default_transforms,
-        default_transforms_for_prechunked,
-        TitleExtractor,
-        SummaryExtractor,
-        EmbeddingExtractor,
-    )
-
-    # 模型封装类
-    try:
-        from ragas.llms import LangchainLLMWrapper
-        from ragas.embeddings import LangchainEmbeddingsWrapper
-    except ImportError:
-        from ragas.llms.base import LangchainLLMWrapper
-        from ragas.embeddings.base import LangchainEmbeddingsWrapper
-
-except ImportError as e:
-    print(f"Error: Could not import Ragas components: {e}")
-    print("Please install: pip install ragas>=0.2.12")
-    sys.exit(1)
+# ── Ragas 0.4.3 导入 ─────────────────────────────────────────────────
+from ragas.testset.synthesizers.generate import TestsetGenerator
+from ragas.testset.transforms import default_transforms_for_prechunked
 
 # ── 项目模型导入 ─────────────────────────────────────────────────────
 sys.path.append(os.path.join(os.getcwd(), "edict", "backend"))
@@ -82,8 +51,8 @@ async def generate_testset(count: int = 5):
 
     from langchain_openai import ChatOpenAI, OpenAIEmbeddings as LangchainOpenAIEmbeddings
 
-    # ── 1. 初始化模型 ────────────────────────────────────────────────
-    generator_llm = ChatOpenAI(
+    # ── 1. 初始化 Langchain 模型 (无需手动包装) ──────────────────────
+    llm = ChatOpenAI(
         model="Pro/deepseek-ai/DeepSeek-V3.2",
         openai_api_key=api_key,
         openai_api_base=api_url,
@@ -96,11 +65,14 @@ async def generate_testset(count: int = 5):
         openai_api_base=api_url,
     )
 
-    # 封装为 Ragas 内部格式 (解决 'str' object has no attribute 'content' 等兼容问题)
-    llm_wrapped = LangchainLLMWrapper(generator_llm)
-    embeddings_wrapped = LangchainEmbeddingsWrapper(embeddings)
+    # ── 2. 使用 from_langchain 初始化生成器 (0.4.3 推荐方式) ─────────
+    # 内部会自动调用 LangchainLLMWrapper / LangchainEmbeddingsWrapper
+    generator = TestsetGenerator.from_langchain(
+        llm=llm,
+        embedding_model=embeddings,
+    )
 
-    # ── 2. 从数据库读取已入库的文档片段 ──────────────────────────────
+    # ── 3. 从数据库读取已入库的文档片段 ──────────────────────────────
     engine = create_async_engine(settings.db_url)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
@@ -125,31 +97,23 @@ async def generate_testset(count: int = 5):
         ]
         logger.info(f"Loaded {len(documents)} chunks from database.")
 
-        # ── 3. 初始化生成器并生成测试集 ──────────────────────────────
-        generator = TestsetGenerator(
-            llm=llm_wrapped,
-            embedding_model=embeddings_wrapped,
-        )
-
-        # 使用官方推出的针对预分片数据的默认转换流程
-        # 这会包含 ThemesExtractor, NERExtractor 和 CosineSimilarityBuilder 等关键组件
-        # 从而解决 KeyError: 'personas' 问题 (因为画像映射依赖这些提取出的特征)
-        custom_transforms = default_transforms_for_prechunked(
-            llm=llm_wrapped,
-            embedding_model=embeddings_wrapped
-        )
-
+        # ── 4. 生成测试集 ────────────────────────────────────────────
         logger.info(f"Generating {count} test samples (this may take a while)...")
 
-        # 使用 generate_with_langchain_docs: 这是您当前 Ragas 版本支持的主要 API
-        testset = generator.generate_with_langchain_docs(
-            documents=documents,
+        # generate_with_chunks: 专为已切分数据设计 (0.4.3 原生方法)
+        # 内部流程:
+        #   1. 将 chunks 转为 Node(type=CHUNK)
+        #   2. 创建 KnowledgeGraph
+        #   3. 应用 default_transforms_for_prechunked (含 ThemesExtractor, NERExtractor 等)
+        #   4. 自动生成 Persona
+        #   5. 生成 Scenarios -> 生成 Samples -> 返回 Testset
+        testset = generator.generate_with_chunks(
+            chunks=documents,
             testset_size=count,
-            transforms=custom_transforms,
             raise_exceptions=True,
         )
 
-        # ── 4. 保存结果 ─────────────────────────────────────────────
+        # ── 5. 保存结果 ─────────────────────────────────────────────
         output_file = "tests/synthetic_testset.csv"
         testset.to_pandas().to_csv(output_file, index=False)
         logger.info(f"Testset generated and saved to {output_file}")
@@ -158,7 +122,7 @@ async def generate_testset(count: int = 5):
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Generate synthetic RAG evaluation testset using Ragas")
+    parser = argparse.ArgumentParser(description="Generate synthetic RAG evaluation testset using Ragas 0.4.3")
     parser.add_argument("--count", type=int, default=5, help="Number of samples to generate")
     args = parser.parse_args()
 
