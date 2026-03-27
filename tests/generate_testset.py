@@ -57,12 +57,10 @@ async def generate_testset(count: int = 5):
     from langchain_openai import ChatOpenAI, OpenAIEmbeddings as LangchainOpenAIEmbeddings
     
     generator_llm = ChatOpenAI(model="Pro/deepseek-ai/DeepSeek-V3.2", openai_api_key=api_key, openai_api_base=api_url)
-    critic_llm = ChatOpenAI(model="Pro/deepseek-ai/DeepSeek-V3.2", openai_api_key=api_key, openai_api_base=api_url)
     embeddings = LangchainOpenAIEmbeddings(model="BAAI/bge-m3", openai_api_key=api_key, openai_api_base=api_url)
 
     # 封装模型以适配 Ragas 0.2.x
     generator_llm_wrapped = LangchainLLMWrapper(generator_llm)
-    critic_llm_wrapped = LangchainLLMWrapper(critic_llm)
     embeddings_wrapped = LangchainEmbeddingsWrapper(embeddings)
 
     # 1. 从数据库读取文档片段作为知识源
@@ -86,10 +84,9 @@ async def generate_testset(count: int = 5):
             for c in chunks
         ]
 
-        # 2. 初始化 Ragas 生成器
+        # 2. 初始化 Ragas 生成器 (0.2.x 构造函数主要接受 llm 和 embedding_model)
         generator = TestsetGenerator(
             llm=generator_llm_wrapped,
-            critic_llm=critic_llm_wrapped,
             embedding_model=embeddings_wrapped
         )
 
