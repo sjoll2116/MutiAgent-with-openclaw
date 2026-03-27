@@ -9,9 +9,9 @@ from dotenv import load_dotenv
 import sys
 import httpx
 
-# Ragas 相关导入
+# Ragas 相关导入 (使用 0.4.x 推荐的 collections 路径)
 from ragas import evaluate, EvaluationDataset
-from ragas.metrics import (
+from ragas.metrics.collections import (
     faithfulness,
     answer_relevancy,
     context_precision,
