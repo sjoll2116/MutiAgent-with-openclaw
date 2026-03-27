@@ -16,7 +16,7 @@ import asyncio
 import json
 import logging
 
-from sqlalchemy import select
+from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from dotenv import load_dotenv
 
@@ -80,8 +80,9 @@ async def generate_testset(count: int = 5):
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:
-        logger.info("Fetching document chunks for knowledge base...")
-        query = select(DocumentChunk).limit(30)
+        logger.info("Fetching document chunks for knowledge base (randomly selected 30)...")
+        # 为 PostgreSQL 使用 func.random() 随机采样
+        query = select(DocumentChunk).order_by(func.random()).limit(30)
         res = await session.execute(query)
         chunks = res.scalars().all()
 

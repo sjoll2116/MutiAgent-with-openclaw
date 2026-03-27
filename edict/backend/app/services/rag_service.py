@@ -25,6 +25,12 @@ TAVILY_API_KEY = os.getenv("TAVILY_API_KEY")
 
 if OPENAI_API_KEY:
     openai_client = AsyncOpenAI(api_key=OPENAI_API_KEY)
+elif SILICONFLOW_API_KEY:
+    log.info("Using SiliconFlow as LLM provider (fallback from OpenAI).")
+    openai_client = AsyncOpenAI(
+        api_key=SILICONFLOW_API_KEY,
+        base_url=SILICONFLOW_API_URL
+    )
 else:
     openai_client = None
 
