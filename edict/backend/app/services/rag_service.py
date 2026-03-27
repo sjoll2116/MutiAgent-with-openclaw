@@ -509,7 +509,9 @@ class RAGService:
     async def answer_query(self, query: str, top_k: int = 5, metadata_filter: Optional[dict] = None, 
                            context: Optional[str] = None) -> Dict[str, Any]:
         """执行 RAG 完整流程：检索 -> 综合 -> 生成回答。"""
-        chunks = await self.hybrid_search(query, top_k=top_k, metadata_filter=metadata_filter, context=context)
+        search_res = await self.hybrid_search(query, top_k=top_k, metadata_filter=metadata_filter, context=context)
+        chunks = search_res["chunks"]
+        routing_info = search_res["routing_info"]
         
         if not chunks:
             return {"answer": "知识库及网页搜索中均未找到相关信息，建议重新描述问题。", "sources": []}
@@ -567,7 +569,10 @@ class RAGService:
                     metadata_json=json.dumps({
                         "top_k": top_k,
                         "model": self.llm_model,
-                        "source_count": len(chunks)
+                        "source_count": len(chunks),
+                        "routing_decision": routing_info.get("routing"),
+                        "rewritten_query": routing_info.get("rewritten_query"),
+                        "used_hyde": routing_info.get("used_hyde", False)
                     })
                 )
                 self.db.add(sample)
@@ -575,12 +580,12 @@ class RAGService:
             except Exception as eval_err:
                 log.warning(f"Failed to save eval sample: {eval_err}")
 
-            return {"answer": answer, "sources": chunks}
+            return {"answer": answer, "sources": chunks, "routing_info": routing_info}
         except Exception as e:
             return {"answer": f"合成回答错误: {e}", "sources": chunks}
 
     async def hybrid_search(self, query: str, top_k: int = 5, use_hyde: bool = True, 
-                            metadata_filter: Optional[dict] = None, context: Optional[str] = None) -> List[Dict[str, Any]]:
+                            metadata_filter: Optional[dict] = None, context: Optional[str] = None) -> Dict[str, Any]:
         """结合密集向量和全文检索，随后执行过滤、重排序、阈值筛选及 Web 兜底。支持软删除过滤。"""
         # 1. 查询改写与动态 HyDE 决策
         rewrite_res = await self.rewrite_query(query, context)
@@ -673,16 +678,12 @@ class RAGService:
         elif final_results[0].get("rerank_score", 0) < 0.70 or len(final_results) < 3:
             needs_fallback = True
             
-        if needs_fallback:
-            # 意图路由机制 (Intent Guardrail): 检查是否包含强制内部词汇
-            internal_keywords = ["我司", "本项目", "保密", "内部", "公司", "规章", "架构"]
-            is_strictly_internal = any(kw in query for kw in internal_keywords)
-            
-            if is_strictly_internal:
-                log.info(f"Query '{query}' detected as strictly internal. Blocking web fallback.")
-            else:
-                web_results = await self._web_search_fallback(query)
-                # 将互联网数据拼接在最后面作为外脑参考
-                final_results.extend(web_results)
-            
-        return final_results
+        # 7. 返回结果与元数据 (Observability)
+        return {
+            "chunks": final_results,
+            "routing_info": {
+                "routing": rewrite_res.get("routing", "bypass"),
+                "rewritten_query": rewritten_query,
+                "used_hyde": should_hyde
+            }
+        }

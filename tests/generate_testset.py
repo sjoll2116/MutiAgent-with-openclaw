@@ -86,11 +86,11 @@ async def generate_testset(count: int = 5):
             for c in chunks
         ]
 
-        # 2. 初始化 Ragas 生成器 (使用封装后的模型)
-        generator = TestsetGenerator.from_langchain(
-            generator_llm_wrapped,
-            critic_llm_wrapped,
-            embeddings_wrapped
+        # 2. 初始化 Ragas 生成器
+        generator = TestsetGenerator(
+            llm=generator_llm_wrapped,
+            critic_llm=critic_llm_wrapped,
+            embedding_model=embeddings_wrapped
         )
 
         # 3. 生成测试集
