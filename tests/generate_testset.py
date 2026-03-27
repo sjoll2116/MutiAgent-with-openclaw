@@ -7,6 +7,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession, create_async_engine, async_sessionmaker
 from dotenv import load_dotenv
 
+# 禁用 noisy 日志，确保进度条不被干扰
+logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("ragas").setLevel(logging.WARNING)
+
+
 
 try:
     # 尝试 0.2.x 标准路径
