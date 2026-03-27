@@ -39,6 +39,7 @@ try:
     # Transforms
     from ragas.testset.transforms import (
         default_transforms,
+        default_transforms_for_prechunked,
         TitleExtractor,
         SummaryExtractor,
         EmbeddingExtractor,
@@ -130,16 +131,13 @@ async def generate_testset(count: int = 5):
             embedding_model=embeddings_wrapped,
         )
 
-        # 诊断：打印当前环境下 TestsetGenerator 拥有的所有方法
-        available_methods = [m for m in dir(generator) if 'generate' in m.lower()]
-        logger.info(f"Ragas TestsetGenerator available methods: {available_methods}")
-
-        # 定义自定义转换流程
-        custom_transforms = [
-            TitleExtractor(llm=llm_wrapped),
-            SummaryExtractor(llm=llm_wrapped),
-            EmbeddingExtractor(embedding_model=embeddings_wrapped, property_name="summary_embedding")
-        ]
+        # 使用官方推出的针对预分片数据的默认转换流程
+        # 这会包含 ThemesExtractor, NERExtractor 和 CosineSimilarityBuilder 等关键组件
+        # 从而解决 KeyError: 'personas' 问题 (因为画像映射依赖这些提取出的特征)
+        custom_transforms = default_transforms_for_prechunked(
+            llm=llm_wrapped,
+            embedding_model=embeddings_wrapped
+        )
 
         logger.info(f"Generating {count} test samples (this may take a while)...")
 
