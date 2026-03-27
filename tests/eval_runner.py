@@ -12,10 +12,10 @@ import httpx
 # Ragas 相关导入
 from ragas import evaluate, EvaluationDataset
 from ragas.metrics import (
-    Faithfulness,
-    AnswerRelevance,
-    ContextPrecision,
-    ContextRecall
+    faithfulness,
+    answer_relevancy,
+    context_precision,
+    context_recall
 )
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings as LangchainOpenAIEmbeddings
 
@@ -106,10 +106,10 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
     dataset = EvaluationDataset.from_list(data_list)
     
     metrics = [
-        Faithfulness(), 
-        AnswerRelevance(), 
-        ContextPrecision(), 
-        ContextRecall()
+        faithfulness, 
+        answer_relevancy, 
+        context_precision, 
+        context_recall
     ]
     
     # 0.4.3 evaluate 现在直接接收 llm 和 embeddings
