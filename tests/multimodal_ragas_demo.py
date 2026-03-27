@@ -34,7 +34,7 @@ async def run_mm_evaluation():
         logger.error("SILICONFLOW_API_KEY not found in .env")
         return
 
-    # 1. 准备多模态大模型 (例如 Qwen-VL 或 GLM-4V)
+    # 1. 准备多模态大模型 
     # Ragas 多模态评估强制要求 LLM 支持 image 输入
     mm_llm = ChatOpenAI(model="THUDM/glm-4v-9b", openai_api_key=api_key, openai_api_base=api_url)
 

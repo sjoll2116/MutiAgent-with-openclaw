@@ -56,7 +56,7 @@ async def generate_testset(count: int = 5):
 
     from langchain_openai import ChatOpenAI, OpenAIEmbeddings as LangchainOpenAIEmbeddings
     
-    generator_llm = ChatOpenAI(model="Qwen/Qwen3.5-397B-A17B", openai_api_key=api_key, openai_api_base=api_url)
+    generator_llm = ChatOpenAI(model="Pro/deepseek-ai/DeepSeek-V3.2", openai_api_key=api_key, openai_api_base=api_url)
     critic_llm = ChatOpenAI(model="Pro/deepseek-ai/DeepSeek-V3.2", openai_api_key=api_key, openai_api_base=api_url)
     embeddings = LangchainOpenAIEmbeddings(model="BAAI/bge-m3", openai_api_key=api_key, openai_api_base=api_url)
 
