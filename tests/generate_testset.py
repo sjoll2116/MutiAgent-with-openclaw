@@ -53,11 +53,11 @@ async def generate_testset(count: int = 5):
 
     # ── 1. 初始化 Langchain 模型 (无需手动包装) ──────────────────────
     llm = ChatOpenAI(
-        model="Pro/deepseek-ai/DeepSeek-V3.2",
+        model="deepseek-ai/DeepSeek-V3",
         openai_api_key=api_key,
         openai_api_base=api_url,
-        max_tokens=2048,
-        temperature=0.3,
+        max_tokens=None,
+        temperature=0.0,
         model_kwargs={"response_format": {"type": "json_object"}},
         timeout=120
     )
@@ -68,10 +68,11 @@ async def generate_testset(count: int = 5):
     )
 
     # ── 2. 使用 from_langchain 初始化生成器 (0.4.3 推荐方式) ─────────
-    # 内部会自动调用 LangchainLLMWrapper / LangchainEmbeddingsWrapper
+    # llm_context 将被全局注入到每个 Ragas prompt 中，用于强制要求 JSON 格式
     generator = TestsetGenerator.from_langchain(
         llm=llm,
         embedding_model=embeddings,
+        llm_context="Answer ONLY in JSON format. Do not include any conversational text or markdown. Ensure the output is a valid JSON object matching the requested schema."
     )
 
     # ── 3. 从数据库读取已入库的文档片段 ──────────────────────────────
