@@ -143,15 +143,11 @@ async def generate_testset(count: int = 5):
 
         logger.info(f"Generating {count} test samples (this may take a while)...")
 
-        # 使用 generate_with_chunks: 专为已切分数据设计
-        # 内部流程: 创建 KG(CHUNK节点) -> 应用 transforms -> 生成 persona -> 生成测试集
-        # Ragas 源码: generate.py L334-L390
-        testset = generator.generate_with_chunks(
-            chunks=documents,
+        # 使用 generate_with_langchain_docs: 这是您当前 Ragas 版本支持的主要 API
+        testset = generator.generate_with_langchain_docs(
+            documents=documents,
             testset_size=count,
-            transforms=custom_transforms, # Explicitly pass custom transforms
-            transforms_llm=llm_wrapped,
-            transforms_embedding_model=embeddings_wrapped,
+            transforms=custom_transforms,
             raise_exceptions=True,
         )
 
