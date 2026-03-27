@@ -59,16 +59,19 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
     engine = create_async_engine(settings.database_url)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
-    # 评估器模型 (使用用户指定的 DeepSeek-V3)
+    # 评估器模型 (使用 0.4.3 稳健配置: JSON Mode + Timeout)
     evaluator_llm = ChatOpenAI(
         model="Pro/deepseek-ai/DeepSeek-V3.2", 
         openai_api_key=api_key, 
-        openai_api_base=api_url
+        openai_api_base=api_url,
+        temperature=0.0,
+        model_kwargs={"response_format": {"type": "json_object"}},
+        timeout=120
     )
     evaluator_embeddings = LangchainOpenAIEmbeddings(
         model="BAAI/bge-m3", 
         openai_api_key=api_key, 
-        openai_api_base=api_url
+        openai_api_base=api_url,
     )
 
     data_list = []
@@ -84,18 +87,18 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
                 
                 logger.info(f"[{i+1}/{len(df_test)}] Processing Query: {query[:50]}...")
                 
-                # 执行完整的 RAG 流程 (Retrieve -> Synthesize)
-                # 注意：answer_query 内部会自动在数据库保存一份 EvalSample
+                # 执行完整的 RAG 流程
                 res = await service.answer_query(query, top_k=5)
                 
                 # 提取检索到的上下文
                 contexts = [c["content"] for c in res.get("sources", [])]
                 
+                # 使用 Ragas 0.4.3 默认列名
                 data_list.append({
-                    "user_input": query,
-                    "retrieved_contexts": contexts,
-                    "response": res.get("answer", ""),
-                    "reference": ground_truth
+                    "question": query,
+                    "contexts": contexts,
+                    "answer": res.get("answer", ""),
+                    "ground_truth": ground_truth
                 })
 
     # 3. Ragas 评估
@@ -109,11 +112,12 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
         ContextRecall()
     ]
     
+    # 0.4.3 evaluate 现在直接接收 llm 和 embeddings
     results = evaluate(
         dataset=dataset,
         metrics=metrics,
         llm=evaluator_llm,
-        embeddings=evaluator_embeddings
+        embeddings=evaluator_embeddings,
     )
     
     # 4. 输出与保存
