@@ -56,7 +56,7 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
     logger.info(f"Loaded {len(df_test)} test samples from {csv_path}")
 
     # 2. 初始化 RAG 服务与评估器
-    engine = create_async_engine(settings.database_url)
+    engine = create_async_engine(settings.db_url)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
     # 评估器模型 (使用 0.4.3 稳健配置: JSON Mode + Timeout)

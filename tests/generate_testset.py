@@ -53,7 +53,7 @@ async def generate_testset(count: int = 5):
 
     # ── 1. 初始化 Langchain 模型 (无需手动包装) ──────────────────────
     llm = ChatOpenAI(
-        model="deepseek-ai/DeepSeek-V3",
+        model="deepseek-ai/DeepSeek-V3.2",
         openai_api_key=api_key,
         openai_api_base=api_url,
         max_tokens=None,
@@ -81,7 +81,7 @@ async def generate_testset(count: int = 5):
 
     async with async_session() as session:
         logger.info("Fetching document chunks for knowledge base...")
-        query = select(DocumentChunk).limit(100)
+        query = select(DocumentChunk).limit(30)
         res = await session.execute(query)
         chunks = res.scalars().all()
 
