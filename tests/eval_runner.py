@@ -9,17 +9,10 @@ from dotenv import load_dotenv
 import sys
 import httpx
 import nest_asyncio
+
 load_dotenv()
-
-# ---------------------------------------------------------
-# 1. 解决异步事件循环冲突 (Ragas evaluate 内置了 loop)
-# ---------------------------------------------------------
 nest_asyncio.apply()
-
-# ---------------------------------------------------------
-# 2. Ragas 0.4.3 规范导入
-# ---------------------------------------------------------
-from ragas import evaluate, EvaluationDataset, RunConfig
+from ragas import evaluate, EvaluationDataset
 from ragas.metrics import (
     Faithfulness,
     AnswerRelevancy,
@@ -39,9 +32,8 @@ except ImportError as e:
     print(f"Error importing project models: {e}")
     sys.exit(1)
 
-# ---------------------------------------------------------
-# 3. 配置日志 (过滤掉底层的向量打印和请求刷屏)
-# ---------------------------------------------------------
+
+# 配置日志 (过滤掉底层的向量打印和请求刷屏)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
@@ -59,11 +51,21 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
     
     # --- 环境准备 ---
     settings = get_settings()
-    api_key = os.getenv("SILICONFLOW_API_KEY")
-    api_url = os.getenv("SILICONFLOW_API_URL", "https://api.siliconflow.cn/v1")
     
-    if not api_key:
-        logger.error("SILICONFLOW_API_KEY not found in .env")
+    # 硅基流动配置 (专用于 Embedding)
+    sf_api_key = os.getenv("SILICONFLOW_API_KEY")
+    sf_api_url = os.getenv("SILICONFLOW_API_URL", "https://api.siliconflow.cn/v1")
+    
+    # DeepSeek 官方配置 (专用于 Ragas 评测 LLM)
+    ds_api_key = os.getenv("DEEPSEEK_API_KEY")
+    ds_api_url = "https://api.deepseek.com/v1"
+    
+    if not sf_api_key:
+        logger.error("SILICONFLOW_API_KEY not found in .env (Required for Embedding)")
+        return
+        
+    if not ds_api_key:
+        logger.error("DEEPSEEK_API_KEY not found in .env (Required for Evaluation LLM)")
         return
 
     if not os.path.exists(csv_path):
@@ -77,38 +79,22 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
     # --- 初始化 RAG 服务与评估器 ---
     engine = create_async_engine(settings.db_url)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
-    # -----------------------------------------------------------------
-    # Class-level Monkey Patch: force n=1 at the _generate/_agenerate
-    # level, which is the deepest interception point before API calls.
-    # This catches ALL Ragas code paths (bind, generate, invoke, etc.)
-    # -----------------------------------------------------------------
-    _orig_generate = ChatOpenAI._generate
-    _orig_agenerate = ChatOpenAI._agenerate
-
-    def _patched_generate(self_llm, messages, stop=None, run_manager=None, **kwargs):
-        kwargs.pop("n", None)
-        return _orig_generate(self_llm, messages, stop=stop, run_manager=run_manager, **kwargs)
     
-    async def _patched_agenerate(self_llm, messages, stop=None, run_manager=None, **kwargs):
-        kwargs.pop("n", None)
-        return await _orig_agenerate(self_llm, messages, stop=stop, run_manager=run_manager, **kwargs)
-
-    ChatOpenAI._generate = _patched_generate
-    ChatOpenAI._agenerate = _patched_agenerate
-
+    # 评测器 LLM: 使用 DeepSeek 官方 API (高并发，支持 n>1 等原生特性)
     evaluator_llm = ChatOpenAI(
-        model="Pro/deepseek-ai/DeepSeek-V3.2", 
-        openai_api_key=api_key, 
-        openai_api_base=api_url,
+        model="deepseek-chat", 
+        openai_api_key=ds_api_key, 
+        openai_api_base=ds_api_url,
         temperature=0.0,
         timeout=300,
         max_retries=3
     )
 
+    # 评测器 Embeddings
     evaluator_embeddings = LangchainOpenAIEmbeddings(
         model="BAAI/bge-m3", 
-        openai_api_key=api_key, 
-        openai_api_base=api_url,
+        openai_api_key=sf_api_key, 
+        openai_api_base=sf_api_url,
     )
 
     data_list = []
@@ -153,13 +139,12 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
         LLMContextPrecisionWithoutReference(), 
         LLMContextRecall()
     ]
-    
+
     results = evaluate(
         dataset=dataset,
         metrics=metrics,
         llm=evaluator_llm,
         embeddings=evaluator_embeddings,
-        run_config=RunConfig(max_workers=3, timeout=300) # 限制并发并增加全局超时
     )
     
     # --- 输出与保存 ---
