@@ -464,7 +464,7 @@ class RAGService:
         """Query routing - 3 mutually exclusive paths:
           bypass: original query as-is
           rewrite_only: rewrite only, no HyDE
-          hyde: hypothetical answer from original query, no rewrite
+          hyde: hypothetical answer from ORIGINAL query, no rewrite
         """
         if not openai_client:
             return {"rewritten_query": query, "routing": "bypass"}
@@ -478,12 +478,12 @@ class RAGService:
                 "2. rewrite_only: Query has unclear references or needs refinement. "
                 "Rewrite into a standalone search term. For factual lookups.\n"
                 "3. hyde: Large semantic gap. User asks about abstract concepts, "
-                "principles, or solutions. System will generate a hypothetical "
-                "answer from the ORIGINAL question. Do NOT rewrite.\n\n"
+                "principles, or solutions. The system will generate a hypothetical answer. "
+                "For this path, you MUST STILL clean the query by removing roleplay, conversational filler, and redundant conditions.\n\n"
                 "Rules:\n"
                 "- bypass: rewritten_query = original query unchanged.\n"
-                "- rewrite_only: rewritten_query = your optimized query.\n"
-                "- hyde: rewritten_query = original query unchanged.\n"
+                "- rewrite_only: rewritten_query = your optimized, standalone search term.\n"
+                "- hyde: rewritten_query = your optimized, clean question (WITHOUT roleplay or conversational noise).\n"
                 'Output ONLY JSON: {"routing_decision": "bypass"|"rewrite_only"|"hyde", '
                 '"rewritten_query": "..."}'
             )
@@ -504,8 +504,9 @@ class RAGService:
             routing = result.get("routing_decision", "bypass")
             rewritten_query = result.get("rewritten_query", query)
             
-            # bypass and hyde: force original query
-            if routing in ("bypass", "hyde"):
+            # bypass: force original query
+            # hyde & rewrite_only: allow the cleaned query to pass through
+            if routing == "bypass":
                 rewritten_query = query
             
             log.info(f"Query Routing: [{routing}] {query} -> {rewritten_query}")
@@ -520,8 +521,11 @@ class RAGService:
         try:
             hyde_system_prompt = (
                 "You are a professional technical documentation expert.\n"
-                "Generate a detailed and accurate hypothetical answer to the user's query. "
-                "Output ONLY the document content, no introductory text."
+                "Please generate a detailed, authoritative, and accurate hypothetical document excerpt "
+                "that answers the user's query. The output should read EXACTLY like a section from an "
+                "official technical manual, wiki, or official documentation.\n"
+                "DO NOT include any conversational filler, greetings, or acknowledgments.\n"
+                "Output ONLY the document content."
             )
             response = await openai_client.chat.completions.create(
                 model=self.llm_model, # 保持模型一致性
@@ -624,9 +628,10 @@ class RAGService:
         # 2. Generate search text based on routing decision
         #    bypass:       original query as-is
         #    rewrite_only: use rewritten query
-        #    hyde:         generate hypothetical answer from ORIGINAL query (no rewrite)
+        #    hyde:         generate hypothetical answer from REWRITTEN query
         if routing == "hyde" and use_hyde:
-            search_text = await self.generate_hyde_draft(query)
+            # 修改：使用清洗过的查询来生成 HyDE，以防止带入角色扮演干扰
+            search_text = await self.generate_hyde_draft(rewritten_query)
             used_hyde = True
         elif routing == "rewrite_only":
             search_text = rewritten_query
