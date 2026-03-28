@@ -1,4 +1,7 @@
 import os
+# 禁用 Ragas 官方遥测
+os.environ["RAGAS_DO_NOT_TRACK"] = "true"
+
 import asyncio
 import json
 import logging
@@ -15,9 +18,8 @@ nest_asyncio.apply()
 from ragas import evaluate, EvaluationDataset
 from ragas.metrics import (
     Faithfulness,
-    AnswerRelevancy,
-    LLMContextPrecisionWithoutReference, # 替代旧的 context_precision
-    LLMContextRecall                     # 替代旧的 context_recall
+    LLMContextPrecisionWithoutReference, 
+    LLMContextRecall                     
 )
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings as LangchainOpenAIEmbeddings
 
@@ -80,7 +82,7 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
     engine = create_async_engine(settings.db_url)
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
     
-    # 评测器 LLM: 使用 DeepSeek 官方 API (高并发，支持 n>1 等原生特性)
+    # 评测器 LLM: 使用 DeepSeek 官方 API 
     evaluator_llm = ChatOpenAI(
         model="deepseek-chat", 
         openai_api_key=ds_api_key, 
@@ -132,10 +134,9 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
     logger.info("Running Ragas Metrics Calculation...")
     dataset = EvaluationDataset.from_list(data_list)
     
-    # 实例化指标类
+    # 实例化指标类 (已移除 AnswerRelevancy 避免 DeepSeek 报错)
     metrics = [
         Faithfulness(), 
-        AnswerRelevancy(), 
         LLMContextPrecisionWithoutReference(), 
         LLMContextRecall()
     ]
