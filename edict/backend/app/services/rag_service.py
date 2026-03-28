@@ -304,8 +304,7 @@ class RAGService:
             raw = parent_splitter.split_text(cleaned_text)
             parent_chunks_raw = [{"text": c, "path": "General"} for c in raw]
 
-        # 生成 Child 块并构建扁平化数据结构以便统一打流 (Embedding)
-        # 结构: {"text": str, "path": str, "type": "parent"|"child", "parent_idx": int|None, "idx": int}
+        # 生成 Child 块并构建扁平化数据结构以便统一Embedding
         flat_chunk_data = []
         for p_idx, p_item in enumerate(parent_chunks_raw):
             flat_chunk_data.append({
@@ -346,7 +345,6 @@ class RAGService:
         parent_db_chunks = []
         child_flat_items = [] # 保留 child 的原始 flat 信息以映射 embedding
         
-        # 构建 Parent Chunks
         for i, item in enumerate(flat_chunk_data):
             if item["type"] == "parent":
                 chunk_metadata = metadata.copy()
@@ -365,14 +363,13 @@ class RAGService:
                 )
                 parent_db_chunks.append((item["idx"], db_chunk))
             else:
-                child_flat_items.append((i, item)) # (global_idx, item)
+                child_flat_items.append((i, item))
 
         # 1. 先插入 Parent 获取 ID
         db_parents_only = [chunk for _, chunk in parent_db_chunks]
         self.db.add_all(db_parents_only)
         await self.db.flush() 
         
-        # 建立 idx -> parent_id 映射
         parent_idx_to_db_id = {idx: chunk.id for idx, chunk in parent_db_chunks}
         
         # 2. 构建并插入 Child Chunks
@@ -401,7 +398,7 @@ class RAGService:
             self.db.add_all(child_db_chunks)
             await self.db.flush()
         
-        # 完美解决 N+1，聚合单条 Update 彻底完成 FTS 更新
+        # 聚合单条 Update 彻底完成 FTS 更新
         await self.db.execute(
             text("UPDATE document_chunks SET fts = to_tsvector('simple', content) WHERE doc_id = :doc_id"),
             {"doc_id": doc_id}
@@ -418,14 +415,11 @@ class RAGService:
 
     async def hard_delete_document(self, doc_id: str):
         """硬删除文档及其所有切片，释放空间。"""
-        # 1. 先删除所有的 DocumentChunk (如果有外键约束或关联关系)
         from sqlalchemy import delete
         from ..models.document import DocumentChunk
         await self.db.execute(
             delete(DocumentChunk).where(DocumentChunk.doc_id == doc_id)
         )
-        
-        # 2. 删除主 Document
         await self.db.execute(
             delete(Document).where(Document.doc_id == doc_id)
         )
@@ -434,13 +428,10 @@ class RAGService:
     async def list_documents(self, page: int = 1, limit: int = 10) -> Dict[str, Any]:
         """分页查看未删除的文档，返回列表及总数。"""
         offset = (page - 1) * limit
-        
-        # 获取总数
         count_query = select(text("count(*)")).select_from(Document).where(Document.is_deleted == False)
         count_res = await self.db.execute(count_query)
         total = count_res.scalar() or 0
 
-        # 获取分页结果
         result = await self.db.execute(
             select(Document).where(Document.is_deleted == False).order_by(Document.created_at.desc()).offset(offset).limit(limit)
         )
@@ -461,13 +452,13 @@ class RAGService:
         }
 
     async def rewrite_query(self, query: str, context: Optional[str] = None) -> Dict[str, Any]:
-        """Query routing - 3 mutually exclusive paths:
-          bypass: original query as-is
-          rewrite_only: rewrite only, no HyDE
-          hyde: hypothetical answer from ORIGINAL query, no rewrite
+        """查询路由 - 3 种互斥路径:
+          bypass: 直接使用原始查询
+          rewrite_only: 支持查询拆解 (Multi-Query Array)，用于应对包含多意图的复合问题。
+          hyde: 基于原始查询生成假设性答案
         """
         if not openai_client:
-            return {"rewritten_query": query, "routing": "bypass"}
+            return {"rewritten_queries": [query], "routing": "bypass"}
         
         try:
             rewrite_system_prompt = (
@@ -475,23 +466,23 @@ class RAGService:
                 "Analyze the user query and context.\n"
                 "Decide the processing path. Three MUTUALLY EXCLUSIVE paths:\n"
                 "1. bypass: Query is already clear and specific.\n"
-                "2. rewrite_only: Query has unclear references or needs refinement. "
-                "Rewrite into a standalone search term. For factual lookups.\n"
-                "3. hyde: Large semantic gap. User asks about abstract concepts, "
-                "principles, or solutions. The system will generate a hypothetical answer. "
-                "For this path, you MUST STILL clean the query by removing roleplay, conversational filler, and redundant conditions.\n\n"
+                "2. rewrite_only: Query has unclear references, or contains MULTIPLE distinct factual questions "
+                "(e.g., 'command to config AND top 10 skills'). Split and rewrite into an ARRAY of 1 to 3 "
+                "standalone, optimized search terms. For factual lookups.\n"
+                "3. hyde: Large semantic gap. User asks about abstract concepts. The system will generate a hypothetical answer. "
+                "For this path, you MUST STILL clean the query by removing roleplay and conversational filler.\n\n"
                 "Rules:\n"
-                "- bypass: rewritten_query = original query unchanged.\n"
-                "- rewrite_only: rewritten_query = your optimized, standalone search term.\n"
-                "- hyde: rewritten_query = your optimized, clean question (WITHOUT roleplay or conversational noise).\n"
+                "- bypass: rewritten_queries = [\"original query unchanged\"].\n"
+                "- rewrite_only: rewritten_queries = [\"optimized sub-query 1\", \"optimized sub-query 2\", ...].\n"
+                "- hyde: rewritten_queries = [\"optimized clean question WITHOUT roleplay\"].\n"
                 'Output ONLY JSON: {"routing_decision": "bypass"|"rewrite_only"|"hyde", '
-                '"rewritten_query": "..."}'
+                '"rewritten_queries": ["..."]}'
             )
             
             user_msg = f"Context: {context}\nQuery: {query}" if context else f"Query: {query}"
             
             response = await openai_client.chat.completions.create(
-                model=self.llm_model, # 使用动态引用
+                model=self.llm_model, 
                 messages=[
                     {"role": "system", "content": rewrite_system_prompt},
                     {"role": "user", "content": user_msg}
@@ -502,18 +493,19 @@ class RAGService:
             
             result = json.loads(response.choices[0].message.content)
             routing = result.get("routing_decision", "bypass")
-            rewritten_query = result.get("rewritten_query", query)
+            rewritten_queries = result.get("rewritten_queries", [query])
             
-            # bypass: force original query
-            # hyde & rewrite_only: allow the cleaned query to pass through
-            if routing == "bypass":
-                rewritten_query = query
+            if not isinstance(rewritten_queries, list):
+                rewritten_queries = [rewritten_queries]
+                
+            if routing == "bypass" or not rewritten_queries:
+                rewritten_queries = [query]
             
-            log.info(f"Query Routing: [{routing}] {query} -> {rewritten_query}")
-            return {"rewritten_query": rewritten_query, "routing": routing}
+            log.info(f"Query Routing: [{routing}] {query} -> {rewritten_queries}")
+            return {"rewritten_queries": rewritten_queries, "routing": routing}
         except Exception as e:
             log.error(f"Query Rewrite error: {e}")
-            return {"rewritten_query": query, "routing": "bypass"}
+            return {"rewritten_queries": [query], "routing": "bypass"}
 
     async def generate_hyde_draft(self, query: str) -> str:
         """HyDE 模式：生成理想答案草案。"""
@@ -528,7 +520,7 @@ class RAGService:
                 "Output ONLY the document content."
             )
             response = await openai_client.chat.completions.create(
-                model=self.llm_model, # 保持模型一致性
+                model=self.llm_model, 
                 messages=[{"role": "system", "content": hyde_system_prompt}, {"role": "user", "content": query}],
                 temperature=0.3,
             )
@@ -540,9 +532,16 @@ class RAGService:
             return query
 
     async def answer_query(self, query: str, top_k: int = 5, metadata_filter: Optional[dict] = None, 
-                           context: Optional[str] = None) -> Dict[str, Any]:
-        """执行 RAG 完整流程：检索 -> 综合 -> 生成回答。"""
-        search_res = await self.hybrid_search(query, top_k=top_k, metadata_filter=metadata_filter, context=context)
+                           context: Optional[str] = None, allow_web_search: bool = False) -> Dict[str, Any]:
+        """执行 RAG 完整流程：检索 -> 综合 -> 生成回答。
+        
+        Args:
+            allow_web_search: 私域场景默认为 False。若设为 True，将在内部检索失败时调用外部搜索引擎兜底。
+        """
+        search_res = await self.hybrid_search(
+            query, top_k=top_k, metadata_filter=metadata_filter, 
+            context=context, allow_web_search=allow_web_search
+        )
         chunks = search_res["chunks"]
         routing_info = search_res["routing_info"]
         
@@ -568,21 +567,23 @@ class RAGService:
         if external_context:
             context_parts.append("【外部互联网参考资料】\n" + "\n\n".join(external_context))
             
-        context = "\n\n============\n\n".join(context_parts)
+        context_str = "\n\n============\n\n".join(context_parts)
         
+        # 添加极限防幻觉护栏和强制引用指令
         synthesis_prompt = (
             f"你是一个严谨的企业知识库助理。\n"
             f"请基于下方提供的【参考知识】回答用户问题。\n\n"
             f"【核心约束】：\n"
             f"1. 必须优先且主要立足于『企业内部授权知识』进行解答。\n"
             f"2. 当『内部知识』与『外部资料』存在任何事实冲突时，永远以『内部知识』为绝对基准。\n"
-            f"3. 『外部互联网参考资料』仅用于补充定义、公理或填补非冲突领域的空白，并在使用时显式注明。\n\n"
-            f"{context}\n\n"
+            f"3. 如果提供的参考知识中完全没有提及用户问题的答案，你必须严格回复：“抱歉，当前知识库中未找到关于此问题的相关信息。”，绝对禁止凭现有知识进行任何猜测或扩展。\n"
+            f"4. 你的每一句关键结论，都必须在句尾使用中括号严格标明来源。例如：OpenClaw 支持 Docker 部署 [来源: 快速开始.md, 章节: Root > 部署]。\n\n"
+            f"{context_str}\n\n"
             f"用户问题：{query}"
         )
         
         if not openai_client:
-            return {"answer": "OpenAI API Key 未配置，无法合成回答。", "sources": chunks}
+            return {"answer": "API Key 未配置，无法合成回答。", "sources": chunks}
             
         try:
             response = await openai_client.chat.completions.create(
@@ -597,15 +598,16 @@ class RAGService:
                 sample = EvalSample(
                     sample_type="rag",
                     query=query,
-                    context=context,
+                    context=context_str,
                     answer=answer,
                     metadata_json=json.dumps({
                         "top_k": top_k,
                         "model": self.llm_model,
                         "source_count": len(chunks),
                         "routing_decision": routing_info.get("routing"),
-                        "rewritten_query": routing_info.get("rewritten_query"),
-                        "used_hyde": routing_info.get("used_hyde", False)
+                        "rewritten_queries": routing_info.get("rewritten_queries"),
+                        "used_hyde": routing_info.get("used_hyde", False),
+                        "web_fallback_triggered": routing_info.get("web_fallback_triggered", False)
                     })
                 )
                 self.db.add(sample)
@@ -618,45 +620,42 @@ class RAGService:
             return {"answer": f"Synthesis error: {e}", "sources": chunks}
 
     async def hybrid_search(self, query: str, top_k: int = 5, use_hyde: bool = True, 
-                            metadata_filter: Optional[dict] = None, context: Optional[str] = None) -> Dict[str, Any]:
-        """Hybrid vector + FTS search with 3-way mutually exclusive routing."""
-        # 1. Three-way mutually exclusive routing
+                            metadata_filter: Optional[dict] = None, context: Optional[str] = None,
+                            allow_web_search: bool = False) -> Dict[str, Any]:
+        """Hybrid vector + FTS search with Multi-Query Routing and Parent-Child Reranking."""
+        
+        # 1. 路由
         rewrite_res = await self.rewrite_query(query, context)
         routing = rewrite_res.get("routing", "bypass")
-        rewritten_query = rewrite_res.get("rewritten_query", query)
+        rewritten_queries = rewrite_res.get("rewritten_queries", [query])
         
-        # 2. Generate search text based on routing decision
-        #    bypass:       original query as-is
-        #    rewrite_only: use rewritten query
-        #    hyde:         generate hypothetical answer from REWRITTEN query
+        search_texts = []
         if routing == "hyde" and use_hyde:
-            # 修改：使用清洗过的查询来生成 HyDE，以防止带入角色扮演干扰
-            search_text = await self.generate_hyde_draft(rewritten_query)
+            # 对于 HyDE，仅使用第一个核心问题生成草稿
+            search_text = await self.generate_hyde_draft(rewritten_queries[0])
+            search_texts = [search_text]
             used_hyde = True
         elif routing == "rewrite_only":
-            search_text = rewritten_query
+            search_texts = rewritten_queries # 可能存在多个子查询
             used_hyde = False
         else:  # bypass
-            search_text = query
+            search_texts = [query]
             used_hyde = False
         
-        embeddings = await self._get_embedding([search_text])
-        query_embedding = embeddings[0]
+        # 2. 批量获取所有查询分支的 Embedding
+        embeddings = await self._get_embedding(search_texts)
         
         # 3. 动态拼接多维过滤
         filter_parts: List[str] = []
-        params = {"embedding": str(query_embedding), "query": query}
         if metadata_filter:
             for key, val in metadata_filter.items():
                 if key in ("file_type", "project_id", "source_agent", "file_name", "doc_id") and val:
                     filter_parts.append(f"AND c.{key} = :{key}_val")
-                    params[f"{key}_val"] = val
                 elif key == "year" and val:
                     filter_parts.append(f"AND EXTRACT(YEAR FROM d.created_at) = :year_val")
-                    params["year_val"] = int(val)
-        
         filter_sql = " ".join(filter_parts)
 
+        # SQL 提取中分离 chunk_content (供 Rerank) 和 parent_content (供 LLM)
         rrf_query = f"""
         WITH vector_search AS (
             SELECT id, RANK() OVER (ORDER BY embedding <=> cast(:embedding as vector)) AS vector_rank
@@ -672,7 +671,8 @@ class RAGService:
         )
         SELECT c.id, 
                COALESCE(p.doc_id, c.doc_id) as doc_id, 
-               COALESCE(p.content, c.content) as content, 
+               c.content as chunk_content, 
+               COALESCE(p.content, c.content) as parent_content, 
                COALESCE(p.metadata_json, c.metadata_json) as metadata_json,
                COALESCE(1.0 / (60 + v.vector_rank), 0.0) + COALESCE(1.0 / (60 + f.fts_rank), 0.0) AS rrf_score
         FROM document_chunks c
@@ -686,50 +686,77 @@ class RAGService:
         ORDER BY rrf_score DESC LIMIT 30
         """
         
-        result = await self.db.execute(text(rrf_query), params)
-        rows = result.fetchall()
-        
-        # 使用字典去重：多个小块可能会命中同一个 Parent 块，导致最终上下文冗余
+        # 4. 循环执行 Multi-Query 并合并结果 (在单一 session 中线性安全执行)
         unique_chunks_map = {}
-        for row in rows:
-            # 使用 content 的哈希作为唯一标识进行去重更稳妥
-            content_hash = hashlib.md5(row.content.encode('utf-8')).hexdigest()
-            if content_hash not in unique_chunks_map:
-                unique_chunks_map[content_hash] = {
-                    "doc_id": row.doc_id, "content": row.content,
-                    "metadata": json.loads(row.metadata_json) if row.metadata_json else {},
-                    "score": float(row.rrf_score)
-                }
-            else:
-                # 保留最高分
-                if float(row.rrf_score) > float(unique_chunks_map[content_hash]["score"]):
-                    unique_chunks_map[content_hash]["score"] = float(row.rrf_score)
-                    
-        initial_chunks = list(unique_chunks_map.values())
+        for txt, emb in zip(search_texts, embeddings):
+            params = {"embedding": str(emb), "query": txt}
+            if metadata_filter:
+                for key, val in metadata_filter.items():
+                    if key in ("file_type", "project_id", "source_agent", "file_name", "doc_id") and val:
+                        params[f"{key}_val"] = val
+                    elif key == "year" and val:
+                        params["year_val"] = int(val)
+                        
+            result = await self.db.execute(text(rrf_query), params)
+            rows = result.fetchall()
             
+            # 使用 chunk_content 哈希去重合并所有子查询结果
+            for row in rows:
+                content_hash = hashlib.md5(row.chunk_content.encode('utf-8')).hexdigest()
+                if content_hash not in unique_chunks_map:
+                    unique_chunks_map[content_hash] = {
+                        "doc_id": row.doc_id, 
+                        "content": row.chunk_content, # 用于精准 Rerank
+                        "parent_content": row.parent_content, # 用于 LLM 上下文
+                        "metadata": json.loads(row.metadata_json) if row.metadata_json else {},
+                        "score": float(row.rrf_score)
+                    }
+                else:
+                    if float(row.rrf_score) > unique_chunks_map[content_hash]["score"]:
+                        unique_chunks_map[content_hash]["score"] = float(row.rrf_score)
+                        
+        initial_chunks = list(unique_chunks_map.values())
+        
+        # 5. 精准 Reranking：模型只会看到 500 字的子chunk
         reranked = await self._rerank_results(query, initial_chunks)
         
-        if len(reranked) > self.rerank_top_k:
-            candidate_list = reranked[0:self.rerank_top_k]
-        else:
-            candidate_list = reranked
-
-        final_results = [c for c in candidate_list if c.get("rerank_score", 0) >= self.rerank_threshold]
+        # 6. 父文档替换与去重 (Parent Document Replacement)
+        passed_chunks = [c for c in reranked if c.get("rerank_score", 0) >= self.rerank_threshold]
+        passed_chunks.sort(key=lambda x: x["rerank_score"], reverse=True)
         
-        # 智能双阈值 Web 兜底逻辑：
-        # 如果没有任何一条结果过硬阈值 (0.4)，或者通过的结果最高分低于置信阈值 (0.70) 或条目过少 (<3)，主动请求网搜进行融合。
+        final_results = []
+        seen_parents = set()
+        for c in passed_chunks:
+            parent_hash = hashlib.md5(c["parent_content"].encode('utf-8')).hexdigest()
+            if parent_hash not in seen_parents:
+                seen_parents.add(parent_hash)
+                # 将内容替换回大块父文档，喂给 LLM
+                c["content"] = c["parent_content"] 
+                final_results.append(c)
+                if len(final_results) >= self.rerank_top_k:
+                    break
+        
+        # 7. 智能双阈值 Web 兜底逻辑 (依据 allow_web_search 开关执行)
         needs_fallback = False
         if not final_results:
             needs_fallback = True
         elif final_results[0].get("rerank_score", 0) < 0.70 or len(final_results) < 3:
             needs_fallback = True
             
-        # 7. 返回结果与元数据 (Observability)
+        web_fallback_triggered = False
+        if needs_fallback and allow_web_search:
+            log.info("触发网络搜索兜底 (Web Fallback)")
+            web_results = await self._web_search_fallback(query)
+            final_results.extend(web_results)
+            web_fallback_triggered = True
+            
+        # 8. 返回结果与元数据 (Observability)
         return {
             "chunks": final_results,
             "routing_info": {
                 "routing": routing,
-                "rewritten_query": rewritten_query,
-                "used_hyde": used_hyde
+                "rewritten_queries": rewritten_queries,
+                "used_hyde": used_hyde,
+                "web_fallback_triggered": web_fallback_triggered
             }
         }
