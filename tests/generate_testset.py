@@ -3,11 +3,6 @@ Ragas 0.4.3 测试集生成脚本
 ==========================
 从数据库读取已入库的文档片段 (pre-chunked)，使用 Ragas TestsetGenerator
 生成合成评估问答对，保存为 CSV 供后续 eval_runner.py 使用。
-
-核心 API (基于 Ragas 0.4.3 源码验证):
-- TestsetGenerator.from_langchain(llm, embedding_model): 自动封装 Langchain 模型
-- generate_with_chunks(chunks, testset_size, ...): 专用于已分片数据
-- default_transforms_for_prechunked(llm, embedding_model): 官方预分片转换流水线
 """
 
 import os
@@ -22,6 +17,7 @@ from dotenv import load_dotenv
 
 # 禁用 noisy 日志，确保进度条不被干扰
 logging.getLogger("httpx").setLevel(logging.WARNING)
+logging.getLogger("httpcore").setLevel(logging.WARNING)
 
 # ── Ragas 0.4.3 导入 ─────────────────────────────────────────────────
 from ragas.testset.synthesizers.generate import TestsetGenerator
@@ -46,33 +42,41 @@ async def generate_testset(count: int = 5):
     load_dotenv()
     settings = get_settings()
 
-    api_key = os.getenv("SILICONFLOW_API_KEY")
-    api_url = os.getenv("SILICONFLOW_API_URL", "https://api.siliconflow.cn/v1")
+    # 硅基流动配置 (专用于 Embedding)
+    sf_api_key = os.getenv("SILICONFLOW_API_KEY")
+    sf_api_url = os.getenv("SILICONFLOW_API_URL", "https://api.siliconflow.cn/v1")
+    
+    # DeepSeek 官方配置 (专用于 生成摘要和问题，完美支持 Tool Calling)
+    ds_api_key = os.getenv("DEEPSEEK_API_KEY")
+    ds_api_url = "https://api.deepseek.com/v1"
 
-    from langchain_openai import ChatOpenAI, OpenAIEmbeddings as LangchainOpenAIEmbeddings
+    if not sf_api_key or not ds_api_key:
+        logger.error("Please ensure both SILICONFLOW_API_KEY and DEEPSEEK_API_KEY are set in .env")
+        return
 
-    # ── 1. 初始化 Langchain 模型 (无需手动包装) ──────────────────────
+    from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+
+    # ── 1. 初始化 Langchain 模型 (移除强制 JSON 模式，改用官方 DeepSeek) ──
     llm = ChatOpenAI(
-        model="deepseek-ai/DeepSeek-V3.2",
-        openai_api_key=api_key,
-        openai_api_base=api_url,
+        model="deepseek-chat", # 使用官方 API
+        openai_api_key=ds_api_key,
+        openai_api_base=ds_api_url,
         max_tokens=None,
         temperature=0.0,
-        model_kwargs={"response_format": {"type": "json_object"}},
-        timeout=120
+        timeout=120,
+        max_retries=3
     )
-    embeddings = LangchainOpenAIEmbeddings(
+    
+    embeddings = OpenAIEmbeddings(
         model="BAAI/bge-m3",
-        openai_api_key=api_key,
-        openai_api_base=api_url,
+        openai_api_key=sf_api_key,
+        openai_api_base=sf_api_url,
     )
 
-    # ── 2. 使用 from_langchain 初始化生成器 (0.4.3 推荐方式) ─────────
-    # llm_context 将被全局注入到每个 Ragas prompt 中，用于强制要求 JSON 格式
+    # ── 2. 使用 from_langchain 初始化生成器 ─────────
     generator = TestsetGenerator.from_langchain(
         llm=llm,
         embedding_model=embeddings,
-        llm_context="Answer ONLY in JSON format. Do not include any conversational text or markdown. Ensure the output is a valid JSON object matching the requested schema."
     )
 
     # ── 3. 从数据库读取已入库的文档片段 ──────────────────────────────
@@ -80,9 +84,9 @@ async def generate_testset(count: int = 5):
     async_session = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
 
     async with async_session() as session:
-        logger.info("Fetching document chunks for knowledge base (randomly selected 30)...")
-        # 为 PostgreSQL 使用 func.random() 随机采样
-        query = select(DocumentChunk).order_by(func.random()).limit(30)
+        # 你可以适当提高采样量，比如随机抽取 80-100 个
+        logger.info("Fetching document chunks for knowledge base...")
+        query = select(DocumentChunk).order_by(func.random()).limit(100)
         res = await session.execute(query)
         chunks = res.scalars().all()
 
@@ -104,13 +108,6 @@ async def generate_testset(count: int = 5):
         # ── 4. 生成测试集 ────────────────────────────────────────────
         logger.info(f"Generating {count} test samples (this may take a while)...")
 
-        # generate_with_chunks: 专为已切分数据设计 (0.4.3 原生方法)
-        # 内部流程:
-        #   1. 将 chunks 转为 Node(type=CHUNK)
-        #   2. 创建 KnowledgeGraph
-        #   3. 应用 default_transforms_for_prechunked (含 ThemesExtractor, NERExtractor 等)
-        #   4. 自动生成 Persona
-        #   5. 生成 Scenarios -> 生成 Samples -> 返回 Testset
         testset = generator.generate_with_chunks(
             chunks=documents,
             testset_size=count,
@@ -119,7 +116,8 @@ async def generate_testset(count: int = 5):
 
         # ── 5. 保存结果 ─────────────────────────────────────────────
         output_file = "tests/synthetic_testset.csv"
-        testset.to_pandas().to_csv(output_file, index=False)
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        testset.to_pandas().to_csv(output_file, index=False, encoding='utf-8-sig')
         logger.info(f"Testset generated and saved to {output_file}")
 
 
