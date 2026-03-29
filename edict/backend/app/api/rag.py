@@ -100,6 +100,7 @@ async def ingest_file(
                     service = RAGService(bg_db, http_client=request.app.state.http_client)
                     await service.ingest_document(
                         doc_id=doc_id,
+                        file_bytes=content,
                         raw_text=text_content,
                         metadata={"project_id": project_id, "source_agent": "user"},
                         filename=file.filename,

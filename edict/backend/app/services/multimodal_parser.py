@@ -3,32 +3,54 @@ import httpx
 import logging
 import base64
 import io
-import tempfile
+import asyncio
+import uuid
+import zipfile
 from typing import Optional
 
 log = logging.getLogger("edict.multimodal_parser")
 
 SILICONFLOW_API_KEY = os.getenv("SILICONFLOW_API_KEY")
 SILICONFLOW_API_URL = os.getenv("SILICONFLOW_API_URL", "https://api.siliconflow.cn/v1")
+MINERU_API_TOKEN = os.getenv("MINERU_API_TOKEN")
+MINERU_API_BASE = "https://mineru.net"
+# APP_BASE_URL: 本服务的公网访问地址，用于让 MinerU 回调下载临时文件
+# 例如：http://your-server-ip:8000  或  https://your-domain.com
+APP_BASE_URL = os.getenv("APP_BASE_URL", "")
+
+# 临时文件存储路径 (会在 main.py 中被挂载为静态文件路由)
+MINERU_TEMP_DIR = "/tmp/mineru_uploads"
+os.makedirs(MINERU_TEMP_DIR, exist_ok=True)
+
 
 class MultiModalParser:
-    """多模态解析服务：负责将文档(PDF/Excel)和图片(JPG/PNG)转换为 Markdown 文本。
-    逻辑分流：
-    - PDF：优先使用 PyMuPDF4LLM 提取原生 Markdown。
-    - Excel/CSV：使用 pandas 提取 Markdown。
-    - 纯图片/极其复杂的图表：使用 GLM-Z1-9B-0414 进行视觉解析。
+    """多模态解析服务：负责将文档(PDF/PPT/Excel)和图片转换为 Markdown 文本。
+    
+    解析优先级：
+    - PDF/PPT: MinerU 精准 API (VLM) → pymupdf4llm 降级
+    - Excel/CSV: pandas
+    - DOCX: python-docx
+    - 图片: GLM VLM
     """
 
     def __init__(self):
-        # 注意：THUDM/GLM-Z1-9B-0414 主要用于 Reason/Code，视觉解析建议用专门的 VLM
-        self.glm_model = "THUDM/GLM-4.1V-9B-Thinking" 
+        self.glm_model = "THUDM/GLM-4.1V-9B-Thinking"
 
-    async def parse(self, file_bytes: bytes, filename: str) -> str:
-        """解析文件内容为 Markdown 字符串。"""
+    async def parse(self, file_bytes: bytes, filename: str, file_path: Optional[str] = None) -> str:
+        """解析文件内容为 Markdown 字符串。
+        
+        Args:
+            file_bytes: 原始字节流
+            filename: 原文件名
+            file_path: 如果文件已被 RAGService 持久化，传入物理路径以避免重复写磁盘
+        """
         ext = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
         
         if ext == "pdf":
-            return await self._parse_with_pymupdf4llm(file_bytes)
+            return await self._parse_with_mineru(file_bytes, filename, ext, file_path)
+            
+        elif ext in ("pptx", "ppt"):
+            return await self._parse_with_mineru(file_bytes, filename, ext, file_path)
             
         elif ext in ("xlsx", "xls", "csv"):
             return await self._parse_with_pandas(file_bytes, ext)
@@ -56,6 +78,171 @@ class MultiModalParser:
         except UnicodeDecodeError:
             return file_bytes.decode("gbk", errors="ignore")
 
+    async def _parse_with_mineru(self, file_bytes: bytes, filename: str, ext: str, file_path: Optional[str] = None) -> str:
+        """使用 MinerU 精准解析 API 解析 PDF/PPT。
+        
+        流程：
+        1. 确保文件在静态资源目录下可访问（如果是已持久化的，创建软链接；否则保存临时文件）
+        2. 构造公网 URL 提交 MinerU
+        3. 异步轮询等待解析完成
+        4. 下载结果 ZIP 中的 Markdown
+        5. 清理静态资源目录下的临时项
+        
+        降级策略：MinerU 不可用时，PDF 降级到 pymupdf4llm。
+        """
+        if not MINERU_API_TOKEN:
+            log.warning("MINERU_API_TOKEN not set.")
+            if ext == "pdf":
+                log.info("Falling back to pymupdf4llm for PDF.")
+                return await self._parse_with_pymupdf4llm(file_bytes)
+            return f"[解析失败: MinerU API Token 未配置，无法解析 .{ext} 文件]"
+        
+        if not APP_BASE_URL:
+            log.warning("APP_BASE_URL not set, cannot construct public file URL for MinerU.")
+            if ext == "pdf":
+                return await self._parse_with_pymupdf4llm(file_bytes)
+            return f"[解析失败: APP_BASE_URL 未配置]"
+
+        # 1. 准备公开可访问的路径
+        # 即使文件已经持久化在 data/uploads，也要链接到 /tmp/mineru_uploads 以便 FastAPI 静态路由访问
+        temp_filename = f"{uuid.uuid4().hex}_{filename}"
+        static_temp_path = os.path.join(MINERU_TEMP_DIR, temp_filename)
+        
+        try:
+            if file_path and os.path.exists(file_path):
+                # 优先尝试软连接以节省空间和 IO
+                try:
+                    os.symlink(os.path.abspath(file_path), static_temp_path)
+                    log.info(f"MinerU: Created symlink from {file_path} to {static_temp_path}")
+                except (OSError, AttributeError):
+                    # 软连失败（Windows 权限等）则回写
+                    with open(static_temp_path, "wb") as f:
+                        f.write(file_bytes)
+            else:
+                with open(static_temp_path, "wb") as f:
+                    f.write(file_bytes)
+        except Exception as e:
+            log.error(f"Failed to prepare static file for MinerU: {e}")
+            return f"[预处理失败: {e}]"
+        
+        file_url = f"{APP_BASE_URL.rstrip('/')}/static/mineru_tmp/{temp_filename}"
+        log.info(f"MinerU: Public URL for MinerU: {file_url}")
+        
+        try:
+            result_md = await self._mineru_submit_and_poll(file_url)
+            return result_md
+        except Exception as e:
+            log.error(f"MinerU parsing failed: {e}")
+            if ext == "pdf":
+                log.info("Falling back to pymupdf4llm.")
+                return await self._parse_with_pymupdf4llm(file_bytes)
+            return f"[MinerU 解析失败: {e}]"
+        finally:
+            # 清理静态映射，不影响 data/uploads 中的原件
+            try:
+                if os.path.lexists(static_temp_path):
+                    os.remove(static_temp_path)
+                    log.debug(f"MinerU static temp cleanup: {static_temp_path}")
+            except OSError:
+                pass
+
+    async def _mineru_submit_and_poll(self, file_url: str, timeout: int = 300, interval: int = 5) -> str:
+        """提交解析任务并轮询结果。"""
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            # Step 1: 提交解析任务
+            submit_resp = await client.post(
+                f"{MINERU_API_BASE}/api/v4/extract/task",
+                headers={
+                    "Content-Type": "application/json",
+                    "Authorization": f"Bearer {MINERU_API_TOKEN}"
+                },
+                json={
+                    "url": file_url,
+                    "model_version": "vlm"
+                }
+            )
+            submit_resp.raise_for_status()
+            submit_data = submit_resp.json()
+            
+            if submit_data.get("code") != 0:
+                raise RuntimeError(f"MinerU submit error: {submit_data.get('msg')}")
+            
+            task_id = submit_data["data"]["task_id"]
+            log.info(f"MinerU task submitted: {task_id}")
+            
+            # Step 2: 异步轮询
+            elapsed = 0
+            state_labels = {
+                "uploading": "文件下载中",
+                "pending": "排队中",
+                "running": "解析中",
+            }
+            
+            while elapsed < timeout:
+                await asyncio.sleep(interval)
+                elapsed += interval
+                
+                poll_resp = await client.get(
+                    f"{MINERU_API_BASE}/api/v4/extract/task/{task_id}",
+                    headers={"Authorization": f"Bearer {MINERU_API_TOKEN}"}
+                )
+                poll_resp.raise_for_status()
+                poll_data = poll_resp.json()
+                
+                state = poll_data["data"].get("state", "unknown")
+                
+                if state == "done":
+                    full_zip_url = poll_data["data"].get("full_zip_url")
+                    log.info(f"MinerU task {task_id} completed in {elapsed}s. Downloading...")
+                    
+                    if full_zip_url:
+                        return await self._download_mineru_zip(client, full_zip_url)
+                    else:
+                        raise RuntimeError("MinerU returned done but no full_zip_url")
+                
+                elif state == "failed":
+                    err_msg = poll_data["data"].get("err_msg", "unknown error")
+                    raise RuntimeError(f"MinerU task failed: {err_msg}")
+                
+                else:
+                    progress = poll_data["data"].get("extract_progress", {})
+                    extracted = progress.get("extracted_pages", "?")
+                    total = progress.get("total_pages", "?")
+                    label = state_labels.get(state, state)
+                    log.info(f"MinerU [{elapsed}s] {label}... ({extracted}/{total} pages)")
+            
+            raise TimeoutError(f"MinerU task {task_id} timed out after {timeout}s")
+
+    async def _download_mineru_zip(self, client: httpx.AsyncClient, zip_url: str) -> str:
+        """下载 MinerU 返回的 ZIP 包并提取 Markdown 内容。"""
+        resp = await client.get(zip_url, timeout=120.0)
+        resp.raise_for_status()
+        
+        zip_buffer = io.BytesIO(resp.content)
+        markdown_content = ""
+        
+        with zipfile.ZipFile(zip_buffer, "r") as zf:
+            # 查找 .md 文件（通常名为 full.md 或与原文件同名的 .md）
+            md_files = [f for f in zf.namelist() if f.endswith(".md")]
+            if md_files:
+                # 优先选 full.md，否则选最大的 .md 文件
+                target = next((f for f in md_files if "full" in f.lower()), None)
+                if not target:
+                    target = max(md_files, key=lambda f: zf.getinfo(f).file_size)
+                
+                markdown_content = zf.read(target).decode("utf-8")
+                log.info(f"MinerU: Extracted {target} ({len(markdown_content)} chars)")
+            else:
+                # 没有 .md 文件，尝试找 .txt
+                txt_files = [f for f in zf.namelist() if f.endswith(".txt")]
+                if txt_files:
+                    markdown_content = zf.read(txt_files[0]).decode("utf-8")
+                else:
+                    raise RuntimeError(f"MinerU ZIP contains no .md or .txt files: {zf.namelist()}")
+        
+        return markdown_content
+
+    # pymupdf4llm 降级方案
     async def _parse_with_pymupdf4llm(self, file_bytes: bytes) -> str:
         """使用 PyMuPDF4LLM 提取 PDF，并自动识别/处理扫描件。"""
         try:
@@ -63,15 +250,12 @@ class MultiModalParser:
             import pymupdf4llm
             doc = fitz.Document(stream=file_bytes, filetype="pdf")
             
-            # --- 阶段 1: 尝试原生导出 ---
             md_text = pymupdf4llm.to_markdown(doc)
             
-            # --- 阶段 2: 扫描件检测与 VLM 补偿 ---
-            # 判研逻辑：如果提取文本极少且页数大于 0，或者文本包含大量乱码/占位符，执行视觉补偿
+            # 扫描件检测与 VLM 补偿
             if len(md_text.strip()) < 100 * doc.page_count and doc.page_count > 0:
                 log.info(f"Detecting potential scanned PDF ({doc.page_count} pages). Falling back to VLM.")
                 vlm_results = []
-                # 限制最大 OCR 页数，避免 API 费用失控
                 max_pages = min(doc.page_count, 10)
                 
                 for i in range(max_pages):
@@ -94,6 +278,7 @@ class MultiModalParser:
             log.error(f"PyMuPDF4LLM fallback parsing error: {e}")
             return f"[PDF解析失败: {e}]"
 
+    # 其他解析器 (pandas, docx, VLM)
     async def _parse_with_pandas(self, file_bytes: bytes, ext: str) -> str:
         """使用 pandas 提取表格为 Markdown。"""
         try:
@@ -128,7 +313,6 @@ class MultiModalParser:
                     para = Paragraph(child, doc)
                     text = para.text.strip()
                     if text:
-                        # 尝试映射标题
                         style = para.style.name if para.style else ""
                         if "Heading" in style:
                             level_match = [s for s in style if s.isdigit()]
@@ -146,7 +330,6 @@ class MultiModalParser:
                             table_md.append("| " + " | ".join(["---"] * len(cells)) + " |")
                     md_sections.append("\n".join(table_md))
             
-            # 兜底：如果上述遍历落空，使用标准遍历
             if not md_sections:
                 for para in doc.paragraphs:
                     if para.text.strip():
@@ -197,10 +380,9 @@ class MultiModalParser:
         except Exception as e:
             log.error(f"VLM ({model}) call failed: {e}")
             return f"[视觉提取失败: {e}]"
-        return ""
-
 
     async def _parse_with_glm(self, file_bytes: bytes, prompt: str, mime_type: str = "image/jpeg") -> str:
         """使用 GLM 进行视觉深度解析。"""
         b64 = base64.b64encode(file_bytes).decode("utf-8")
         return await self._call_vlm(self.glm_model, prompt, b64, mime_type)
+

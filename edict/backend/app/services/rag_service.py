@@ -43,8 +43,8 @@ class RAGService:
         self.reranker_model = "BAAI/bge-reranker-v2-m3"
         self.llm_model = "THUDM/GLM-4-32B-0414"
         self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1200,
-            chunk_overlap=150,
+            chunk_size=1600,
+            chunk_overlap=160,
             separators=["\n# ", "\n## ", "\n### ", "\n\n", "\n", " ", ""]
         )
         
@@ -230,13 +230,32 @@ class RAGService:
             log.error(f"Tavily search fallback failed: {e}")
             raise e
 
-    async def ingest_document(self, doc_id: str, raw_text: str, metadata: Optional[Dict[str, Any]] = None, 
+    async def ingest_document(self, doc_id: str, file_bytes: bytes, raw_text: str, metadata: Optional[Dict[str, Any]] = None, 
                                filename: Optional[str] = None, is_temporary: bool = False):
         """将文档切分为片段，提取元数据并存储。支持清洗、去重及生命周期管理。"""
         if metadata is None: metadata = {}
         
-        # 0. 文本清洗
+        # 0. 原始文件持久化存储
+        upload_dir = "data/uploads"
+        os.makedirs(upload_dir, exist_ok=True)
+        
+        ext = filename.split(".")[-1].lower() if filename and "." in filename else "bin"
+        # 使用 doc_id 命名以确保物理文件与数据库记录一一对应
+        storage_filename = f"{doc_id}.{ext}"
+        file_path = os.path.join(upload_dir, storage_filename)
+        
+        with open(file_path, "wb") as f:
+            f.write(file_bytes)
+        log.info(f"Original file persisted to: {file_path}")
+
+        # 1. 文本清洗
         cleaned_text = AdvancedCleaningService.process(raw_text)
+        
+        # --- 实现方案 A：彻底清洗 pymupdf4llm 产生的图片占位符及无意义文本 ---
+        # 1. 清除主占位符标签，例如: **==> picture [20 x 20] intentionally omitted <==**
+        cleaned_text = re.sub(r'\*\*==>\s*picture.*?<==\*\*', '', cleaned_text, flags=re.IGNORECASE)
+        # 2. 清除附带的图片内嵌识别文本，例如: --- Start of picture text *** <br> 3 <br> --- End of picture text ***
+        cleaned_text = re.sub(r'---\s*Start of picture text\s*\*\*\*.*?---\s*End of picture text\s*\*\*\*(?:<br>)?', '', cleaned_text, flags=re.IGNORECASE | re.DOTALL)
         
         # 1. 去重检查 (基于 SHA-256)
         file_hash = self._calculate_hash(cleaned_text)
@@ -275,6 +294,7 @@ class RAGService:
             file_type=file_type,
             file_hash=file_hash,
             source_agent=source_agent,
+            file_path=file_path,  # 关联物理路径
             project_id=project_id,
             expire_at=expire_at
         )
@@ -284,7 +304,7 @@ class RAGService:
         # Parent-Child (Small-to-Big) chunking
         parent_splitter = self.splitter 
         child_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=350,
+            chunk_size=500,
             chunk_overlap=50,
             separators=["\n\n", "\n", " ", ""]
         )
@@ -304,7 +324,7 @@ class RAGService:
             raw = parent_splitter.split_text(cleaned_text)
             parent_chunks_raw = [{"text": c, "path": "General"} for c in raw]
 
-        # 生成 Child 块并构建扁平化数据结构以便统一Embedding
+        # 生成 Child 块并构建扁平化数据结构以便统一打流 (Embedding)
         flat_chunk_data = []
         for p_idx, p_item in enumerate(parent_chunks_raw):
             flat_chunk_data.append({
@@ -452,10 +472,10 @@ class RAGService:
         }
 
     async def rewrite_query(self, query: str, context: Optional[str] = None) -> Dict[str, Any]:
-        """查询路由 - 3 种互斥路径:
-          bypass: 直接使用原始查询
-          rewrite_only: 支持查询拆解 (Multi-Query Array)，用于应对包含多意图的复合问题。
-          hyde: 基于原始查询生成假设性答案
+        """Query routing - 3 mutually exclusive paths:
+          bypass: original query as-is
+          rewrite_only: 【升级】支持查询拆解 (Multi-Query Array)，用于应对包含多意图的复合问题。
+          hyde: hypothetical answer from ORIGINAL query
         """
         if not openai_client:
             return {"rewritten_queries": [query], "routing": "bypass"}
@@ -546,85 +566,61 @@ class RAGService:
         routing_info = search_res["routing_info"]
         
         if not chunks:
-            return {"answer": "知识库及网页搜索中均未找到相关信息，建议重新描述问题。", "sources": []}
+            return {
+                "context": "", 
+                "sources": [], 
+                "routing_info": routing_info,
+                "message": "No relevant information found in knowledge base."
+            }
             
-        # 综合参考资料：区分内部授权知识和外部参考知识
-        internal_context = []
-        external_context = []
-        
-        for i, c in enumerate(chunks):
+        # Format chunks into structured context for Agent consumption
+        formatted_parts = []
+        for i, c in enumerate(chunks, 1):
             m = c.get("metadata", {})
-            header = f"[来源: {m.get('file_name', '未知')}, 章节: {m.get('section_path', 'Root')}]"
-            
-            if c.get("is_web", False):
-                external_context.append(f"{header}\n{c['content']}")
-            else:
-                internal_context.append(f"{header}\n{c['content']}")
-        
-        context_parts = []
-        if internal_context:
-            context_parts.append("【企业内部授权知识】\n" + "\n\n".join(internal_context))
-        if external_context:
-            context_parts.append("【外部互联网参考资料】\n" + "\n\n".join(external_context))
-            
-        context_str = "\n\n============\n\n".join(context_parts)
-        
-        # 添加极限防幻觉护栏和强制引用指令
-        synthesis_prompt = (
-            f"你是一个严谨的企业知识库助理。\n"
-            f"请基于下方提供的【参考知识】回答用户问题。\n\n"
-            f"【核心约束】：\n"
-            f"1. 必须优先且主要立足于『企业内部授权知识』进行解答。\n"
-            f"2. 当『内部知识』与『外部资料』存在任何事实冲突时，永远以『内部知识』为绝对基准。\n"
-            f"3. 如果提供的参考知识中完全没有提及用户问题的答案，你必须严格回复：“抱歉，当前知识库中未找到关于此问题的相关信息。”，绝对禁止凭现有知识进行任何猜测或扩展。\n"
-            f"4. 你的每一句关键结论，都必须在句尾使用中括号严格标明来源。例如：OpenClaw 支持 Docker 部署 [来源: 快速开始.md, 章节: Root > 部署]。\n\n"
-            f"{context_str}\n\n"
-            f"用户问题：{query}"
-        )
-        
-        if not openai_client:
-            return {"answer": "API Key 未配置，无法合成回答。", "sources": chunks}
-            
-        try:
-            response = await openai_client.chat.completions.create(
-                model=self.llm_model,
-                messages=[{"role": "user", "content": synthesis_prompt}],
-                temperature=0.3,
+            source_tag = f"[Source: {m.get('file_name', 'unknown')}, Section: {m.get('section_path', 'Root')}]"
+            web_tag = " [Web]" if c.get("is_web", False) else ""
+            score = c.get("rerank_score", c.get("score", 0))
+            formatted_parts.append(
+                f"--- Reference #{i} {source_tag}{web_tag} (score: {score:.2f}) ---\n"
+                f"{c['content']}"
             )
-            answer = response.choices[0].message.content
-            
-            # --- 自动评估采样 Hook ---
-            try:
-                sample = EvalSample(
-                    sample_type="rag",
-                    query=query,
-                    context=context_str,
-                    answer=answer,
-                    metadata_json=json.dumps({
-                        "top_k": top_k,
-                        "model": self.llm_model,
-                        "source_count": len(chunks),
-                        "routing_decision": routing_info.get("routing"),
-                        "rewritten_queries": routing_info.get("rewritten_queries"),
-                        "used_hyde": routing_info.get("used_hyde", False),
-                        "web_fallback_triggered": routing_info.get("web_fallback_triggered", False)
-                    })
-                )
-                self.db.add(sample)
-                await self.db.flush()
-            except Exception as eval_err:
-                log.warning(f"Failed to save eval sample: {eval_err}")
+        
+        context_str = "\n\n".join(formatted_parts)
+        
+        # Auto eval sampling hook (record without synthesis)
+        try:
+            sample = EvalSample(
+                sample_type="rag",
+                query=query,
+                context=context_str,
+                answer="[direct-chunks-mode]",
+                metadata_json=json.dumps({
+                    "top_k": top_k,
+                    "model": self.llm_model,
+                    "source_count": len(chunks),
+                    "routing_decision": routing_info.get("routing"),
+                    "rewritten_queries": routing_info.get("rewritten_queries"),
+                    "used_hyde": routing_info.get("used_hyde", False),
+                    "web_fallback_triggered": routing_info.get("web_fallback_triggered", False)
+                })
+            )
+            self.db.add(sample)
+            await self.db.flush()
+        except Exception as eval_err:
+            log.warning(f"Failed to save eval sample: {eval_err}")
 
-            return {"answer": answer, "sources": chunks, "routing_info": routing_info}
-        except Exception as e:
-            return {"answer": f"Synthesis error: {e}", "sources": chunks}
+        return {
+            "context": context_str,
+            "sources": chunks,
+            "routing_info": routing_info
+        }
 
     async def hybrid_search(self, query: str, top_k: int = 5, use_hyde: bool = True, 
                             metadata_filter: Optional[dict] = None, context: Optional[str] = None,
                             allow_web_search: bool = False) -> Dict[str, Any]:
         """Hybrid vector + FTS search with Multi-Query Routing and Parent-Child Reranking."""
         
-        # 1. 路由
+        # 1. 路由与查询分解
         rewrite_res = await self.rewrite_query(query, context)
         routing = rewrite_res.get("routing", "bypass")
         rewritten_queries = rewrite_res.get("rewritten_queries", [query])
@@ -688,8 +684,20 @@ class RAGService:
         
         # 4. 循环执行 Multi-Query 并合并结果 (在单一 session 中线性安全执行)
         unique_chunks_map = {}
-        for txt, emb in zip(search_texts, embeddings):
-            params = {"embedding": str(emb), "query": txt}
+        
+        # 构造执行对：(向量检索文本, 全文检索文本)
+        # 如果是 HyDE 模式，向量用 search_texts[0] (即 HyDE 稿子)，FTS 强制用原始 query
+        if routing == "hyde" and used_hyde:
+            query_pairs = [(search_texts[0], query)]
+        else:
+            query_pairs = [(txt, txt) for txt in search_texts]
+
+        for vector_txt, fts_txt in query_pairs:
+            # 获取对应的向量（对应 query_pairs 的顺序）
+            # 注意：如果 routing == "hyde"，search_texts 只有一个元素，embeddings 也只有一个
+            curr_emb = embeddings[0] if (routing == "hyde") else embeddings[search_texts.index(vector_txt)]
+            
+            params = {"embedding": str(curr_emb), "query": fts_txt}
             if metadata_filter:
                 for key, val in metadata_filter.items():
                     if key in ("file_type", "project_id", "source_agent", "file_name", "doc_id") and val:
@@ -717,7 +725,7 @@ class RAGService:
                         
         initial_chunks = list(unique_chunks_map.values())
         
-        # 5. 精准 Reranking：模型只会看到 500 字的子chunk
+        # 5. 精准 Reranking：模型只会看到 500 字的精华片段，排序极准
         reranked = await self._rerank_results(query, initial_chunks)
         
         # 6. 父文档替换与去重 (Parent Document Replacement)
@@ -750,7 +758,7 @@ class RAGService:
             final_results.extend(web_results)
             web_fallback_triggered = True
             
-        # 8. 返回结果与元数据 (Observability)
+        # 8. 返回结果与元数据
         return {
             "chunks": final_results,
             "routing_info": {

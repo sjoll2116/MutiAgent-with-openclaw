@@ -113,7 +113,7 @@ async def run_e2e_evaluation():
                 data_list.append({
                     "user_input": tc["question"],
                     "retrieved_contexts": contexts,
-                    "response": res.get("answer", "No answer generated"),
+                    "response": res.get("context", ""),
                     "reference": tc["ground_truth"]
                 })
             

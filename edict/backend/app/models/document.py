@@ -14,6 +14,7 @@ class Document(Base):
     file_type = Column(String(50), index=True) # pdf, code, markdown, image, text
     file_hash = Column(String(255), unique=True, index=True) # 内容 SHA-256，用于去重
     source_agent = Column(String(100))
+    file_path = Column(String(512)) # 原始文件存储路径
     project_id = Column(String(100), index=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     expire_at = Column(DateTime(timezone=True), nullable=True) # 临时文件过期时间，NULL 为永久存储

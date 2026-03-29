@@ -116,17 +116,17 @@ async def run_and_evaluate(csv_path: str = "tests/synthetic_testset.csv", limit:
 
                 logger.info(f"[{i+1}/{len(df_test)}] Processing Query: {str(query)[:50]}...")
                 
-                # 执行完整的 RAG 流程
+                # 执行 RAG 检索（不再包含 synthesis）
                 res = await service.answer_query(query, top_k=5)
                 
                 # 提取检索到的上下文
                 contexts = [c["content"] for c in res.get("sources", [])]
                 
-                # Ragas 0.4.3 规范：必须使用新版字段名
+                # Ragas 0.4.3: response 使用格式化的检索上下文（因为 answer_query 已不做 synthesis）
                 data_list.append({
                     "user_input": query,
                     "retrieved_contexts": contexts,
-                    "response": res.get("answer", ""),
+                    "response": res.get("context", ""),
                     "reference": ground_truth
                 })
 

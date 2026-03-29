@@ -18,6 +18,7 @@ from contextlib import asynccontextmanager
 import httpx
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 
 from .config import get_settings
 from .services.event_bus import get_event_bus
@@ -78,6 +79,12 @@ app.add_middleware(
 
 # 注册路由 - 仅保留 RAG
 app.include_router(rag.router, prefix="/api", tags=["rag"])
+
+# 挂载 MinerU 临时文件静态路由 — 供 MinerU API 回调下载上传的文件
+import os
+_mineru_tmp = "/tmp/mineru_uploads"
+os.makedirs(_mineru_tmp, exist_ok=True)
+app.mount("/static/mineru_tmp", StaticFiles(directory=_mineru_tmp), name="mineru_tmp")
 
 
 @app.get("/health")
