@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-看板任务更新工具 (API 客户端版本) - 供各省部 Agent 调用
+看板任务更新工具
 所有操作均通过 Go 后端 API 完成，确保全局状态一致性与持久化安全性。
 """
 import os, sys, logging, datetime
@@ -85,12 +85,21 @@ def cmd_progress(task_id, now_text, todos_pipe='', tokens=0, cost=0.0, elapsed=0
     }
     _api_call("task-action", payload)
 
-def cmd_todo(task_id, todo_id, title, status='not-started', detail=''):
+def cmd_todo(task_id, todo_id, title, status='not-started', stage=0, agent='', detail=''):
     payload = {
         "task_id": task_id, "todo_id": todo_id, "title": title, 
-        "status": status, "detail": detail
+        "status": status, "detail": detail,
+        "stage": stage, "agent": agent
     }
     _api_call("task-todos", payload)
+
+def cmd_scheduler(task_id, json_str):
+    import json
+    payload = {
+        "task_id": task_id,
+        "scheduler": json.loads(json_str)
+    }
+    _api_call("task-scheduler", payload)
 
 if __name__ == '__main__':
     args = sys.argv[1:]
@@ -98,11 +107,45 @@ if __name__ == '__main__':
         print(__doc__)
         sys.exit(0)
     cmd = args[0]
+    
     if cmd == 'create': cmd_create(*args[1:])
     elif cmd == 'state': cmd_state(*args[1:])
     elif cmd == 'flow': cmd_flow(*args[1:])
     elif cmd == 'done': cmd_done(*args[1:])
     elif cmd == 'block': cmd_block(*args[1:])
-    elif cmd == 'todo': cmd_todo(*args[1:])
     elif cmd == 'progress': cmd_progress(*args[1:])
     elif cmd == 'read': cmd_read(*args[1:])
+    elif cmd == 'scheduler': cmd_scheduler(*args[1:])
+    elif cmd == 'todo': 
+        # 手动解析 todo 的可选参数
+        t_args = args[1:]
+        if len(t_args) < 3:
+            log.error("todo 命令至少需要 task_id, todo_id, title")
+            sys.exit(1)
+        task_id = t_args[0]
+        todo_id = t_args[1]
+        title = t_args[2]
+        
+        status = 'not-started'
+        if len(t_args) > 3 and not t_args[3].startswith('--'):
+            status = t_args[3]
+            
+        stage = 0
+        agent = ''
+        detail = ''
+        
+        i = 0
+        while i < len(t_args):
+            if t_args[i] == '--stage' and i + 1 < len(t_args):
+                stage = int(t_args[i+1])
+                i += 2
+            elif t_args[i] == '--agent' and i + 1 < len(t_args):
+                agent = t_args[i+1]
+                i += 2
+            elif t_args[i] == '--detail' and i + 1 < len(t_args):
+                detail = t_args[i+1]
+                i += 2
+            else:
+                i += 1
+                
+        cmd_todo(task_id, todo_id, title, status, stage, agent, detail)

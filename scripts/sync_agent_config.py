@@ -20,29 +20,45 @@ ID_LABEL = {
     'planner': {'label': '任务编排引擎', 'role': '编排指挥官',   'duty': '起草任务令与优先级',  'emoji': '📜'},
     'reviewer':   {'label': '安全审查引擎', 'role': '审查指挥官',     'duty': '审议与退回机制',      'emoji': '🔍'},
     'dispatcher': {'label': '任务调度引擎', 'role': '调度指挥官',   'duty': '派单与升级裁决',      'emoji': '📮'},
-    'doc_writer':     {'label': '文档编写员',   'role': '文档编写员调度', 'duty': '文档/汇报/规范',      'emoji': '📝'},
-    'data_analyst':     {'label': '数据分析师',   'role': '数据分析师调度', 'duty': '资源/预算/成本',      'emoji': '💰'},
-    'software_engineer':   {'label': '代码架构师',   'role': '代码架构师调度', 'duty': '工程开发、架构设计与自动化', 'emoji': '🔧'},
-    'qa_engineer':   {'label': '质量保证师',   'role': '质量保证师调度', 'duty': '合规/审计/红线/测试',      'emoji': '⚖️'},
+
     'hr_manager':  {'label': '资源调配员',   'role': '资源调配员调度', 'duty': '人事/培训/Agent管理',  'emoji': '👔'},
     'monitor':  {'label': '情报监控员', 'role': '监控组长',   'duty': '每日新闻采集与简报',  'emoji': '📰'},
 }
+
+AGENTS_DIR = BASE / 'agents'
+try:
+    for d in AGENTS_DIR.iterdir():
+        if d.is_dir() and d.name.startswith('agency_'):
+            ag_id = d.name
+            # 根据前缀赋予 Emoji 和角色
+            emoji, role = '🧠', '专业智能体'
+            if 'engineering_' in ag_id: emoji, role = '🔧', '研发专家'
+            elif 'testing_' in ag_id: emoji, role = '🧪', '测试专家'
+            elif 'product_' in ag_id: emoji, role = '📦', '产品专家'
+            
+            ID_LABEL[ag_id] = {
+                'label': ag_id.replace('agency_', '').replace('_', ' ').title(), 
+                'role': role, 
+                'duty': '接收看板令执行细分领域任务', 
+                'emoji': emoji
+            }
+except Exception as e:
+    log.warning(f"Failed to load agency agents: {e}")
 
 KNOWN_MODELS = [
     {'id': 'anthropic/claude-sonnet-4-6', 'label': 'Claude Sonnet 4.6', 'provider': 'Anthropic'},
     {'id': 'anthropic/claude-opus-4-5',   'label': 'Claude Opus 4.5',   'provider': 'Anthropic'},
     {'id': 'anthropic/claude-haiku-3-5',  'label': 'Claude Haiku 3.5',  'provider': 'Anthropic'},
-    {'id': 'openai/gpt-4o',               'label': 'GPT-4o',            'provider': 'OpenAI'},
+    {'id': 'openai/gpt-5',               'label': 'GPT-5',            'provider': 'OpenAI'},
     {'id': 'openai/gpt-4o-mini',          'label': 'GPT-4o Mini',       'provider': 'OpenAI'},
     {'id': 'openai-codex/gpt-5.3-codex',  'label': 'GPT-5.3 Codex',    'provider': 'OpenAI Codex'},
-    {'id': 'google/gemini-2.0-flash',     'label': 'Gemini 2.0 Flash',  'provider': 'Google'},
+    {'id': 'google/gemini-3-flash',     'label': 'Gemini 3 Flash',  'provider': 'Google'},
     {'id': 'google/gemini-2.5-pro',       'label': 'Gemini 2.5 Pro',    'provider': 'Google'},
     {'id': 'copilot/claude-sonnet-4',     'label': 'Claude Sonnet 4',   'provider': 'Copilot'},
     {'id': 'copilot/claude-opus-4.5',     'label': 'Claude Opus 4.5',   'provider': 'Copilot'},
     {'id': 'github-copilot/claude-opus-4.6', 'label': 'Claude Opus 4.6', 'provider': 'GitHub Copilot'},
     {'id': 'copilot/gpt-4o',              'label': 'GPT-4o',            'provider': 'Copilot'},
     {'id': 'copilot/gemini-2.5-pro',      'label': 'Gemini 2.5 Pro',    'provider': 'Copilot'},
-    {'id': 'copilot/o3-mini',             'label': 'o3-mini',           'provider': 'Copilot'},
 ]
 
 
@@ -110,13 +126,17 @@ def main():
         seen_ids.add(ag_id)
 
     # 补充不在 openclaw.json agents list 中的 agent（兼容旧版 main）
+    agency_agents = [d.name for d in AGENTS_DIR.iterdir() if d.is_dir() and d.name.startswith('agency_')]
+
     EXTRA_AGENTS = {
         'coordinator':   {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-coordinator'),
                     'allowAgents': ['planner']},
         'main':    {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-main'),
-                    'allowAgents': ['planner','reviewer','dispatcher','data_analyst','doc_writer','software_engineer','qa_engineer','hr_manager']},
+                    'allowAgents': ['planner','reviewer','dispatcher','hr_manager'] + agency_agents},
         'monitor': {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-monitor'),
                     'allowAgents': []},
+        'dispatcher': {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-dispatcher'),
+                    'allowAgents': agency_agents},
         'hr_manager': {'model': default_model, 'workspace': str(pathlib.Path.home() / '.openclaw/workspace-hr_manager'),
                     'allowAgents': ['dispatcher']},
     }
@@ -157,13 +177,17 @@ _SOUL_DEPLOY_MAP = {
     'planner': 'planner',
     'reviewer': 'reviewer',
     'dispatcher': 'dispatcher',
-    'doc_writer': 'doc_writer',
-    'data_analyst': 'data_analyst',
-    'software_engineer': 'software_engineer',
-    'qa_engineer': 'qa_engineer',
+
     'hr_manager': 'hr_manager',
     'monitor': 'monitor',
 }
+
+try:
+    for d in AGENTS_DIR.iterdir():
+        if d.is_dir() and d.name.startswith('agency_'):
+            _SOUL_DEPLOY_MAP[d.name] = d.name
+except Exception:
+    pass
 
 def sync_scripts_to_workspaces():
     """将项目 scripts/ 目录同步到各 agent workspace（保持 kanban_update.py 等最新）"""

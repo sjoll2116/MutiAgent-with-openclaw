@@ -21,6 +21,9 @@ type GormTask struct {
 	Archived    bool      `gorm:"default:false"`
 	ArchivedAt  *time.Time
 	Scheduler   string    `gorm:"column:scheduler"` // 用于元数据的 JSON 字符串
+	RetryRound  int       `gorm:"column:retry_round;default:0"`
+	MaxRetry    int       `gorm:"column:max_retry;default:3"`
+	LastError   string    `gorm:"column:last_error;type:text"`
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 }
@@ -61,12 +64,17 @@ func (GormProgressEntry) TableName() string {
 }
 
 type GormTodoItem struct {
-	ID     uint   `gorm:"primaryKey"`
-	TaskID string `gorm:"type:varchar(100);not null;index"` // 增加索引
-	TodoID string `gorm:"column:todo_id;type:varchar(100)"`
-	Title  string    `gorm:"type:varchar(255)"`
-	Status string `gorm:"type:varchar(50);default:not-started"`
-	Detail string
+	ID         uint   `gorm:"primaryKey"`
+	TaskID     string `gorm:"type:varchar(100);not null;index"` // 增加索引
+	TodoID     string `gorm:"column:todo_id;type:varchar(100)"`
+	Title      string `gorm:"type:varchar(255)"`
+	Status     string `gorm:"type:varchar(50);default:not-started"`
+	Detail     string
+	Stage      int    `gorm:"column:stage;default:0"`
+	Agent      string `gorm:"column:agent;type:varchar(100)"`
+	RetryCount int    `gorm:"column:retry_count;default:0"`
+	MaxRetry   int    `gorm:"column:max_retry;default:2"`
+	FailReason string `gorm:"column:fail_reason;type:text"`
 }
 
 func (GormTodoItem) TableName() string {

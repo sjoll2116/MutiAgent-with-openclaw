@@ -118,6 +118,21 @@ export const api = {
   // RAG 知识库
   ragIngest: (data: IngestRequest) =>
     postJ<ActionResult>(`${API_BASE}/api/rag/ingest`, data),
+
+  ragIngestFile: async (file: File, project_id = '', is_temporary = false) => {
+    const token = localStorage.getItem(AUTH_TOKEN_KEY);
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('project_id', project_id);
+    formData.append('is_temporary', String(is_temporary));
+
+    const res = await fetch(`${API_BASE}/api/rag/ingest-file`, {
+      method: 'POST',
+      headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+      body: formData,
+    });
+    return res.json() as Promise<ActionResult & { doc_id?: string }>;
+  },
   listDocuments: (page = 1, limit = 10) =>
     fetchJ<{ items: RAGDocument[] }>(`${API_BASE}/api/rag/documents?page=${page}&limit=${limit}`),
   deleteDocument: (docId: string) =>

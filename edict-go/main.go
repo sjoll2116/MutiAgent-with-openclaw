@@ -160,11 +160,11 @@ func main() {
 		authorized.GET("/scheduler-state/:taskId", handlers.GetSchedulerState)
 
 		// Task Write/Action
-		authorized.POST("/create-task", handlers.CreateTask)
+		authorized.POST("/task-todos", handlers.UpdateTaskTodos)
+		authorized.POST("/task-scheduler", handlers.UpdateTaskScheduler)
 		authorized.POST("/review-action", handlers.ReviewAction)
 		authorized.POST("/task-action", handlers.TaskAction)
 		authorized.POST("/archive-task", handlers.ArchiveTask)
-		authorized.POST("/task-todos", handlers.UpdateTaskTodos)
 		authorized.POST("/advance-state", handlers.AdvanceState)
 
 		// Agent/System

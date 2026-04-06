@@ -12,7 +12,7 @@ export default function TemplatePanel() {
   const [formTpl, setFormTpl] = useState<Template | null>(null);
   const [formVals, setFormVals] = useState<Record<string, string>>({});
   const [previewCmd, setPreviewCmd] = useState('');
-  const [fileToIngest, setFileToIngest] = useState<{ name: string; content: string } | null>(null);
+  const [fileToIngest, setFileToIngest] = useState<File | null>(null);
   const [ingesting, setIngesting] = useState(false);
 
   let tpls = TEMPLATES;
@@ -68,12 +68,7 @@ export default function TemplatePanel() {
       if (fileToIngest) {
         setIngesting(true);
         toast(`📤 正在注入知识库: ${fileToIngest.name}...`, 'ok');
-        const ir = await api.ragIngest({
-          doc_id: `upload-${Date.now()}-${fileToIngest.name}`,
-          content: fileToIngest.content,
-          filename: fileToIngest.name,
-          metadata: { filename: fileToIngest.name, source: 'user-upload', at: new Date().toISOString() }
-        });
+        const ir = await api.ragIngestFile(fileToIngest, '', false);
         setIngesting(false);
         if (!ir.ok) {
           toast(`❌ 知识注入失败: ${ir.error}`, 'err');
@@ -117,13 +112,18 @@ export default function TemplatePanel() {
       setFileToIngest(null);
       return;
     }
-    const reader = new FileReader();
-    reader.onload = (ev) => {
-      const content = ev.target?.result as string;
-      setFileToIngest({ name: file.name, content });
-      toast(`📄 文件已就绪: ${file.name} (${Math.round(content.length / 1024)} KB)`, 'ok');
-    };
-    reader.readAsText(file);
+    
+    // 校验后缀
+    const ext = file.name.split('.').pop()?.toLowerCase() || '';
+    const supported = ['pdf', 'docx', 'pptx', 'ppt', 'xlsx', 'xls', 'csv', 'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'txt', 'md', 'json', 'py', 'go'];
+    if (!supported.includes(ext)) {
+      toast(`❌ 不支持的文件格式: .${ext}`, 'err');
+      e.target.value = '';
+      return;
+    }
+
+    setFileToIngest(file);
+    toast(`📄 文件已就绪: ${file.name} (${Math.round(file.size / 1024)} KB)`, 'ok');
   };
 
   return (
@@ -227,15 +227,15 @@ export default function TemplatePanel() {
                 {/* 知识上传区域 */}
                 <div className="tpl-field" style={{ borderTop: '1px solid var(--line)', paddingTop: 16, marginTop: 8 }}>
                   <label className="tpl-label">
-                    🧠 知识注入 (可选)
+                    🧠 知识注入 (多模态支持)
                     <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)', marginLeft: 8 }}>
-                      将文档上传到 RAG 知识库，供 Agent 检索
+                      支持 PDF, Word, PPT, Excel, 图片, Markdown, 代码等
                     </span>
                   </label>
                   <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
                     <input
                       type="file"
-                      accept=".txt,.md,.json,.py,.go"
+                      accept=".pdf,.docx,.pptx,.ppt,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.bmp,.tiff,.txt,.md,.json,.py,.go"
                       onChange={handleFileChange}
                       id="rag-file-upload"
                       style={{ display: 'none' }}

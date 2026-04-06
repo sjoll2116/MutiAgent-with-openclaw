@@ -218,6 +218,9 @@ func mapGormToTask(gt models.GormTask) models.Task {
 		Block:       gt.BlockReason,
 		Output:      gt.Output,
 		Archived:    gt.Archived,
+		RetryRound:  gt.RetryRound,
+		MaxRetry:    gt.MaxRetry,
+		LastError:   gt.LastError,
 		UpdatedAt:   gt.UpdatedAt.Format(time.RFC3339),
 		CreatedAt:   gt.CreatedAt.Format(time.RFC3339),
 	}
@@ -256,6 +259,8 @@ func mapGormToTask(gt models.GormTask) models.Task {
 	for _, gtd := range gTodos {
 		t.Todos = append(t.Todos, models.TodoItem{
 			ID: gtd.TodoID, Title: gtd.Title, Status: gtd.Status, Detail: gtd.Detail,
+			Stage: gtd.Stage, Agent: gtd.Agent,
+			RetryCount: gtd.RetryCount, MaxRetry: gtd.MaxRetry, FailReason: gtd.FailReason,
 		})
 	}
 
@@ -267,6 +272,7 @@ func mapTaskToGorm(t models.Task) models.GormTask {
 		ID: t.ID, TraceID: t.TraceID, Title: t.Title, State: t.State, Org: t.Org,
 		Official: t.Official, NowText: t.Now, Priority: t.Priority,
 		BlockReason: t.Block, Output: t.Output, Archived: t.Archived,
+		RetryRound: t.RetryRound, MaxRetry: t.MaxRetry, LastError: t.LastError,
 	}
 	if t.ETA != "" {
 		gt.ETA = t.ETA
@@ -297,7 +303,11 @@ func mapProgressToGorm(taskID string, pe models.ProgressEntry) models.GormProgre
 }
 
 func mapTodoToGorm(taskID string, todo models.TodoItem) models.GormTodoItem {
-	return models.GormTodoItem{TaskID: taskID, TodoID: todo.ID, Title: todo.Title, Status: todo.Status, Detail: todo.Detail}
+	return models.GormTodoItem{
+		TaskID: taskID, TodoID: todo.ID, Title: todo.Title, Status: todo.Status, Detail: todo.Detail,
+		Stage: todo.Stage, Agent: todo.Agent,
+		RetryCount: todo.RetryCount, MaxRetry: todo.MaxRetry, FailReason: todo.FailReason,
+	}
 }
 
 // FindTask 返回一个指向拥有匹配 ID 的任务指针，如未找到则返回 nil。

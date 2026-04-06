@@ -43,8 +43,8 @@ class RAGService:
         self.reranker_model = "BAAI/bge-reranker-v2-m3"
         self.llm_model = "THUDM/GLM-4-32B-0414"
         self.splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1600,
-            chunk_overlap=160,
+            chunk_size=1500,
+            chunk_overlap=150,
             separators=["\n# ", "\n## ", "\n### ", "\n\n", "\n", " ", ""]
         )
         
@@ -301,10 +301,10 @@ class RAGService:
         self.db.add(new_doc)
         await self.db.flush()
 
-        # Parent-Child (Small-to-Big) chunking
+        # Parent-Child chunking
         parent_splitter = self.splitter 
         child_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=500,
+            chunk_size=350,
             chunk_overlap=50,
             separators=["\n\n", "\n", " ", ""]
         )

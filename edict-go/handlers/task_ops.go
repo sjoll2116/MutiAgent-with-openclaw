@@ -263,6 +263,12 @@ func UpdateTaskTodos(c *gin.Context) {
 					if body.Detail != "" {
 						task.Todos[i].Detail = body.Detail
 					}
+					if body.Stage != 0 {
+						task.Todos[i].Stage = body.Stage
+					}
+					if body.Agent != "" {
+						task.Todos[i].Agent = body.Agent
+					}
 					found = true
 					break
 				}
@@ -273,6 +279,8 @@ func UpdateTaskTodos(c *gin.Context) {
 					Title:  body.Title,
 					Status: body.Status,
 					Detail: body.Detail,
+					Stage:  body.Stage,
+					Agent:  body.Agent,
 				})
 			}
 		}
@@ -285,6 +293,39 @@ func UpdateTaskTodos(c *gin.Context) {
 		return
 	}
 	c.JSON(http.StatusOK, models.APIResp{OK: true, Message: body.TaskID + " todos 已更新"})
+}
+
+// UpdateTaskScheduler handles POST /api/task-scheduler.
+func UpdateTaskScheduler(c *gin.Context) {
+	var body models.SchedulerUpdateReq
+	if err := c.ShouldBindJSON(&body); err != nil {
+		c.JSON(http.StatusBadRequest, models.APIResp{OK: false, Error: "invalid JSON"})
+		return
+	}
+	if body.TaskID == "" {
+		c.JSON(http.StatusBadRequest, models.APIResp{OK: false, Error: "task_id required"})
+		return
+	}
+
+	err := store.WithTasks(func(tasks []models.Task) ([]models.Task, error) {
+		task := store.FindTask(tasks, body.TaskID)
+		if task == nil {
+			return nil, fmt.Errorf("任务 %s 不存在", body.TaskID)
+		}
+
+		store.EnsureScheduler(task)
+		for k, v := range body.Scheduler {
+			task.Scheduler[k] = v
+		}
+
+		task.UpdatedAt = store.NowISO()
+		return tasks, nil
+	})
+	if err != nil {
+		c.JSON(http.StatusOK, models.APIResp{OK: false, Error: err.Error()})
+		return
+	}
+	c.JSON(http.StatusOK, models.APIResp{OK: true, Message: body.TaskID + " scheduler 已更新"})
 }
 
 // ReviewAction handles POST /api/review-action (approve / reject).

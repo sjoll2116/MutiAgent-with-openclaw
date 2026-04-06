@@ -13,7 +13,32 @@
         return tasks 
     atomic_json_update(path, modifier, default=[])
 """
-import fcntl
+try:
+    import fcntl
+    LOCK_SH = fcntl.LOCK_SH
+    LOCK_EX = fcntl.LOCK_EX
+    LOCK_UN = fcntl.LOCK_UN
+    def flock(fd, flags):
+        fcntl.flock(fd, flags)
+except ImportError:
+    LOCK_SH = 1
+    LOCK_EX = 2
+    LOCK_UN = 8
+    def flock(fd, flags):
+        import msvcrt
+        if flags == LOCK_UN:
+            # msvcrt locking requires seeking to 0 and locking a specific number of bytes
+            try:
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+            except OSError:
+                pass
+        else:
+            try:
+                os.lseek(fd, 0, os.SEEK_SET)
+                msvcrt.locking(fd, msvcrt.LK_LOCK, 1)
+            except OSError:
+                pass
 import json
 import os
 import pathlib
@@ -31,13 +56,13 @@ def atomic_json_read(path: pathlib.Path, default: Any = None) -> Any:
     lock_file.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR)
     try:
-        fcntl.flock(fd, fcntl.LOCK_SH)
+        flock(fd, LOCK_SH)
         try:
             return json.loads(path.read_text(encoding='utf-8')) if path.exists() else default
         except Exception:
             return default
     finally:
-        fcntl.flock(fd, fcntl.LOCK_UN)
+        flock(fd, LOCK_UN)
         os.close(fd)
 
 
@@ -54,7 +79,7 @@ def atomic_json_update(
     lock_file.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR)
     try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
+        flock(fd, LOCK_EX)
         # Read
         try:
             data = json.loads(path.read_text(encoding='utf-8')) if path.exists() else default
@@ -75,7 +100,7 @@ def atomic_json_update(
             raise
         return result
     finally:
-        fcntl.flock(fd, fcntl.LOCK_UN)
+        flock(fd, LOCK_UN)
         os.close(fd)
 
 
@@ -85,7 +110,7 @@ def atomic_json_write(path: pathlib.Path, data: Any) -> None:
     lock_file.parent.mkdir(parents=True, exist_ok=True)
     fd = os.open(str(lock_file), os.O_CREAT | os.O_RDWR)
     try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
+        flock(fd, LOCK_EX)
         tmp_fd, tmp_path = tempfile.mkstemp(
             dir=str(path.parent), suffix='.tmp', prefix=path.stem + '_'
         )
@@ -97,5 +122,5 @@ def atomic_json_write(path: pathlib.Path, data: Any) -> None:
             os.unlink(tmp_path)
             raise
     finally:
-        fcntl.flock(fd, fcntl.LOCK_UN)
+        flock(fd, LOCK_UN)
         os.close(fd)

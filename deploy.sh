@@ -1,0 +1,22 @@
+#!/bin/bash
+set -e
+
+echo -e "\033[0;36m╔═════════════════════════════════════╗\033[0m"
+echo -e "\033[0;36m║     🏛️  OpenClaw MAS 统一自动化部署 ║\033[0m"
+echo -e "\033[0;36m╚═════════════════════════════════════╝\033[0m"
+
+# 检查 Python 环境
+if command -v python3 &> /dev/null; then
+    PYTHON_CMD="python3"
+elif command -v python &> /dev/null; then
+    PYTHON_CMD="python"
+else
+    echo -e "\033[0;31m❌ 找不到 Python 环境，请确认已安装 Python 3.11+\033[0m"
+    exit 1
+fi
+
+# 核心逻辑移交至 Python 逻辑编码
+$PYTHON_CMD scripts/setup_mas.py "$@"
+
+echo -e "\n\033[0;36m🎉 部署程序执行完毕！\033[0m"
+echo -e "\033[0;33m后续操作：直接执行 bash start.sh 即可开启集群工作！\033[0m"

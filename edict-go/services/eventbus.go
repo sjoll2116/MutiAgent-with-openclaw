@@ -297,6 +297,26 @@ func onTaskStatus(eventType string, payload EventPayload, traceID string) {
  
 	if agent != "" {
 		log.Printf("⚡ Triggering dispatch for task %s (status change: %s) -> agent: %s trace=%s", taskID, toStateStr, agent, traceID)
+		
+		// 如果是回转到 Executing，尝试注入错误信息
+		if toStateStr == "Executing" {
+			errMsg, _ := payload["reason"].(string)
+			if errMsg == "" {
+				errMsg, _ = payload["message"].(string)
+			}
+			if errMsg != "" {
+				store.WithTasks(func(tasks []models.Task) ([]models.Task, error) {
+					t := store.FindTask(tasks, taskID)
+					if t != nil {
+						t.LastError = errMsg
+						t.RetryRound++
+						log.Printf("🔄 Task %s retry round increased to %d due to: %s", taskID, t.RetryRound, errMsg)
+					}
+					return tasks, nil
+				})
+			}
+		}
+
 		PublishEvent(TopicTaskDispatch, traceID, "task.dispatch.request", "orchestrator", EventPayload{
 			"task_id": taskID,
 			"agent":   agent,

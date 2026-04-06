@@ -26,10 +26,15 @@ type ProgressEntry struct {
 
 // TodoItem 表示一个单一的待办事项 / 子任务。
 type TodoItem struct {
-	ID     string `json:"id"`
-	Title  string `json:"title"`
-	Status string `json:"status,omitempty"`
-	Detail string `json:"detail,omitempty"`
+	ID         string `json:"id"`
+	Title      string `json:"title"`
+	Status     string `json:"status,omitempty"`
+	Detail     string `json:"detail,omitempty"`
+	Stage      int    `json:"stage,omitempty"`      // 所属执行阶段 (1, 2, 3...)
+	Agent      string `json:"agent,omitempty"`      // 指派的 Agent ID
+	RetryCount int    `json:"retryCount,omitempty"` // 已重试次数
+	MaxRetry   int    `json:"maxRetry,omitempty"`   // 最大重试次数 (默认 2)
+	FailReason string `json:"failReason,omitempty"` // 失败/跳过原因
 }
 
 // Task 是存储在 tasks_source.json 中的核心数据模型。
@@ -58,6 +63,9 @@ type Task struct {
 	Scheduler      map[string]any  `json:"_scheduler,omitempty"`
 	ReviewRound    int             `json:"review_round,omitempty"`
 	PrevState      string          `json:"_prev_state,omitempty"`
+	RetryRound     int             `json:"retry_round,omitempty"`
+	MaxRetry       int             `json:"max_retry,omitempty"`
+	LastError      string          `json:"last_error,omitempty"`
 	CreatedAt      string          `json:"createdAt,omitempty"`
 	UpdatedAt      string          `json:"updatedAt"`
 }
@@ -107,7 +115,15 @@ type TodoUpdateReq struct {
 	Title  string `json:"title,omitempty"`
 	Status string `json:"status,omitempty"`
 	Detail string `json:"detail,omitempty"`
+	Stage  int    `json:"stage,omitempty"`
+	Agent  string `json:"agent,omitempty"`
 	Todos  []TodoItem `json:"todos,omitempty"`
+}
+
+// SchedulerUpdateReq 用于 POST /api/task-scheduler
+type SchedulerUpdateReq struct {
+	TaskID    string         `json:"task_id"`
+	Scheduler map[string]any `json:"scheduler"`
 }
 
 // ReviewActionReq 用于 POST /api/review-action

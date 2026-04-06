@@ -1,4 +1,4 @@
-﻿#!/usr/bin/env python3
+#!/usr/bin/env python3
 """
 看板任务更新工具 - Edict 兼容层
 
@@ -335,16 +335,16 @@ def cmd_progress(task_id, now_text, todos_pipe='', tokens=0, cost=0.0, elapsed=0
         legacy.cmd_progress(task_id, now_text, todos_pipe, tokens, cost, elapsed)
 
 
-def cmd_todo(task_id, todo_id, title, status='not-started', detail=''):
-    if status not in ('not-started', 'in-progress', 'completed'):
+def cmd_todo(task_id, todo_id, title, status='not-started', stage=0, agent='', detail=''):
+    if status not in ('not-started', 'in-progress', 'completed', 'skipped', 'failed'):
         status = 'not-started'
 
     if _check_api():
         # 读取现有 todos，更新后写回
         # 这里简化处理，直接发进度更新
-        agent = _infer_agent_id()
+        a = _infer_agent_id()
         _api_post(f'/api/tasks/by-legacy/{task_id}/progress', {
-            'agent': agent,
+            'agent': a,
             'content': f'Todo #{todo_id}: {title} → {status}',
         })
         log.info(f'✅ {task_id} todo: {todo_id} → {status}')
@@ -352,7 +352,16 @@ def cmd_todo(task_id, todo_id, title, status='not-started', detail=''):
 
     legacy = _fallback_json()
     if legacy:
-        legacy.cmd_todo(task_id, todo_id, title, status, detail)
+        legacy.cmd_todo(task_id, todo_id, title, status, stage, agent, detail)
+
+def cmd_scheduler(task_id, json_str):
+    if _check_api():
+        log.info(f'⚠️ API 模式暂不支持单独 scheduler 更新.')
+        return
+        
+    legacy = _fallback_json()
+    if legacy:
+        legacy.cmd_scheduler(task_id, json_str)
 
 
 # ── CLI 分发 ──
@@ -386,10 +395,16 @@ if __name__ == '__main__':
     elif cmd == 'todo':
         todo_pos = []
         todo_detail = ''
+        stage = 0
+        agent = ''
         ti = 1
         while ti < len(args):
             if args[ti] == '--detail' and ti + 1 < len(args):
                 todo_detail = args[ti + 1]; ti += 2
+            elif args[ti] == '--stage' and ti + 1 < len(args):
+                stage = int(args[ti + 1]); ti += 2
+            elif args[ti] == '--agent' and ti + 1 < len(args):
+                agent = args[ti + 1]; ti += 2
             else:
                 todo_pos.append(args[ti]); ti += 1
         cmd_todo(
@@ -397,8 +412,13 @@ if __name__ == '__main__':
             todo_pos[1] if len(todo_pos) > 1 else '',
             todo_pos[2] if len(todo_pos) > 2 else '',
             todo_pos[3] if len(todo_pos) > 3 else 'not-started',
+            stage=stage,
+            agent=agent,
             detail=todo_detail,
         )
+    elif cmd == 'scheduler':
+        if len(args) > 2:
+            cmd_scheduler(args[1], args[2])
     elif cmd == 'progress':
         pos_args = []
         kw = {}
