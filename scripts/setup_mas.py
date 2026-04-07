@@ -10,14 +10,23 @@ import argparse
 BASE_DIR = pathlib.Path(__file__).parent.parent
 DATA_DIR = BASE_DIR / 'data'
 SCRIPTS_DIR = BASE_DIR / 'scripts'
+AGENTS_DIR = BASE_DIR / 'agents'
 OPENCLAW_CFG_PATH = pathlib.Path.home() / '.openclaw' / 'openclaw.json'
 
-# Current Core Agents (Consolidated from deploy.sh)
+# --- Agent Cluster Definitions ---
+
+# 废弃的旧版执行智能体 (将从 openclaw.json 中自动剔除)
+DISCARDED_AGENTS = [
+    'software_engineer', 'qa_engineer', 'data_analyst', 'doc_writer',
+    'recruiter', 'observer'
+]
+
+# 核心中枢集群 (指挥层)
 CORE_AGENTS = [
     {"id": "coordinator", "subagents": {"allowAgents": ["planner"]}},
     {"id": "planner",     "subagents": {"allowAgents": ["reviewer", "dispatcher"]}},
     {"id": "reviewer",    "subagents": {"allowAgents": ["dispatcher", "planner"]}},
-    {"id": "dispatcher",  "subagents": {"allowAgents": ["planner", "reviewer", "hr_manager"]}},
+    {"id": "dispatcher",  "subagents": {"allowAgents": ["planner", "reviewer", "hr_manager"]}}, # Experts will be injected dynamically
     {"id": "hr_manager",  "subagents": {"allowAgents": ["dispatcher"]}},
 ]
 
@@ -77,37 +86,86 @@ def init_data_dirs():
     print(f"✅ 数据目录就绪: {DATA_DIR}")
 
 def register_core_agents():
-    log_step("向 OpenClaw 注册核心管理智能体 (5 大集群)...")
+    log_step("向 OpenClaw 注册核心管理与专家集群 (Dynamic Discovery)...")
     try:
         cfg = json.loads(OPENCLAW_CFG_PATH.read_text('utf-8'))
         agents_cfg = cfg.setdefault('agents', {})
         agents_list = agents_cfg.setdefault('list', [])
-        existing_ids = {a.get('id') for a in agents_list}
         
-        changed = False
+        # 1. 自动剔除废弃智能体
+        initial_len = len(agents_list)
+        agents_list = [a for a in agents_list if a.get('id') not in DISCARDED_AGENTS]
+        if len(agents_list) < initial_len:
+            print(f"  - 已从配置中剔除 {initial_len - len(agents_list)} 个废弃智能体")
+
+        # 2. 动态感应专家智能体 (agency_*)
+        expert_ids = []
+        if AGENTS_DIR.exists():
+            expert_ids = [d.name for d in AGENTS_DIR.iterdir() if d.is_dir() and d.name.startswith('agency_')]
+            print(f"  + 发现 {len(expert_ids)} 个领域专家智能体 (New Version)")
+
+        # 3. 构造 Full Agents List (核心 + 专家)
+        all_to_register = []
+        
+        # 处理核心中枢
         for ag in CORE_AGENTS:
-            ag_id = ag['id']
-            if ag_id not in existing_ids:
-                ws = pathlib.Path.home() / f'.openclaw/workspace-{ag_id}'
-                ws.mkdir(parents=True, exist_ok=True)
-                entry = {
-                    'id': ag_id, 
-                    'workspace': str(ws), 
-                    **{k:v for k,v in ag.items() if k!='id'}
-                }
-                agents_list.append(entry)
-                changed = True
-                print(f"  + 注册新 Agent: {ag_id}")
+            if ag['id'] == 'dispatcher':
+                # 核心逻辑：为 Dispatcher 注入所有专家的路由
+                ag_copy = ag.copy()
+                sub = ag_copy.setdefault('subagents', {})
+                allowed = set(sub.setdefault('allowAgents', []))
+                for eid in expert_ids:
+                    allowed.add(eid)
+                sub['allowAgents'] = sorted(list(allowed))
+                all_to_register.append(ag_copy)
             else:
-                print(f"  ~ Agent 已存在: {ag_id} (跳过)")
+                all_to_register.append(ag)
         
-        if changed:
+        # 处理每一个专家 (确保他们在 openclaw.json 中有条目)
+        for eid in expert_ids:
+            all_to_register.append({"id": eid, "subagents": {"allowAgents": []}})
+
+        # 4. 执行注册与 Workspace 维护
+        existing_map = {a.get('id'): a for a in agents_list}
+        final_list = []
+        registered_ids = set()
+        changed = (len(agents_list) != initial_len) # 如果刚才删除了废弃 Agent，则标记为已改变
+
+        # 处理所有需要注册的智能体
+        for ag_meta in all_to_register:
+            ag_id = ag_meta['id']
+            ws = pathlib.Path.home() / f'.openclaw/workspace-{ag_id}'
+            ws.mkdir(parents=True, exist_ok=True)
+            
+            entry = {
+                'id': ag_id, 
+                'workspace': str(ws), 
+                **{k:v for k,v in ag_meta.items() if k!='id'}
+            }
+            final_list.append(entry)
+            registered_ids.add(ag_id)
+            
+            if ag_id not in existing_map:
+                print(f"  + 注册新 Agent: {ag_id}")
+                changed = True
+            elif existing_map[ag_id] != entry:
+                # 如果配置（如 subagents）发生变化
+                changed = True
+
+        # 保留用户可能手动添加且不属于我们管理范畴的智能体
+        for old_ag in agents_list:
+            if old_ag.get('id') not in registered_ids:
+                final_list.append(old_ag)
+
+        if changed or len(final_list) != len(agents_list):
+            agents_cfg['list'] = final_list
             OPENCLAW_CFG_PATH.write_text(json.dumps(cfg, ensure_ascii=False, indent=2), 'utf-8')
-            print("✅ openclaw.json 更新成功。")
+            print(f"✅ openclaw.json 同步完成。当前集群规模: {len(final_list)} 个智能体。")
         else:
-            print("ℹ️ 所有核心智能体已注册，无需更新。")
+            print("ℹ️ 智能体集群配置已是最新，无需更新。")
+
     except Exception as e:
-        log_error(f"注册智能体失败: {e}")
+        log_error(f"动态注册智能体失败: {e}")
 
 def compile_experts(args):
     log_step("编译领域专家智能体 (Agency Experts)...")

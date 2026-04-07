@@ -10,7 +10,7 @@
 
 - **指挥-执行分离架构**：
   - **指挥层**：基于 OpenClaw 的 `coordinator`, `planner`, `reviewer`, `dispatcher` 四大引擎，负责复杂任务的模糊识别、意图拆解、方案风控与指令派发。
-  - **执行层**：精简高效的 4 大专职 Agent (`software_engineer`, `qa_engineer`, `data_analyst`, `doc_writer`)，负责垂直领域的具体交付。
+  - **执行层**：由 **28 个极领域专家智能体** (Agency Experts) 组成的动态集群，涵盖研发、测试、产品、学术、市场五个大类，负责细分领域的专业交付。
 - **高可用 Go 调度引擎**：使用 Go 语言重构的高性能系统总线，基于 Redis Streams 实现事件驱动的任务状态机，确保任务流转的确定性。
 - **Agentic RAG 知识库**：集成 PostgreSQL (pgvector) + HyDE (虚拟文档生成) + RRF (混合搜索)，为 Agent 提供全局实时的知识检索能力。
 - **实时监控看板**：基于 React 18 + WebSockets 的全透明监控台，实时观测 Agent 的思考过程（Thinking）、工具调用与任务进度。
@@ -27,11 +27,12 @@ graph TD
     Reviewer -->|审查驳回/打回| Planner
     Reviewer -->|审核通过| Dispatcher[任务调度引擎]
     
-    subgraph "执行智能体集群"
-        Dispatcher --> SE[代码架构师]
-        Dispatcher --> QA[质量保证师]
-        Dispatcher --> DA[数据分析师]
-        Dispatcher --> DW[文档编写员]
+    subgraph "28极执行智能体集群"
+        Dispatcher --> Eng[研发专家组]
+        Dispatcher --> Test[测试专家组]
+        Dispatcher --> Prod[产品专家组]
+        Dispatcher --> Acad[学术专家组]
+        Dispatcher --> Mark[市场专家组]
     end
     
     subgraph "核心基建"
