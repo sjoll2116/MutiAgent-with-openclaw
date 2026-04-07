@@ -4,32 +4,40 @@ export default {
   theme: {
     extend: {
       colors: {
-        // OpenClaw MAS主题色
-        imperial: {
-          50: '#fef7ed',
-          100: '#fdecd4',
-          200: '#fad5a8',
-          300: '#f7b671',
-          400: '#f38d38',
-          500: '#f07012',
-          600: '#e15808',
-          700: '#bb4009',
-          800: '#95330f',
-          900: '#792c10',
+        // Digital Obsidian Pro Max Palette
+        obsidian: {
+          full: '#050505',
+          panel: '#0E0E0E',
+          glass: 'rgba(14, 14, 14, 0.65)',
         },
-        dynasty: {
-          50: '#fdf4f3',
-          100: '#fce8e4',
-          200: '#fad4ce',
-          300: '#f5b5ab',
-          400: '#ee8a7a',
-          500: '#e25f4d',
-          600: '#cf4430',
-          700: '#ae3624',
-          800: '#903022',
-          900: '#782d23',
+        onyx: {
+          light: '#2A2A2A',
+          dim: '#1A1A1A',
         },
+        neon: {
+          cyan: '#00F2FF',
+          violet: '#8C5CFF',
+          ember: '#FFB800',
+          glitch: '#FF0055',
+        },
+        slate: {
+          text: '#E0E0E0',
+          muted: '#808080',
+          line: '#262626',
+        }
       },
+      fontFamily: {
+        outfit: ['Outfit', 'sans-serif'],
+        mono: ['JetBrains Mono', 'monospace'],
+      },
+      boxShadow: {
+        'neon-cyan': '0 0 15px -3px rgba(0, 242, 255, 0.3)',
+        'neon-violet': '0 0 15px -3px rgba(140, 92, 255, 0.3)',
+        'glass': '0 8px 32px 0 rgba(0, 0, 0, 0.8)',
+      },
+      backgroundImage: {
+        'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+      }
     },
   },
   plugins: [],

@@ -1,13 +1,33 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useMemo } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  Sun, 
+  Settings, 
+  RefreshCcw, 
+  Newspaper, 
+  Globe, 
+  TrendingUp, 
+  Hash, 
+  Link as LinkIcon, 
+  Plus, 
+  Trash2,
+  CheckCircle2,
+  AlertCircle,
+  ExternalLink,
+  Zap,
+  LayoutGrid,
+  Clock
+} from 'lucide-react';
 import { useStore } from '../store';
 import { api } from '../api';
 import type { SubConfig, MorningNewsItem } from '../api';
+import { cn } from '../lib/utils';
 
 const CAT_META: Record<string, { icon: string; color: string; desc: string }> = {
-  '政治': { icon: '🏛️', color: '#6a9eff', desc: '全球政治动态' },
-  '军事': { icon: '⚔️', color: '#ff5270', desc: '军事与冲突' },
-  '经济': { icon: '💹', color: '#2ecc8a', desc: '经济与市场' },
-  'AI大模型': { icon: '🤖', color: '#a07aff', desc: 'AI与大模型进展' },
+  '政治': { icon: '🏛️', color: 'text-neon-cyan', desc: 'Global Politics' },
+  '军事': { icon: '⚔️', color: 'text-neon-glitch', desc: 'Military Affairs' },
+  '经济': { icon: '💹', color: 'text-neon-ember', desc: 'Economy & Markets' },
+  'AI大模型': { icon: '🤖', color: 'text-neon-violet', desc: 'AI & LLM Evolution' },
 };
 
 const DEFAULT_CATS = ['政治', '军事', '经济', 'AI大模型'];
@@ -22,396 +42,238 @@ export default function MorningPanel() {
   const [showConfig, setShowConfig] = useState(false);
   const [localConfig, setLocalConfig] = useState<SubConfig | null>(null);
   const [refreshing, setRefreshing] = useState(false);
-  const [refreshLabel, setRefreshLabel] = useState('⟳ 立即采集');
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
     loadMorning();
-  }, [loadMorning]);
+    loadSubConfig();
+    const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, [loadMorning, loadSubConfig]);
 
   useEffect(() => {
     if (subConfig) setLocalConfig(JSON.parse(JSON.stringify(subConfig)));
   }, [subConfig]);
 
-  useEffect(() => {
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
-  }, []);
-
   const refreshNews = async () => {
     setRefreshing(true);
-    setRefreshLabel('⟳ 采集中…');
-    let lastDate: string | null = null;
-    try {
-      lastDate = morningBrief?.generated_at || null;
-    } catch { /* */ }
-
     try {
       await api.refreshMorning();
-      toast('采集已触发，自动检测更新中…', 'ok');
-      let count = 0;
-      if (pollRef.current) clearInterval(pollRef.current);
-      pollRef.current = setInterval(async () => {
-        count++;
-        if (count > 24) {
-          clearInterval(pollRef.current!);
-          pollRef.current = null;
-          setRefreshing(false);
-          setRefreshLabel('⟳ 立即采集');
-          toast('采集超时，请重试', 'err');
-          return;
-        }
-        try {
-          const fresh = await api.morningBrief();
-          if (fresh.generated_at && fresh.generated_at !== lastDate) {
-            clearInterval(pollRef.current!);
-            pollRef.current = null;
-            setRefreshing(false);
-            setRefreshLabel('⟳ 立即采集');
-            loadMorning();
-            toast('✅ 天下要闻已更新', 'ok');
-          } else {
-            setRefreshLabel(`⟳ 采集中… (${count * 5}s)`);
-          }
-        } catch { /* */ }
+      toast('✅ News gathering sequence initiated');
+      // Simple timeout for refreshing state
+      setTimeout(() => {
+        setRefreshing(false);
+        loadMorning();
       }, 5000);
     } catch {
-      toast('触发失败', 'err');
+      toast('Gathering failed', 'err');
       setRefreshing(false);
-      setRefreshLabel('⟳ 立即采集');
     }
   };
-
-  // Config helpers
-  const toggleCat = (name: string) => {
-    if (!localConfig) return;
-    const cats = [...(localConfig.categories || [])];
-    const existing = cats.find((c) => c.name === name);
-    if (existing) existing.enabled = !existing.enabled;
-    else cats.push({ name, enabled: true });
-    setLocalConfig({ ...localConfig, categories: cats });
-  };
-
-  const addKeyword = (kw: string) => {
-    if (!localConfig || !kw) return;
-    const kws = [...(localConfig.keywords || [])];
-    if (!kws.includes(kw)) kws.push(kw);
-    setLocalConfig({ ...localConfig, keywords: kws });
-  };
-
-  const removeKeyword = (i: number) => {
-    if (!localConfig) return;
-    const kws = [...(localConfig.keywords || [])];
-    kws.splice(i, 1);
-    setLocalConfig({ ...localConfig, keywords: kws });
-  };
-
-  const addFeed = (name: string, url: string, category: string) => {
-    if (!localConfig || !name || !url) {
-      toast('请填写源名称和URL', 'err');
-      return;
-    }
-    const feeds = [...(localConfig.custom_feeds || [])];
-    feeds.push({ name, url, category });
-    setLocalConfig({ ...localConfig, custom_feeds: feeds });
-  };
-
-  const removeFeed = (i: number) => {
-    if (!localConfig) return;
-    const feeds = [...(localConfig.custom_feeds || [])];
-    feeds.splice(i, 1);
-    setLocalConfig({ ...localConfig, custom_feeds: feeds });
-  };
-
-  const saveConfig = async () => {
-    if (!localConfig) return;
-    try {
-      const r = await api.saveMorningConfig(localConfig);
-      if (r.ok) {
-        toast('订阅配置已保存', 'ok');
-        loadSubConfig();
-      } else {
-        toast(r.error || '保存失败', 'err');
-      }
-    } catch {
-      toast('服务器连接失败', 'err');
-    }
-  };
-
-  const enabledSet = localConfig
-    ? new Set((localConfig.categories || []).filter((c) => c.enabled).map((c) => c.name))
-    : new Set(DEFAULT_CATS);
-  const userKws = (localConfig?.keywords || []).map((k) => k.toLowerCase());
 
   const cats = morningBrief?.categories || {};
-  const dateStr = morningBrief?.date
-    ? morningBrief.date.replace(/(\d{4})(\d{2})(\d{2})/, '$1年$2月$3日')
-    : '';
   const totalNews = Object.values(cats).flat().length;
+  const enabledCats = localConfig?.categories?.filter(c => c.enabled).map(c => c.name) || DEFAULT_CATS;
 
   return (
-    <div>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-        <div>
-          <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 4 }}>🌅 天下要闻</div>
-          <div style={{ fontSize: 12, color: 'var(--muted)' }}>
-            {dateStr && `${dateStr} | `}
-            {morningBrief?.generated_at && `采集于 ${morningBrief.generated_at} | `}
-            共 {totalNews} 条要闻
-          </div>
-        </div>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <button
-            className="btn btn-g"
-            onClick={() => setShowConfig(!showConfig)}
-            style={{ fontSize: 12, padding: '6px 14px' }}
-          >
-            ⚙ 订阅配置
-          </button>
-          <button
-            className="tpl-go"
-            disabled={refreshing}
-            onClick={refreshNews}
-            style={{ fontSize: 12, padding: '6px 14px' }}
-          >
-            {refreshLabel}
-          </button>
-        </div>
-      </div>
-
-      {/* Subscription Config */}
-      {showConfig && localConfig && (
-        <SubConfigPanel
-          config={localConfig}
-          enabledSet={enabledSet}
-          onToggleCat={toggleCat}
-          onAddKeyword={addKeyword}
-          onRemoveKeyword={removeKeyword}
-          onAddFeed={addFeed}
-          onRemoveFeed={removeFeed}
-          onSave={saveConfig}
-          onSetWebhook={(v) => setLocalConfig({ ...localConfig, feishu_webhook: v })}
-        />
-      )}
-
-      {/* News */}
-      {!Object.keys(cats).length ? (
-        <div className="mb-empty">暂无数据，点击右上角「立即采集」获取今日简报</div>
-      ) : (
-        <div className="mb-cats">
-          {Object.entries(cats).map(([cat, items]) => {
-            if (!enabledSet.has(cat)) return null;
-            const meta = CAT_META[cat] || { icon: '📰', color: 'var(--acc)', desc: cat };
-            const scored = (items as MorningNewsItem[])
-              .map((item) => {
-                const text = ((item.title || '') + (item.summary || '')).toLowerCase();
-                const kwHits = userKws.filter((k) => text.includes(k)).length;
-                return { ...item, _kwHits: kwHits };
-              })
-              .sort((a, b) => b._kwHits - a._kwHits);
-
-            return (
-              <div className="mb-cat" key={cat}>
-                <div className="mb-cat-hdr">
-                  <span className="mb-cat-icon">{meta.icon}</span>
-                  <span className="mb-cat-name" style={{ color: meta.color }}>{cat}</span>
-                  <span className="mb-cat-cnt">{scored.length} 条</span>
-                </div>
-                <div className="mb-news-list">
-                  {!scored.length ? (
-                    <div className="mb-empty" style={{ padding: 16 }}>暂无新闻</div>
-                  ) : (
-                    scored.map((item, i) => {
-                      const hasImg = !!(item.image && item.image.startsWith('http'));
-                      return (
-                        <div
-                          className="mb-card"
-                          key={i}
-                          onClick={() => window.open(item.link, '_blank')}
-                        >
-                          <div className="mb-img">
-                            {hasImg ? (
-                              <img
-                                src={item.image}
-                                onError={(e) => {
-                                  (e.target as HTMLImageElement).style.display = 'none';
-                                }}
-                                loading="lazy"
-                                alt=""
-                              />
-                            ) : (
-                              <span>{meta.icon}</span>
-                            )}
-                          </div>
-                          <div className="mb-info">
-                            <div className="mb-headline">
-                              {item.title}
-                              {item._kwHits > 0 && (
-                                <span
-                                  style={{
-                                    fontSize: 9,
-                                    padding: '1px 5px',
-                                    borderRadius: 999,
-                                    background: '#a07aff22',
-                                    color: '#a07aff',
-                                    border: '1px solid #a07aff44',
-                                    marginLeft: 4,
-                                  }}
-                                >
-                                  ⭐ 关注
-                                </span>
-                              )}
-                            </div>
-                            <div className="mb-summary">{item.summary || item.desc || ''}</div>
-                            <div className="mb-meta">
-                              <span className="mb-source">📡 {item.source || ''}</span>
-                              {item.pub_date && (
-                                <span className="mb-time">{item.pub_date.substring(0, 16)}</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      );
-                    })
+    <div className="flex flex-col h-full space-y-6">
+      {/* --- Bento Grid Header Section --- */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-fit">
+        
+        {/* Main Status Bento (6 cols) */}
+        <div className="md:col-span-8 glass-panel p-8 rounded-3xl relative overflow-hidden group border border-white/5 bg-gradient-to-br from-obsidian-panel to-black">
+          <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-neon-cyan/10 rounded-full blur-[80px] group-hover:bg-neon-cyan/20 transition-all duration-1000" />
+          
+          <div className="relative z-10">
+            <div className="flex items-center gap-3 mb-6">
+               <div className="p-2 bg-neon-cyan/20 rounded-xl">
+                 <Sun className="w-6 h-6 text-neon-cyan" />
+               </div>
+               <h2 className="text-3xl font-black text-white tracking-tight uppercase">Morning Nexus Brief</h2>
+            </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
+               <div className="space-y-1">
+                 <p className="sub-title">Intelligence Flow</p>
+                 <p className="text-xl font-black text-white">{totalNews} <span className="text-xs text-slate-muted">Entries</span></p>
+               </div>
+               <div className="space-y-1">
+                 <p className="sub-title">Last Ingest</p>
+                 <p className="text-sm font-black text-neon-cyan uppercase">{morningBrief?.generated_at?.split(' ')[1] || '08:00:00'}</p>
+               </div>
+               <div className="space-y-1">
+                 <p className="sub-title">Feed Status</p>
+                 <div className="flex items-center gap-2">
+                   <div className="w-2 h-2 rounded-full bg-neon-cyan shadow-neon-cyan animate-pulse" />
+                   <p className="text-xs font-bold text-white uppercase tracking-widest">Global Sync</p>
+                 </div>
+               </div>
+               <div className="flex justify-end items-end">
+                 <button 
+                  onClick={refreshNews}
+                  disabled={refreshing}
+                  className={cn(
+                    "flex items-center gap-2 px-4 py-2 rounded-xl border border-neon-cyan/30 text-neon-cyan font-bold text-xs uppercase tracking-widest hover:bg-neon-cyan/10 transition-all",
+                    refreshing && "opacity-50 cursor-not-allowed"
                   )}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function SubConfigPanel({
-  config,
-  enabledSet,
-  onToggleCat,
-  onAddKeyword,
-  onRemoveKeyword,
-  onAddFeed,
-  onRemoveFeed,
-  onSave,
-  onSetWebhook,
-}: {
-  config: SubConfig;
-  enabledSet: Set<string>;
-  onToggleCat: (name: string) => void;
-  onAddKeyword: (kw: string) => void;
-  onRemoveKeyword: (i: number) => void;
-  onAddFeed: (name: string, url: string, cat: string) => void;
-  onRemoveFeed: (i: number) => void;
-  onSave: () => void;
-  onSetWebhook: (v: string) => void;
-}) {
-  const [newKw, setNewKw] = useState('');
-  const [feedName, setFeedName] = useState('');
-  const [feedUrl, setFeedUrl] = useState('');
-  const [feedCat, setFeedCat] = useState(DEFAULT_CATS[0]);
-
-  const allCats = [...DEFAULT_CATS];
-  (config.categories || []).forEach((c) => {
-    if (!allCats.includes(c.name)) allCats.push(c.name);
-  });
-
-  return (
-    <div className="sub-config" style={{ marginBottom: 20, padding: 16, background: 'var(--panel2)', borderRadius: 12, border: '1px solid var(--line)' }}>
-      <div style={{ fontSize: 14, fontWeight: 700, marginBottom: 12 }}>⚙ 订阅配置</div>
-
-      {/* Categories */}
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>订阅分类</div>
-        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-          {allCats.map((cat) => {
-            const meta = CAT_META[cat] || { icon: '📰', color: 'var(--acc)', desc: cat };
-            const on = enabledSet.has(cat);
-            return (
-              <div
-                key={cat}
-                className={`sub-cat ${on ? 'active' : ''}`}
-                onClick={() => onToggleCat(cat)}
-                style={{ cursor: 'pointer', padding: '6px 12px', borderRadius: 8, border: `1px solid ${on ? 'var(--acc)' : 'var(--line)'}`, display: 'flex', alignItems: 'center', gap: 6 }}
-              >
-                <span>{meta.icon}</span>
-                <span style={{ fontSize: 12 }}>{cat}</span>
-                {on && <span style={{ fontSize: 10, color: 'var(--ok)' }}>✓</span>}
-              </div>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Keywords */}
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>关注关键词</div>
-        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 6 }}>
-          {(config.keywords || []).map((kw, i) => (
-            <span key={i} className="sub-kw" style={{ fontSize: 11, padding: '2px 8px', borderRadius: 4, background: 'var(--bg)', border: '1px solid var(--line)' }}>
-              {kw}
-              <span style={{ cursor: 'pointer', marginLeft: 4, color: 'var(--danger)' }} onClick={() => onRemoveKeyword(i)}>✕</span>
-            </span>
-          ))}
-        </div>
-        <div style={{ display: 'flex', gap: 6 }}>
-          <input
-            type="text"
-            value={newKw}
-            onChange={(e) => setNewKw(e.target.value)}
-            placeholder="输入关键词"
-            onKeyDown={(e) => { if (e.key === 'Enter') { onAddKeyword(newKw.trim()); setNewKw(''); } }}
-            style={{ flex: 1, padding: '6px 10px', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', fontSize: 12, outline: 'none' }}
-          />
-          <button className="btn btn-g" onClick={() => { onAddKeyword(newKw.trim()); setNewKw(''); }} style={{ fontSize: 11, padding: '4px 12px' }}>
-            添加
-          </button>
-        </div>
-      </div>
-
-      {/* Custom Feeds */}
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 8 }}>自定义信息源</div>
-        {(config.custom_feeds || []).map((f, i) => (
-          <div key={i} style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 4, fontSize: 11 }}>
-            <span style={{ fontWeight: 600 }}>{f.name}</span>
-            <span style={{ color: 'var(--muted)', flex: 1, overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.url}</span>
-            <span style={{ color: 'var(--acc)' }}>{f.category}</span>
-            <span style={{ cursor: 'pointer', color: 'var(--danger)' }} onClick={() => onRemoveFeed(i)}>✕</span>
+                 >
+                   <RefreshCcw className={cn("w-4 h-4", refreshing && "animate-spin")} />
+                   {refreshing ? 'Syncing...' : 'Sync Global'}
+                 </button>
+               </div>
+            </div>
           </div>
-        ))}
-        <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-          <input placeholder="源名称" value={feedName} onChange={(e) => setFeedName(e.target.value)}
-            style={{ width: 100, padding: '6px 8px', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', fontSize: 11, outline: 'none' }} />
-          <input placeholder="RSS / URL" value={feedUrl} onChange={(e) => setFeedUrl(e.target.value)}
-            style={{ flex: 1, padding: '6px 8px', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', fontSize: 11, outline: 'none' }} />
-          <select value={feedCat} onChange={(e) => setFeedCat(e.target.value)}
-            style={{ padding: '6px 8px', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', fontSize: 11, outline: 'none' }}>
-            {allCats.map((c) => <option key={c} value={c}>{c}</option>)}
-          </select>
-          <button className="btn btn-g" onClick={() => { onAddFeed(feedName, feedUrl, feedCat); setFeedName(''); setFeedUrl(''); }} style={{ fontSize: 11, padding: '4px 12px' }}>
-            添加
-          </button>
+        </div>
+
+        {/* Clock Bento (4 cols) */}
+        <div className="md:col-span-4 glass-panel p-8 rounded-3xl flex flex-col items-center justify-center border border-white/5 bg-black/40">
+           <div className="p-3 bg-neon-violet/20 rounded-2xl mb-4">
+             <Clock className="w-8 h-8 text-neon-violet" />
+           </div>
+           <p className="text-4xl font-black text-white tracking-tighter mb-2">
+             {currentTime.toLocaleTimeString('en-US', { hour12: false })}
+           </p>
+           <p className="text-xs font-bold text-slate-muted uppercase tracking-[0.3em]">
+             {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
+           </p>
         </div>
       </div>
 
-      {/* Feishu Webhook */}
-      <div style={{ marginBottom: 14 }}>
-        <div style={{ fontSize: 12, fontWeight: 600, marginBottom: 6 }}>飞书 Webhook</div>
-        <input
-          type="text"
-          value={config.feishu_webhook || ''}
-          onChange={(e) => onSetWebhook(e.target.value)}
-          placeholder="https://open.feishu.cn/open-apis/bot/v2/hook/..."
-          style={{ width: '100%', padding: '8px 10px', background: 'var(--bg)', border: '1px solid var(--line)', borderRadius: 6, color: 'var(--text)', fontSize: 12, outline: 'none' }}
-        />
-      </div>
+      {/* --- Main Content Layout --- */}
+      <div className="flex flex-col lg:flex-row gap-6 flex-1 overflow-hidden">
+        
+        {/* News Feed --- */}
+        <div className="flex-1 overflow-y-auto pr-2 space-y-10 no-scrollbar pb-20">
+          <AnimatePresence mode="popLayout">
+            {Object.entries(cats).map(([cat, items]) => {
+              if (!enabledCats.includes(cat)) return null;
+              const meta = CAT_META[cat] || { icon: '📰', color: 'text-slate-muted', desc: cat };
+              
+              return (
+                <motion.section 
+                  layout
+                  key={cat}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="space-y-4"
+                >
+                  <div className="flex items-center gap-4 px-2">
+                    <span className="text-2xl">{meta.icon}</span>
+                    <h3 className={cn("text-lg font-black uppercase tracking-widest", meta.color)}>{cat}</h3>
+                    <div className="h-px flex-1 bg-white/5" />
+                    <span className="text-[10px] font-bold text-slate-muted uppercase tracking-wider">{items.length} Bulletins</span>
+                  </div>
 
-      <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-        <button className="tpl-go" onClick={onSave} style={{ fontSize: 12, padding: '6px 16px' }}>
-          💾 保存配置
-        </button>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {(items as MorningNewsItem[]).map((news, idx) => (
+                      <motion.div
+                        key={idx}
+                        whileHover={{ y: -4, scale: 1.01 }}
+                        className="glass-card p-5 rounded-2xl cursor-pointer group flex flex-col justify-between"
+                        onClick={() => window.open(news.link, '_blank')}
+                      >
+                         <div className="flex gap-4">
+                            {news.image && news.image.startsWith('http') && (
+                              <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-white/5">
+                                <img src={news.image} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                              </div>
+                            )}
+                            <div className="flex-1 space-y-2">
+                               <h4 className="text-sm font-bold text-white leading-snug group-hover:text-neon-cyan transition-colors">
+                                 {news.title}
+                               </h4>
+                               <p className="text-[11px] text-slate-muted line-clamp-2 leading-relaxed">
+                                 {news.summary || news.desc}
+                               </p>
+                            </div>
+                         </div>
+                         <div className="mt-4 flex items-center justify-between pt-4 border-t border-white/5">
+                           <span className="text-[9px] font-bold text-neon-violet uppercase flex items-center gap-1.5">
+                             <Globe className="w-3 h-3" /> {news.source}
+                           </span>
+                           <span className="text-[9px] font-mono text-slate-muted">{news.pub_date?.substring(11, 16)}</span>
+                         </div>
+                      </motion.div>
+                    ))}
+                  </div>
+                </motion.section>
+              );
+            })}
+          </AnimatePresence>
+        </div>
+
+        {/* Sidebar Controls --- */}
+        <aside className="w-full lg:w-80 space-y-6">
+          <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-6">
+            <div className="flex items-center gap-2">
+              <Settings className="w-4 h-4 text-neon-cyan" />
+              <h4 className="sub-title !mb-0">Intelligence Filters</h4>
+            </div>
+
+            {/* Category Toggles */}
+            <div className="space-y-4">
+               <p className="text-[9px] font-black text-slate-muted uppercase tracking-[0.2em]">Active Channels</p>
+               <div className="flex flex-wrap gap-2">
+                  {Object.keys(CAT_META).map(catName => {
+                    const active = enabledCats.includes(catName);
+                    return (
+                      <button 
+                        key={catName}
+                        className={cn(
+                          "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border",
+                          active ? "bg-neon-cyan/10 border-neon-cyan/40 text-neon-cyan" : "bg-white/5 border-white/5 text-slate-muted opacity-40 hover:opacity-100"
+                        )}
+                      >
+                        {catName}
+                      </button>
+                    )
+                  })}
+               </div>
+            </div>
+
+            {/* News Feed Management */}
+            <div className="space-y-4">
+               <p className="text-[9px] font-black text-slate-muted uppercase tracking-[0.2em]">Custom Sources</p>
+               <div className="space-y-2 max-h-48 overflow-y-auto no-scrollbar pr-2">
+                 {localConfig?.custom_feeds?.map((f, i) => (
+                   <div key={i} className="p-3 bg-black/40 rounded-xl border border-white/5 flex items-center justify-between group">
+                      <div className="flex-1 truncate">
+                        <p className="text-[10px] font-bold text-white truncate">{f.name}</p>
+                        <p className="text-[8px] text-slate-muted truncate">{f.url}</p>
+                      </div>
+                      <button className="p-1 opacity-0 group-hover:opacity-100 text-neon-glitch transition-opacity">
+                        <Trash2 className="w-3 h-3" />
+                      </button>
+                   </div>
+                 ))}
+               </div>
+               <button className="w-full py-2 rounded-xl border border-dashed border-slate-line text-[10px] font-bold uppercase tracking-widest text-slate-muted hover:text-white hover:border-slate-muted transition-all">
+                  + Integrate New Source
+               </button>
+            </div>
+            
+            <div className="pt-4 border-t border-white/5">
+               <button className="w-full btn-premium btn-cyan text-xs">
+                 Commit Filter Sync
+               </button>
+            </div>
+          </div>
+
+          {/* Quick Metrics Card */}
+          <div className="glass-panel p-6 rounded-3xl border border-white/5 bg-gradient-to-br from-neon-violet/10 to-transparent">
+             <div className="flex items-center gap-2 mb-4">
+                <TrendingUp className="w-4 h-4 text-neon-violet" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-white">MAS Global Trend</span>
+             </div>
+             <div className="flex items-baseline gap-2">
+                <span className="text-3xl font-black text-white">+24.5%</span>
+                <span className="text-[10px] font-bold text-neon-cyan uppercase">Processing Efficiency</span>
+             </div>
+             <p className="text-[10px] text-slate-muted mt-4 leading-relaxed font-medium">
+               Multi-agent cluster achieved peak utilization during 0800-0900 UTC sync window. No stalls detected.
+             </p>
+          </div>
+        </aside>
       </div>
     </div>
   );

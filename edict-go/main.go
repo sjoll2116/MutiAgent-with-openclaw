@@ -191,6 +191,7 @@ func main() {
 		authorized.POST("/scheduler-escalate", handlers.SchedulerEscalate)
 		authorized.POST("/scheduler-rollback", handlers.SchedulerRollback)
 		authorized.POST("/repair-flow-order", handlers.RepairFlowOrder)
+		authorized.GET("/workspace-files", handlers.ListWorkspaceFiles)
 	}
 
 	// 代理到 Python 后端 (RAG)

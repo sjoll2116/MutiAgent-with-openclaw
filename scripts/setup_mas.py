@@ -65,8 +65,11 @@ def check_env():
             sys.exit(1)
     
     if not OPENCLAW_CFG_PATH.exists():
-        log_error(f"未找到 OpenClaw 配置文件: {OPENCLAW_CFG_PATH}。请先运行 'openclaw init'。")
-        sys.exit(1)
+        log_warn(f"未找到 OpenClaw 配置文件: {OPENCLAW_CFG_PATH}。将为你初始化默认配置...")
+        OPENCLAW_CFG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        default_cfg = {"agents": {"list": []}, "channels": {"list": []}}
+        OPENCLAW_CFG_PATH.write_text(json.dumps(default_cfg, indent=2), encoding='utf-8')
+    
     print("✅ 环境检查通过。")
 
 def init_data_dirs():
@@ -132,10 +135,18 @@ def register_core_agents():
         changed = (len(agents_list) != initial_len) # 如果刚才删除了废弃 Agent，则标记为已改变
 
         # 处理所有需要注册的智能体
+        shared_ws = pathlib.Path.home() / '.openclaw/workspace-shared-experts'
+        shared_ws.mkdir(parents=True, exist_ok=True)
+
         for ag_meta in all_to_register:
             ag_id = ag_meta['id']
-            ws = pathlib.Path.home() / f'.openclaw/workspace-{ag_id}'
-            ws.mkdir(parents=True, exist_ok=True)
+            
+            # 专家 Agent 使用共享工作区进行协作与记忆，核心中枢保留独立隔离区
+            if ag_id.startswith('agency_'):
+                ws = shared_ws
+            else:
+                ws = pathlib.Path.home() / f'.openclaw/workspace-{ag_id}'
+                ws.mkdir(parents=True, exist_ok=True)
             
             entry = {
                 'id': ag_id, 

@@ -141,6 +141,12 @@ export const api = {
       headers: { 'Authorization': `Bearer ${localStorage.getItem(AUTH_TOKEN_KEY)}` }
     }).then(r => r.json()),
 
+  // 共享工作区
+  workspaceFiles: (path = '') =>
+    fetchJ<{ ok: boolean; path: string; files: WorkspaceFile[] }>(
+      `${API_BASE}/api/workspace-files?path=${encodeURIComponent(path)}`
+    ),
+
   // 认证
   login: async (password: string) => {
     const formData = new URLSearchParams();
@@ -166,6 +172,14 @@ export const api = {
 
 
 // ── Types ──
+
+export interface WorkspaceFile {
+  name: string;
+  size: number;
+  isDir: boolean;
+  modTime: string;
+  ext: string;
+}
 
 export interface ActionResult {
   ok: boolean;
@@ -212,6 +226,7 @@ export interface Task {
   sourceMeta?: Record<string, unknown>;
   activity?: ActivityEntry[];
   _prev_state?: string;
+  last_error?: string;
 }
 
 export interface SyncStatus {

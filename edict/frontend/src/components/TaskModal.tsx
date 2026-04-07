@@ -1,56 +1,48 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
-import { useStore, getPipeStatus, deptColor, stateLabel, STATE_LABEL } from '../store';
+import { motion, AnimatePresence } from 'framer-motion';
+import { 
+  X, 
+  Terminal, 
+  Activity, 
+  CheckCircle2, 
+  Clock, 
+  AlertTriangle, 
+  ChevronRight, 
+  Play, 
+  Pause, 
+  XCircle, 
+  RefreshCcw, 
+  ArrowUpCircle, 
+  RotateCcw,
+  Search,
+  MessageSquare,
+  Cpu,
+  Zap,
+  ShieldCheck,
+  FastForward,
+  MoreVertical,
+  ClipboardList,
+  FileText
+} from 'lucide-react';
+import { useStore, getPipeStatus, deptColor, stateLabel } from '../store';
 import { api } from '../api';
-import type {
-  Task,
-  TaskActivityData,
-  SchedulerStateData,
-  ActivityEntry,
-  TodoItem,
-  PhaseDuration,
-} from '../api';
+import type { Task, TaskActivityData, SchedulerStateData, TodoItem, ActivityEntry } from '../api';
+import { cn } from '../lib/utils';
 
-const AGENT_LABELS: Record<string, string> = {
-  main: '协调中枢',
-  coordinator: '协调中枢',
-  planner: '任务编排引擎',
-  reviewer: '安全审查引擎',
-  dispatcher: '任务调度引擎',
-  doc_writer: '文档编写员',
-  data_analyst: '数据分析师',
-  software_engineer: '代码架构师',
-  qa_engineer: '质量保证师',
-  hr_manager: '资源调配员',
-  monitor: '情报监控员',
-};
+// --- Sub-Components ---
 
-const NEXT_LABELS: Record<string, string> = {
-  Queued: '任务编排引擎起草',
-  Planning: '安全审查引擎审议',
-  PlanReview: '任务调度引擎派发',
-  Dispatching: '开始执行',
-  Next: '开始执行',
-  Executing: '进入审查',
-  ResultReview: '完成',
-};
-
-function fmtStalled(sec: number): string {
-  const v = Math.max(0, sec);
-  if (v < 60) return `${v}秒`;
-  if (v < 3600) return `${Math.floor(v / 60)}分${v % 60}秒`;
-  const h = Math.floor(v / 3600);
-  const m = Math.floor((v % 3600) / 60);
-  return `${h}小时${m}分`;
-}
-
-function fmtActivityTime(ts: number | string | undefined): string {
-  if (!ts) return '';
-  if (typeof ts === 'number') {
-    const d = new Date(ts);
-    return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}:${String(d.getSeconds()).padStart(2, '0')}`;
-  }
-  if (typeof ts === 'string' && ts.length >= 19) return ts.substring(11, 19);
-  return String(ts).substring(0, 8);
+function StatusBadge({ state }: { state: string }) {
+  const variants: Record<string, string> = {
+    Completed: "bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30",
+    Blocked: "bg-neon-glitch/20 text-neon-glitch border-neon-glitch/30",
+    Executing: "bg-neon-violet/20 text-neon-violet border-neon-violet/30 animate-pulse",
+    Planning: "bg-white/10 text-slate-muted border-white/5",
+  };
+  return (
+    <span className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase border tracking-widest", variants[state] || "border-slate-line text-slate-muted")}>
+      {state}
+    </span>
+  );
 }
 
 export default function TaskModal() {
@@ -62,641 +54,366 @@ export default function TaskModal() {
 
   const [activityData, setActivityData] = useState<TaskActivityData | null>(null);
   const [schedData, setSchedData] = useState<SchedulerStateData | null>(null);
-  const laTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [activeSegment, setActiveSegment] = useState<'activity' | 'todos' | 'logs'>('activity');
   const logRef = useRef<HTMLDivElement>(null);
 
   const task = liveStatus?.tasks?.find((t) => t.id === modalTaskId) || null;
 
-  const fetchActivity = useCallback(async () => {
+  const fetchData = useCallback(async () => {
     if (!modalTaskId) return;
     try {
-      const d = await api.taskActivity(modalTaskId);
-      setActivityData(d);
-    } catch {
-      setActivityData(null);
-    }
-  }, [modalTaskId]);
-
-  const fetchSched = useCallback(async () => {
-    if (!modalTaskId) return;
-    try {
-      const d = await api.schedulerState(modalTaskId);
-      setSchedData(d);
-    } catch {
-      setSchedData(null);
+      const [activity, sched] = await Promise.all([
+        api.taskActivity(modalTaskId),
+        api.schedulerState(modalTaskId)
+      ]);
+      setActivityData(activity);
+      setSchedData(sched);
+    } catch (e) {
+      console.error('Failed to fetch task details', e);
     }
   }, [modalTaskId]);
 
   useEffect(() => {
-    if (!modalTaskId || !task) return;
-    fetchActivity();
-    fetchSched();
-
-    const isDone = ['Completed', 'Cancelled'].includes(task.state);
-    if (!isDone) {
-      const handleWs = () => {
-        fetchActivity();
-        fetchSched();
-      };
-      window.addEventListener('ws_message', handleWs);
-      return () => {
-        window.removeEventListener('ws_message', handleWs);
-      };
+    if (modalTaskId && task) {
+      fetchData();
+      if (!['Completed', 'Cancelled'].includes(task.state)) {
+        const timer = setInterval(fetchData, 8000);
+        return () => clearInterval(timer);
+      }
     }
-  }, [modalTaskId, task?.state, fetchActivity, fetchSched]);
-
-  // scroll log on new entries
-  useEffect(() => {
-    if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight;
-  }, [activityData?.activity?.length]);
+  }, [modalTaskId, task?.state, fetchData]);
 
   if (!modalTaskId || !task) return null;
 
   const close = () => setModalTaskId(null);
-
   const stages = getPipeStatus(task);
-  const activeStage = stages.find((s) => s.status === 'active');
-  const hb = task.heartbeat || { status: 'unknown' as const, label: '⚪ 无数据' };
-  const flowLog = task.flow_log || [];
-  const todos = task.todos || [];
-  const todoDone = todos.filter((x) => x.status === 'completed').length;
-  const todoTotal = todos.length;
-  const canStop = !['Completed', 'Blocked', 'Cancelled'].includes(task.state);
-  const canResume = ['Blocked', 'Cancelled'].includes(task.state);
-
-  const doTaskAction = async (action: string, reason: string) => {
+  const hb = task.heartbeat || { status: 'unknown', label: 'OFFLINE' };
+  
+  // Actions
+  const doAction = async (action: string, reason: string | null = '') => {
     try {
-      const r = await api.taskAction(task.id, action, reason);
-      if (r.ok) {
-        toast(r.message || '操作成功', 'ok');
-        loadAll();
-        close();
-      } else {
-        toast(r.error || '操作失败', 'err');
-      }
-    } catch {
-      toast('服务器连接失败', 'err');
-    }
+      const r = await api.taskAction(task.id, action, reason || '');
+      if (r.ok) { toast(`✅ ${r.message || 'Success'}`); loadAll(); fetchData(); }
+      else toast(r.error || 'Action failed', 'err');
+    } catch { toast('Connection error', 'err'); }
   };
 
-  const doReview = async (action: string) => {
-    const labels: Record<string, string> = { approve: '审查通过', reject: '审查驳回' };
-    const comment = prompt(`${labels[action]} ${task.id}\n\n请输入批注（可留空）：`);
+  const handleManualAction = (action: string) => {
+    const reason = prompt(`Reason for ${action}:`);
+    if (reason !== null) doAction(action, reason);
+  };
+
+  const doReview = async (action: 'approve' | 'reject') => {
+    const comment = prompt(`${action.toUpperCase()} task ${task.id}:`);
     if (comment === null) return;
     try {
-      const r = await api.reviewAction(task.id, action, comment || '');
-      if (r.ok) {
-        toast(`✅ ${task.id} 已${labels[action]}`, 'ok');
-        loadAll();
-        close();
-      } else {
-        toast(r.error || '操作失败', 'err');
-      }
-    } catch {
-      toast('服务器连接失败', 'err');
-    }
+      const r = await api.reviewAction(task.id, action, comment);
+      if (r.ok) { toast(`✅ Task ${action}ed`); loadAll(); close(); }
+      else toast(r.error, 'err');
+    } catch { toast('Connection error', 'err'); }
   };
-
-  const doAdvance = async () => {
-    const next = NEXT_LABELS[task.state] || '下一步';
-    const comment = prompt(`⏩ 手动推进 ${task.id}\n当前: ${task.state} → 下一步: ${next}\n\n请输入说明（可留空）：`);
-    if (comment === null) return;
-    try {
-      const r = await api.advanceState(task.id, comment || '');
-      if (r.ok) {
-        toast(`⏩ ${r.message}`, 'ok');
-        loadAll();
-        close();
-      } else {
-        toast(r.error || '推进失败', 'err');
-      }
-    } catch {
-      toast('服务器连接失败', 'err');
-    }
-  };
-
-  const doSchedAction = async (action: string) => {
-    if (action === 'scan') {
-      try {
-        const r = await api.schedulerScan(180);
-        if (r.ok) toast(`🔍 扫描完成：${r.count || 0} 个动作`, 'ok');
-        else toast(r.error || '扫描失败', 'err');
-        fetchSched();
-      } catch {
-        toast('服务器连接失败', 'err');
-      }
-      return;
-    }
-    const labels: Record<string, string> = { retry: '重试', escalate: '升级', rollback: '回滚' };
-    const reason = prompt(`请输入${labels[action]}原因（可留空）：`);
-    if (reason === null) return;
-    const handlers: Record<string, (id: string, r: string) => Promise<{ ok: boolean; message?: string; error?: string }>> = {
-      retry: api.schedulerRetry,
-      escalate: api.schedulerEscalate,
-      rollback: api.schedulerRollback,
-    };
-    try {
-      const r = await handlers[action](task.id, reason);
-      if (r.ok) toast(r.message || '操作成功', 'ok');
-      else toast(r.error || '操作失败', 'err');
-      fetchSched();
-      loadAll();
-    } catch {
-      toast('服务器连接失败', 'err');
-    }
-  };
-
-  const handleStop = () => {
-    const reason = prompt('请输入叫停原因（可留空）：');
-    if (reason === null) return;
-    doTaskAction('stop', reason);
-  };
-
-  const handleCancel = () => {
-    if (!confirm(`确定要取消 ${task.id} 吗？`)) return;
-    const reason = prompt('请输入取消原因（可留空）：');
-    if (reason === null) return;
-    doTaskAction('cancel', reason);
-  };
-
-  // Scheduler state
-  const sched = schedData?.scheduler;
-  const stalledSec = schedData?.stalledSec || 0;
 
   return (
-    <div className="modal-bg open" onClick={close}>
-      <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <button className="modal-close" onClick={close}>✕</button>
-        <div className="modal-body">
-          <div className="modal-id">{task.id}</div>
-          <div className="modal-title">{task.title || '(无标题)'}</div>
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 md:p-8 lg:p-12">
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={close}
+          className="absolute inset-0 bg-black/80 backdrop-blur-md"
+        />
 
-          {/* Current Stage Banner */}
-          {activeStage && (
-            <div className="cur-stage">
-              <div className="cs-icon">{activeStage.icon}</div>
-              <div className="cs-info">
-                <div className="cs-dept" style={{ color: deptColor(activeStage.dept) }}>{activeStage.dept}</div>
-                <div className="cs-action">当前阶段：{activeStage.action}</div>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="relative w-full max-w-6xl h-full glass-panel rounded-[2.5rem] border border-white/10 overflow-hidden flex flex-col shadow-2xl"
+          onClick={e => e.stopPropagation()}
+        >
+          {/* --- Header --- */}
+          <header className="p-8 border-b border-white/5 flex items-start justify-between bg-white/[0.02]">
+            <div className="space-y-1">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-mono font-black text-neon-cyan tracking-widest">{task.id}</span>
+                <StatusBadge state={task.state} />
               </div>
-              <span className={`hb ${hb.status} cs-hb`}>{hb.label}</span>
+              <h2 className="text-2xl md:text-3xl font-black text-white leading-tight max-w-2xl">{task.title}</h2>
             </div>
-          )}
-
-          {/* Pipeline */}
-          <div className="m-pipe">
-            {stages.map((s, i) => (
-              <div className="mp-stage" key={s.key}>
-                <div className={`mp-node ${s.status}`}>
-                  {s.status === 'done' && <div className="mp-done-tick">✓</div>}
-                  <div className="mp-icon">{s.icon}</div>
-                  <div className="mp-dept" style={s.status === 'active' ? { color: 'var(--acc)' } : s.status === 'done' ? { color: 'var(--ok)' } : {}}>
-                    {s.dept}
-                  </div>
-                  <div className="mp-action">{s.action}</div>
-                </div>
-                {i < stages.length - 1 && (
-                  <div className="mp-arrow" style={s.status === 'done' ? { color: 'var(--ok)', opacity: 0.6 } : {}}>→</div>
-                )}
-              </div>
-            ))}
-          </div>
-
-          {/* Action Buttons */}
-          <div className="task-actions">
-            {canStop && (
-              <>
-                <button className="btn-action btn-stop" onClick={handleStop}>⏸ 叫停任务</button>
-                <button className="btn-action btn-cancel" onClick={handleCancel}>🚫 取消任务</button>
-              </>
-            )}
-            {canResume && (
-              <button className="btn-action btn-resume" onClick={() => doTaskAction('resume', '恢复执行')}>▶️ 恢复执行</button>
-            )}
-            {['ResultReview', 'PlanReview'].includes(task.state) && (
-              <>
-                <button className="btn-action" style={{ background: '#2ecc8a22', color: '#2ecc8a', border: '1px solid #2ecc8a44' }} onClick={() => doReview('approve')}>✅ 审查通过</button>
-                <button className="btn-action" style={{ background: '#ff527022', color: '#ff5270', border: '1px solid #ff527044' }} onClick={() => doReview('reject')}>🚫 审查驳回</button>
-              </>
-            )}
-            {['Pending', 'Queued', 'Planning', 'PlanReview', 'Dispatching', 'Executing', 'ResultReview', 'Next'].includes(task.state) && (
-              <button className="btn-action" style={{ background: '#7c5cfc18', color: '#7c5cfc', border: '1px solid #7c5cfc44' }} onClick={doAdvance}>⏩ 推进到下一步</button>
-            )}
-          </div>
-
-          {/* Scheduler Section */}
-          <div className="sched-section">
-            <div className="sched-head">
-              <span className="sched-title">🧭 协调中枢调度</span>
-              <span className="sched-status">
-                {sched ? `${sched.enabled === false ? '已禁用' : '运行中'} · 阈值 ${sched.stallThresholdSec || 180}s` : '加载中...'}
-              </span>
-            </div>
-            <div className="sched-grid">
-              <div className="sched-kpi"><div className="k">停滞时长</div><div className="v">{fmtStalled(stalledSec)}</div></div>
-              <div className="sched-kpi"><div className="k">重试次数</div><div className="v">{sched?.retryCount || 0}</div></div>
-              <div className="sched-kpi"><div className="k">升级级别</div><div className="v">{!sched?.escalationLevel ? '无' : sched.escalationLevel === 1 ? '安全审查引擎' : '任务调度引擎'}</div></div>
-              <div className="sched-kpi"><div className="k">派发状态</div><div className="v">{sched?.lastDispatchStatus || 'idle'}</div></div>
-            </div>
-            {sched && (
-              <div className="sched-line">
-                {sched.lastProgressAt && <span>最近进展 {(sched.lastProgressAt || '').replace('T', ' ').substring(0, 19)}</span>}
-                {sched.lastDispatchAt && <span>最近派发 {(sched.lastDispatchAt || '').replace('T', ' ').substring(0, 19)}</span>}
-                <span>自动回滚 {sched.autoRollback === false ? '关闭' : '开启'}</span>
-                {sched.lastDispatchAgent && <span>目标 {sched.lastDispatchAgent}</span>}
-              </div>
-            )}
-            <div className="sched-actions">
-              <button className="sched-btn" onClick={() => doSchedAction('retry')}>🔁 重试派发</button>
-              <button className="sched-btn warn" onClick={() => doSchedAction('escalate')}>📣 升级协调</button>
-              <button className="sched-btn danger" onClick={() => doSchedAction('rollback')}>↩️ 回滚稳定点</button>
-              <button className="sched-btn" onClick={() => doSchedAction('scan')}>🔍 立即扫描</button>
-            </div>
-          </div>
-
-          {/* Todo List */}
-          {todoTotal > 0 && (
-            <TodoSection todos={todos} todoDone={todoDone} todoTotal={todoTotal} />
-          )}
-
-          {/* Basic Info */}
-          <div className="m-section">
-            <div className="m-rows">
-              <div className="m-row">
-                <div className="mr-label">状态</div>
-                <div className="mr-val">
-                  <span className={`tag st-${task.state}`}>{stateLabel(task)}</span>
-                  {(task.review_round || 0) > 0 && <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 8 }}>共磋商 {task.review_round} 轮</span>}
-                </div>
-              </div>
-              <div className="m-row">
-                <div className="mr-label">执行部门</div>
-                <div className="mr-val"><span className={`tag dt-${(task.org || '').replace(/\s/g, '')}`}>{task.org || '—'}</span></div>
-              </div>
-              {task.eta && task.eta !== '-' && (
-                <div className="m-row"><div className="mr-label">预计完成</div><div className="mr-val">{task.eta}</div></div>
-              )}
-              {task.block && task.block !== '无' && task.block !== '-' && (
-                <div className="m-row"><div className="mr-label" style={{ color: 'var(--danger)' }}>阻塞项</div><div className="mr-val" style={{ color: 'var(--danger)' }}>{task.block}</div></div>
-              )}
-              {task.now && task.now !== '-' && (
-                <div className="m-row" style={{ gridColumn: '1/-1' }}>
-                  <div className="mr-label">当前进展</div>
-                  <div className="mr-val" style={{ fontWeight: 400, fontSize: 12 }}>{task.now}</div>
-                </div>
-              )}
-              {task.ac && (
-                <div className="m-row" style={{ gridColumn: '1/-1' }}>
-                  <div className="mr-label">验收标准</div>
-                  <div className="mr-val" style={{ fontWeight: 400, fontSize: 12 }}>{task.ac}</div>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Flow Log */}
-          {flowLog.length > 0 && (
-            <div className="m-section">
-              <div className="m-sec-label">流转日志（{flowLog.length} 条）</div>
-              <div className="fl-timeline">
-                {flowLog.map((fl, i) => {
-                  const col = deptColor(fl.from || '');
-                  return (
-                    <div className="fl-item" key={i}>
-                      <div className="fl-time">{fl.at ? fl.at.substring(11, 16) : ''}</div>
-                      <div className="fl-dot" style={{ background: col }} />
-                      <div className="fl-content">
-                        <div className="fl-who">
-                          <span className="from" style={{ color: col }}>{fl.from}</span>
-                          <span style={{ color: 'var(--muted)' }}> → </span>
-                          <span className="to" style={{ color: deptColor(fl.to || '') }}>{fl.to}</span>
-                        </div>
-                        <div className="fl-rem">{fl.remark}</div>
-                      </div>
+            
+                <div className="flex items-center gap-4">
+                  <div className="hidden md:flex flex-col items-end mr-4">
+                    <div className="flex items-center gap-2">
+                      <span className={cn(
+                        "w-2 h-2 rounded-full",
+                        hb.status === 'active' ? "bg-neon-cyan animate-pulse shadow-neon-cyan" : "bg-slate-line"
+                      )} />
+                      <span className="text-[10px] font-bold text-white uppercase">{hb.label || 'Standby'}</span>
                     </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {/* Output */}
-          {task.output && task.output !== '-' && task.output !== '' && (
-            <div className="m-section">
-              <div className="m-sec-label">产出物</div>
-              <code>{task.output}</code>
-            </div>
-          )}
-
-          {/* Live Activity */}
-          <LiveActivitySection data={activityData} isDone={['Completed', 'Cancelled'].includes(task.state)} logRef={logRef} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function TodoSection({ todos, todoDone, todoTotal }: { todos: TodoItem[]; todoDone: number; todoTotal: number }) {
-  return (
-    <div className="todo-section">
-      <div className="todo-header">
-        <div className="m-sec-label" style={{ marginBottom: 0, border: 'none', padding: 0 }}>
-          子任务清单（{todoDone}/{todoTotal}）
-        </div>
-        <div className="todo-progress">
-          <div className="todo-bar">
-            <div className="todo-bar-fill" style={{ width: `${Math.round((todoDone / todoTotal) * 100)}%` }} />
-          </div>
-          <span>{Math.round((todoDone / todoTotal) * 100)}%</span>
-        </div>
-      </div>
-      <div className="todo-list">
-        {todos.map((td) => {
-          const ico = td.status === 'completed' ? '✅' : td.status === 'in-progress' ? '🔄' : '⬜';
-          const stLabel = td.status === 'completed' ? '已完成' : td.status === 'in-progress' ? '进行中' : '待开始';
-          const stCls = td.status === 'completed' ? 's-done' : td.status === 'in-progress' ? 's-progress' : 's-notstarted';
-          const itemCls = td.status === 'completed' ? 'done' : '';
-          return (
-            <div className={`todo-item ${itemCls}`} key={td.id}>
-              <div className="t-row">
-                <span className="t-icon">{ico}</span>
-                <span className="t-id">#{td.id}</span>
-                <span className="t-title">{td.title}</span>
-                <span className={`t-status ${stCls}`}>{stLabel}</span>
-              </div>
-              {td.detail && <div className="todo-detail">{td.detail}</div>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}
-
-function LiveActivitySection({
-  data,
-  isDone,
-  logRef,
-}: {
-  data: TaskActivityData | null;
-  isDone: boolean;
-  logRef: React.RefObject<HTMLDivElement | null>;
-}) {
-  if (!data) return null;
-
-  const activity = data.activity || [];
-  const isActive = (() => {
-    if (!activity.length) return false;
-    const last = activity[activity.length - 1];
-    if (!last.at) return false;
-    const ts = typeof last.at === 'number' ? last.at : new Date(last.at).getTime();
-    return Date.now() - ts < 300000;
-  })();
-
-  const agentParts: string[] = [];
-  if (data.agentLabel) agentParts.push(data.agentLabel);
-  if (data.relatedAgents && data.relatedAgents.length > 1) agentParts.push(`${data.relatedAgents.length}个 Agent`);
-  if (data.lastActive) agentParts.push(`最后活跃: ${data.lastActive}`);
-
-  // Phase durations
-  const phaseDurations = data.phaseDurations || [];
-  const maxDur = Math.max(...phaseDurations.map((p) => p.durationSec || 1), 1);
-  const phaseColors: Record<string, string> = {
-    '用户': '#eab308', '协调中枢': '#f97316', '任务编排引擎': '#3b82f6', '安全审查引擎': '#8b5cf6',
-    '任务调度引擎': '#10b981', '执行部门': '#06b6d4', '文档编写员': '#ec4899', '数据分析师': '#f59e0b',
-    '代码架构师': '#ef4444', '质量保证师': '#6366f1', '部署运维师': '#14b8a6', '资源调配员': '#d946ef',
-  };
-
-  // Todos summary
-  const ts = data.todosSummary;
-
-  // Resource summary
-  const rs = data.resourceSummary;
-
-  // Group non-flow activity by agent
-  const flowItems = activity.filter((a) => a.kind === 'flow');
-  const nonFlow = activity.filter((a) => a.kind !== 'flow');
-  const grouped = new Map<string, ActivityEntry[]>();
-  nonFlow.forEach((a) => {
-    const key = a.agent || 'unknown';
-    if (!grouped.has(key)) grouped.set(key, []);
-    grouped.get(key)!.push(a);
-  });
-
-  return (
-    <div className="la-section">
-      <div className="la-header">
-        <span className="la-title">
-          <span className={`la-dot${isActive ? '' : ' idle'}`} />
-          {isDone ? '执行回顾' : '实时动态'}
-        </span>
-        <span className="la-agent">{agentParts.join(' · ') || '加载中...'}</span>
-      </div>
-
-      {/* Phase Bars */}
-      {phaseDurations.length > 0 && (
-        <div style={{ padding: '4px 0 8px', borderBottom: '1px solid var(--line)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 6 }}>
-            <span style={{ fontSize: 11, fontWeight: 600 }}>⏱ 阶段耗时</span>
-            {data.totalDuration && <span style={{ marginLeft: 'auto', fontSize: 10, color: 'var(--muted)' }}>总耗时 {data.totalDuration}</span>}
-          </div>
-          {phaseDurations.map((p, i) => {
-            const pct = Math.max(5, Math.round(((p.durationSec || 1) / maxDur) * 100));
-            const color = phaseColors[p.phase] || '#6b7280';
-            return (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '2px 0', fontSize: 11 }}>
-                <span style={{ minWidth: 48, color: 'var(--muted)', textAlign: 'right' }}>{p.phase}</span>
-                <div style={{ flex: 1, height: 14, background: 'var(--panel)', borderRadius: 3, overflow: 'hidden' }}>
-                  <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: 3, opacity: p.ongoing ? 0.6 : 0.85 }} />
-                </div>
-                <span style={{ minWidth: 60, fontSize: 10, color: 'var(--muted)' }}>
-                  {p.durationText}
-                  {p.ongoing && <span style={{ fontSize: 9, color: '#60a5fa' }}> ●进行中</span>}
-                </span>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* Todos Progress */}
-      {ts && (
-        <div style={{ padding: '4px 0 8px', borderBottom: '1px solid var(--line)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
-            <span style={{ fontSize: 11, fontWeight: 600 }}>📊 执行进度</span>
-            <span style={{ fontSize: 20, fontWeight: 700, color: ts.percent >= 100 ? '#22c55e' : ts.percent >= 50 ? '#60a5fa' : 'var(--text)' }}>{ts.percent}%</span>
-            <span style={{ fontSize: 10, color: 'var(--muted)' }}>✅{ts.completed} 🔄{ts.inProgress} ⬜{ts.notStarted} / 共{ts.total}项</span>
-          </div>
-          <div style={{ height: 8, background: 'var(--panel)', borderRadius: 4, overflow: 'hidden', display: 'flex' }}>
-            <div style={{ width: `${ts.total ? (ts.completed / ts.total) * 100 : 0}%`, background: '#22c55e', transition: 'width .3s' }} />
-            <div style={{ width: `${ts.total ? (ts.inProgress / ts.total) * 100 : 0}%`, background: '#3b82f6', transition: 'width .3s' }} />
-          </div>
-        </div>
-      )}
-
-      {/* Resource Summary */}
-      {rs && (rs.totalTokens || rs.totalCost) && (
-        <div style={{ padding: '4px 0 8px', borderBottom: '1px solid var(--line)', display: 'flex', gap: 12, alignItems: 'center' }}>
-          <span style={{ fontSize: 11, fontWeight: 600 }}>📈 资源消耗</span>
-          {rs.totalTokens != null && <span style={{ fontSize: 11, color: 'var(--muted)' }}>🔢 {rs.totalTokens.toLocaleString()} tokens</span>}
-          {rs.totalCost != null && <span style={{ fontSize: 11, color: 'var(--muted)' }}>💰 ${rs.totalCost.toFixed(4)}</span>}
-          {rs.totalElapsedSec != null && (
-            <span style={{ fontSize: 11, color: 'var(--muted)' }}>
-              ⏳ {rs.totalElapsedSec >= 60 ? `${Math.floor(rs.totalElapsedSec / 60)}分` : ''}{rs.totalElapsedSec % 60}秒
-            </span>
-          )}
-        </div>
-      )}
-
-      {/* Activity Log */}
-      <div className="la-log" ref={logRef as React.RefObject<HTMLDivElement>}>
-        {/* Flow entries */}
-        {flowItems.length > 0 && (
-          <div className="la-flow-wrap">
-            {flowItems.map((a, i) => (
-              <div className="la-entry la-tool" key={`flow-${i}`}>
-                <span className="la-icon">📋</span>
-                <span className="la-body"><b>{a.from}</b> → <b>{a.to}</b>　{a.remark || ''}</span>
-                <span className="la-time">{fmtActivityTime(a.at)}</span>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Grouped entries */}
-        {grouped.size > 0 ? (
-          <div className="la-groups">
-            {Array.from(grouped.entries()).map(([agent, items]) => {
-              const label = AGENT_LABELS[agent] || agent || '未标识';
-              const last = items[items.length - 1];
-              const lastTime = last?.at ? fmtActivityTime(last.at) : '--:--:--';
-              return (
-                <div className="la-group" key={agent}>
-                  <div className="la-group-hd">
-                    <span className="name">{label}</span>
-                    <span>最近更新 {lastTime}</span>
+                    <span className="text-[9px] text-slate-muted font-bold uppercase tracking-widest mt-1">
+                      Heartbeat: {hb.status === 'active' ? 'Locked' : 'Stalled'}
+                    </span>
                   </div>
-                  <div className="la-group-bd">
-                    {items.map((a, i) => (
-                      <ActivityEntryView key={i} entry={a} />
-                    ))}
+                  <button 
+                    onClick={close}
+                    className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-muted hover:text-white transition-all transition-colors"
+                  >
+                    <X className="w-6 h-6" />
+                  </button>
+                </div>
+          </header>
+
+          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+            {/* --- Left Column: Info & Control --- */}
+            <div className="w-full lg:w-96 border-r border-white/5 p-8 overflow-y-auto no-scrollbar space-y-8 bg-black/20">
+              
+              {/* Fault Diagnosis Banner */}
+              {task.last_error && (
+                <div className="p-4 rounded-2xl bg-neon-glitch/10 border border-neon-glitch/30 neon-border-glitch animate-pulse-subtle">
+                  <div className="flex items-center gap-2 mb-2">
+                    <AlertTriangle className="w-4 h-4 text-neon-glitch" />
+                    <span className="text-[10px] font-black uppercase text-neon-glitch tracking-widest">Self-Healing Diagnosis</span>
+                  </div>
+                  <pre className="text-[9px] font-mono text-white/80 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                    {task.last_error}
+                  </pre>
+                </div>
+              )}
+
+              {/* Action Hub */}
+              <div className="space-y-4">
+                <h4 className="sub-title">Orchestrator Controls</h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {['Planning', 'Executing', 'Dispatching', 'PlanReview', 'ResultReview'].includes(task.state) && (
+                    <>
+                      <button onClick={() => handleManualAction('stop')} className="btn-premium btn-outline flex items-center justify-center gap-2 text-[11px]">
+                        <Pause className="w-3.5 h-3.5" /> Halt
+                      </button>
+                      <button onClick={() => handleManualAction('cancel')} className="btn-premium btn-outline flex items-center justify-center gap-2 text-[11px] hover:text-neon-glitch">
+                        <XCircle className="w-3.5 h-3.5" /> Kill
+                      </button>
+                    </>
+                  )}
+                  {['Blocked', 'Cancelled'].includes(task.state) && (
+                    <button onClick={() => doAction('resume')} className="col-span-2 btn-premium btn-cyan flex items-center justify-center gap-2 text-[11px]">
+                      <Play className="w-3.5 h-3.5" /> Resume Mission
+                    </button>
+                  )}
+                  {['ResultReview', 'PlanReview'].includes(task.state) && (
+                    <>
+                      <button onClick={() => doReview('approve')} className="btn-premium bg-neon-cyan/20 border-neon-cyan/40 text-neon-cyan flex items-center justify-center gap-2 text-[11px]">
+                        Approve
+                      </button>
+                      <button onClick={() => doReview('reject')} className="btn-premium bg-neon-glitch/20 border-neon-glitch/40 text-neon-glitch flex items-center justify-center gap-2 text-[11px]">
+                        Reject
+                      </button>
+                    </>
+                  )}
+                </div>
+                
+                <button 
+                  onClick={async () => {
+                    const comment = prompt("Manual override comment:");
+                    if (comment !== null) {
+                      const r = await api.advanceState(task.id, comment);
+                      if (r.ok) { toast(`⏩ Advanced`); loadAll(); }
+                      else toast(r.error, 'err');
+                    }
+                  }}
+                  className="w-full btn-premium btn-outline border-neon-violet/30 text-neon-violet hover:bg-neon-violet/10 flex items-center justify-center gap-2 text-[11px]"
+                >
+                  <FastForward className="w-3.5 h-3.5" /> Force Advance Stage
+                </button>
+              </div>
+
+              {/* Scheduler Metadata */}
+              {schedData && (
+                <div className="space-y-4">
+                  <h4 className="sub-title">Scheduler Telemetry</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+                      <div className="text-[9px] font-bold text-slate-muted uppercase mb-1">Stall Timer</div>
+                      <div className="text-sm font-black text-white">{schedData.stalledSec}s</div>
+                    </div>
+                    <div className="p-3 bg-black/40 rounded-xl border border-white/5">
+                      <div className="text-[9px] font-bold text-slate-muted uppercase mb-1">Retries</div>
+                      <div className="text-sm font-black text-white">{schedData.scheduler?.retryCount || 0}</div>
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={() => api.schedulerRetry(task.id, 'Manual Retry')} className="flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-bold uppercase transition-all tracking-wider text-slate-muted hover:text-white">Retry</button>
+                    <button onClick={() => api.schedulerEscalate(task.id, 'Escalating')} className="flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-bold uppercase transition-all tracking-wider text-slate-muted hover:text-white">Escalate</button>
+                    <button onClick={() => api.schedulerRollback(task.id, 'Rollback')} className="flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-bold uppercase transition-all tracking-wider text-slate-muted hover:text-white">Rollback</button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        ) : (
-          !flowItems.length && (
-            <div className="la-empty">
-              {data.message || data.error || 'Agent 尚未上报进展（等待 Agent 调用 progress 命令）'}
+              )}
+
+              {/* Basic Fields */}
+              <div className="space-y-4">
+                 <h4 className="sub-title">Operational Metadata</h4>
+                 <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                       <span className="text-[10px] text-slate-muted font-bold uppercase">Assignee Org</span>
+                       <span className="text-[10px] text-neon-cyan font-black">{task.org || 'UNASSIGNED'}</span>
+                    </div>
+                    {task.eta && (
+                      <div className="flex items-center justify-between">
+                        <span className="text-[10px] text-slate-muted font-bold uppercase">ETA</span>
+                        <span className="text-[10px] text-white font-black">{task.eta}</span>
+                      </div>
+                    )}
+                 </div>
+              </div>
             </div>
-          )
-        )}
+
+            {/* --- Right Column: Activity & Logs --- */}
+            <div className="flex-1 flex flex-col overflow-hidden">
+              {/* Tabs */}
+              <div className="flex px-8 pt-6 border-b border-white/5 gap-8">
+                {[
+                  { id: 'activity', label: 'Evolution Trace', icon: Activity },
+                  { id: 'todos', label: 'Edict Steps', icon: ClipboardList },
+                  { id: 'logs', label: 'Raw Activity', icon: FileText },
+                ].map(tab => (
+                  <button 
+                    key={tab.id}
+                    onClick={() => setActiveSegment(tab.id as any)}
+                    className={cn(
+                      "pb-4 flex items-center gap-2 text-xs font-bold transition-all relative",
+                      activeSegment === tab.id ? "text-neon-cyan" : "text-slate-muted hover:text-slate-text"
+                    )}
+                  >
+                    <tab.icon className="w-4 h-4" />
+                    {tab.label}
+                    {activeSegment === tab.id && (
+                      <motion.div layoutId="tabMarker" className="absolute bottom-0 left-0 right-0 h-0.5 bg-neon-cyan shadow-neon-cyan" />
+                    )}
+                  </button>
+                ))}
+              </div>
+
+              <div className="flex-1 overflow-y-auto p-8 no-scrollbar relative">
+                <AnimatePresence mode="wait">
+                  {activeSegment === 'activity' && (
+                    <motion.div 
+                      key="activity"
+                      initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                      className="space-y-8"
+                    >
+                      {/* Modern Pipeline Visualization */}
+                      <section className="space-y-4">
+                        <h4 className="sub-title">Evolution Pipeline</h4>
+                        <div className="flex items-center gap-1 overflow-x-auto pb-4 no-scrollbar">
+                          {getPipeStatus(task).map((s, i, arr) => (
+                            <div key={s.key} className="flex items-center gap-1 shrink-0">
+                               <div className={cn(
+                                 "flex flex-col items-center p-3 rounded-2xl min-w-[100px] transition-all",
+                                 s.status === 'active' ? "bg-neon-violet/10 border-2 border-neon-violet shadow-neon-violet/20" : 
+                                 s.status === 'done' ? "bg-neon-cyan/5 border border-neon-cyan/20 opacity-80" : 
+                                 "bg-white/5 border border-white/5 opacity-30"
+                               )}>
+                                 <span className="text-2xl mb-1">{s.icon}</span>
+                                 <span className={cn("text-[10px] font-black uppercase tracking-wider", s.status === 'active' ? "text-neon-violet" : s.status === 'done' ? "text-neon-cyan" : "text-slate-muted")}>
+                                   {s.dept.slice(0, 4)}
+                                 </span>
+                                 <span className="text-[8px] text-slate-muted font-bold opacity-60">{s.action}</span>
+                               </div>
+                               {i < arr.length - 1 && <ChevronRight className="w-4 h-4 text-slate-line" />}
+                            </div>
+                          ))}
+                        </div>
+                      </section>
+
+                      {/* Flow Log Timeline */}
+                      <section className="space-y-4">
+                        <h4 className="sub-title">Collaborative Flow Log</h4>
+                        <div className="relative border-l border-slate-line pl-6 ml-2 space-y-6">
+                           {task.flow_log?.map((fl, i) => (
+                             <div key={i} className="relative">
+                               <div className="absolute -left-[29px] top-1 w-2 h-2 rounded-full bg-neon-cyan shadow-neon-cyan shadow-sm" />
+                               <div className="flex items-center gap-2 mb-1">
+                                 <span className="text-[10px] font-black text-neon-cyan uppercase">{fl.from}</span>
+                                 <ChevronRight className="w-3 h-3 text-slate-muted opacity-40" />
+                                 <span className="text-[10px] font-black text-neon-violet uppercase">{fl.to}</span>
+                                 <span className="ml-auto text-[9px] font-mono text-slate-muted">{fl.at?.substring(11, 16)}</span>
+                               </div>
+                               <p className="text-[11px] text-white/70 font-medium leading-relaxed italic border-l-2 border-white/5 pl-3">
+                                 {fl.remark}
+                               </p>
+                             </div>
+                           ))}
+                        </div>
+                      </section>
+                    </motion.div>
+                  )}
+
+                  {activeSegment === 'todos' && (
+                    <motion.div 
+                      key="todos"
+                      initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                      className="space-y-6"
+                    >
+                      <h4 className="sub-title">Step-by-Step Edicts</h4>
+                      <div className="space-y-3">
+                         {task.todos?.map(td => (
+                           <div key={td.id} className={cn(
+                             "p-4 rounded-2xl border transition-all",
+                             td.status === 'completed' ? "bg-neon-cyan/5 border-neon-cyan/20 opacity-60 grayscale-[0.5]" : 
+                             td.status === 'in-progress' ? "bg-neon-violet/10 border-neon-violet/30 neon-border-violet" :
+                             "bg-white/5 border-white/5"
+                           )}>
+                             <div className="flex items-center justify-between mb-2">
+                               <div className="flex items-center gap-3">
+                                 {td.status === 'completed' ? <CheckCircle2 className="w-4 h-4 text-neon-cyan" /> : <Clock className="w-4 h-4 text-slate-muted" />}
+                                 <span className="text-xs font-black text-white">{td.title}</span>
+                               </div>
+                               <span className="text-[9px] font-bold text-slate-muted uppercase">#{td.id}</span>
+                             </div>
+                             {td.detail && <p className="text-[10px] text-slate-muted pl-7">{td.detail}</p>}
+                           </div>
+                         ))}
+                      </div>
+                    </motion.div>
+                  )}
+
+                  {activeSegment === 'logs' && (
+                    <motion.div 
+                      key="logs"
+                      initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                      className="h-full flex flex-col"
+                    >
+                      <h4 className="sub-title mb-4">Raw Swarm Intelligence Logs</h4>
+                      <div className="flex-1 bg-black/40 rounded-3xl border border-white/5 p-4 font-mono text-[10px] overflow-y-auto space-y-4 no-scrollbar" ref={logRef}>
+                        {activityData?.activity?.map((a, i) => (
+                          <div key={i} className="flex gap-4 group">
+                             <div className="w-16 shrink-0 text-right opacity-30 text-[9px]">{typeof a.at === 'string' ? a.at.substring(11, 19) : ''}</div>
+                             <div className="flex-1 space-y-1">
+                                <div className="flex items-center gap-2">
+                                  <span className="text-neon-cyan font-black uppercase text-[8px]">{a.agent || 'SYSTEM'}</span>
+                                  <span className="px-1.5 py-0.5 rounded bg-white/5 text-slate-muted text-[7px] uppercase font-black">{a.kind}</span>
+                                </div>
+                                <div className="text-slate-text leading-relaxed">
+                                  {a.kind === 'assistant' && a.text}
+                                  {a.kind === 'progress' && a.text}
+                                  {a.kind === 'tool_result' && (
+                                    <div className={cn("p-2 rounded bg-black/40 border border-white/5", a.exitCode === 0 ? "border-neon-cyan/20" : "border-neon-glitch/20")}>
+                                      <span className="text-neon-cyan font-bold">[{a.tool}]</span> {a.output?.substring(0, 300)}
+                                    </div>
+                                  )}
+                                  {a.kind === 'thinking' && <span className="opacity-40 italic">{a.text}</span>}
+                                </div>
+                             </div>
+                          </div>
+                        ))}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            </div>
+          </div>
+        </motion.div>
       </div>
-    </div>
+    </AnimatePresence>
   );
-}
-
-function ActivityEntryView({ entry: a }: { entry: ActivityEntry }) {
-  const time = fmtActivityTime(a.at);
-  const agBadge = a.agent ? (
-    <span style={{ fontSize: 9, color: 'var(--muted)', background: 'var(--panel)', padding: '1px 4px', borderRadius: 3, marginRight: 4 }}>
-      {AGENT_LABELS[a.agent] || a.agent}
-    </span>
-  ) : null;
-
-  if (a.kind === 'progress') {
-    return (
-      <div className="la-entry la-assistant">
-        <span className="la-icon">🔄</span>
-        <span className="la-body">{agBadge}<b>当前进展：</b>{a.text}</span>
-        <span className="la-time">{time}</span>
-      </div>
-    );
-  }
-
-  if (a.kind === 'todos') {
-    const items = a.items || [];
-    const diffMap = new Map<string, { type: string; from?: string; to?: string }>();
-    if (a.diff) {
-      (a.diff.changed || []).forEach((c) => diffMap.set(c.id, { type: 'changed', from: c.from, to: c.to }));
-      (a.diff.added || []).forEach((c) => diffMap.set(c.id, { type: 'added' }));
-    }
-    return (
-      <div className="la-entry" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 2 }}>
-        <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>{agBadge}📝 执行计划</div>
-        {items.map((td) => {
-          const icon = td.status === 'completed' ? '✅' : td.status === 'in-progress' ? '🔄' : '⬜';
-          const d = diffMap.get(String(td.id));
-          const style: React.CSSProperties = td.status === 'completed'
-            ? { opacity: 0.5, textDecoration: 'line-through' }
-            : td.status === 'in-progress'
-              ? { color: '#60a5fa', fontWeight: 'bold' }
-              : {};
-          return (
-            <div key={td.id} style={style}>
-              {icon} {td.title}
-              {d && d.type === 'changed' && d.to === 'completed' && <span style={{ color: '#22c55e', fontSize: 9, marginLeft: 4 }}>✨刚完成</span>}
-              {d && d.type === 'changed' && d.to !== 'completed' && <span style={{ color: '#f59e0b', fontSize: 9, marginLeft: 4 }}>↻{d.from}→{d.to}</span>}
-              {d && d.type === 'added' && <span style={{ color: '#3b82f6', fontSize: 9, marginLeft: 4 }}>🆕新增</span>}
-            </div>
-          );
-        })}
-        {a.diff?.removed?.map((r) => (
-          <div key={r.id} style={{ opacity: 0.4, textDecoration: 'line-through' }}>🗑 {r.title}</div>
-        ))}
-      </div>
-    );
-  }
-
-  if (a.kind === 'assistant') {
-    return (
-      <>
-        {a.thinking && (
-          <div className="la-entry la-thinking">
-            <span className="la-icon">💭</span>
-            <span className="la-body">{agBadge}{a.thinking}</span>
-            <span className="la-time">{time}</span>
-          </div>
-        )}
-        {a.tools?.map((tc, i) => (
-          <div className="la-entry la-tool" key={i}>
-            <span className="la-icon">🔧</span>
-            <span className="la-body">{agBadge}<span className="la-tool-name">{tc.name}</span><span className="la-trunc">{tc.input_preview || ''}</span></span>
-            <span className="la-time">{time}</span>
-          </div>
-        ))}
-        {a.text && (
-          <div className="la-entry la-assistant">
-            <span className="la-icon">🤖</span>
-            <span className="la-body">{agBadge}{a.text}</span>
-            <span className="la-time">{time}</span>
-          </div>
-        )}
-      </>
-    );
-  }
-
-  if (a.kind === 'tool_result') {
-    const ok = a.exitCode === 0 || a.exitCode === null || a.exitCode === undefined;
-    return (
-      <div className={`la-entry la-tool-result ${ok ? 'ok' : 'err'}`}>
-        <span className="la-icon">{ok ? '✅' : '❌'}</span>
-        <span className="la-body">{agBadge}<span className="la-tool-name">{a.tool || ''}</span>{a.output ? a.output.substring(0, 150) : ''}</span>
-        <span className="la-time">{time}</span>
-      </div>
-    );
-  }
-
-  if (a.kind === 'user') {
-    return (
-      <div className="la-entry la-user">
-        <span className="la-icon">📥</span>
-        <span className="la-body">{agBadge}{a.text || ''}</span>
-        <span className="la-time">{time}</span>
-      </div>
-    );
-  }
-
-  return null;
 }

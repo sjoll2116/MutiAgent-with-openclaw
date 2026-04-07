@@ -238,23 +238,40 @@ func updateTaskRetryInfo(taskID, agent string, res openclawResult, attempt int) 
 }
 
 func markTaskBlocked(taskID, agent string, res openclawResult, traceID string) {
-	tasks, _ := store.LoadTasks()
-	task := store.FindTask(tasks, taskID)
-	if task == nil {
+	err := store.WithTasks(func(allTasks []models.Task) ([]models.Task, error) {
+		t := store.FindTask(allTasks, taskID)
+		if t == nil {
+			return allTasks, nil
+		}
+		
+		// 故障自愈逻辑：不直接阻断，而是退回编排阶段进行诊断
+		t.State = "Planning"
+		t.Org = "任务编排引擎"
+		t.LastError = res.Stderr
+		t.Now = fmt.Sprintf("⚠️ 专家 [%s] 执行失败，已退回编排引擎进行故障诊断", agent)
+		
+		t.FlowLog = append(t.FlowLog, models.FlowEntry{
+			At:     store.NowISO(),
+			From:   "任务调度引擎",
+			To:     "任务编排引擎",
+			Remark: fmt.Sprintf("🚨 专家执行受挫: %s。系统已进入自愈循环，将尝试重新编排方案。", res.Stderr),
+		})
+		t.UpdatedAt = store.NowISO()
+		return allTasks, nil
+	})
+
+	if err != nil {
+		log.Printf("❌ Failed to update task for loopback: %v", err)
 		return
 	}
  
-	task.State = "Blocked"
-	task.Block = fmt.Sprintf("Agent %s 最终执行失败: %s", agent, res.Stderr)
-	task.UpdatedAt = store.NowISO()
-	store.SaveTasks([]models.Task{*task})
- 
-	// 发布状态变更事件，以便 Dashboard 监控
-	PublishEvent(TopicTaskStatus, traceID, "task.status", "dispatcher-retry", EventPayload{
-		"task_id": taskID,
-		"from":    "Executing",
-		"to":      "Blocked",
-		"reason":  task.Block,
+	// 发布状态变更事件，激活 Planner
+	PublishEvent(TopicTaskStatus, traceID, "task.status", "dispatcher-diagnosis", EventPayload{
+		"task_id":      taskID,
+		"from":         "Executing",
+		"to":           "Planning",
+		"assignee_org": "任务编排引擎",
+		"error":        res.Stderr,
 	})
 }
 
