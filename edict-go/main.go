@@ -154,6 +154,7 @@ func main() {
 	{
 		// 读取任务
 		authorized.GET("/tasks", handlers.ListTasks)
+		authorized.POST("/create-task", handlers.CreateTask) // Added missing route
 		authorized.GET("/tasks/:taskId", handlers.GetTask)
 		authorized.GET("/tasks-stats", handlers.GetTaskStats)
 		authorized.GET("/task-activity/:taskId", handlers.GetTaskActivity)
