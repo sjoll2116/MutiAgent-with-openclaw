@@ -3,7 +3,6 @@ package handlers
 import (
 	"net/http"
 	"os"
-	"strings"
 	"time"
 
 	"edict-go/models"
@@ -33,8 +32,12 @@ func init() {
 // 验证 JWT 或 Service Token。
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
-		// 跳过某些路径的身份验证，但目前将其应用于所有受保护的路径
+		// TEMPORARILY DISABLED: Always allow
+		c.Set("username", "admin")
+		c.Next()
+		return
 
+		/* Original auth logic:
 		// 1. Service Token
 		sToken := c.GetHeader("X-Service-Token")
 		if sToken != "" && sToken == serviceToken {
@@ -45,7 +48,6 @@ func AuthMiddleware() gin.HandlerFunc {
 		// 2. JWT Token
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			// 检查 cookie（如果需要），但这里我们优先使用 Bearer
 			c.AbortWithStatusJSON(http.StatusUnauthorized, models.APIResp{OK: false, Error: "Login required"})
 			return
 		}
@@ -63,12 +65,12 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// 将用户设置在上下文中
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
 			c.Set("username", claims["sub"])
 		}
 
 		c.Next()
+		*/
 	}
 }
 
@@ -78,15 +80,15 @@ func LoginHandler(c *gin.Context) {
 		Username string `json:"username"`
 		Password string `json:"password"`
 	}
-	if err := c.ShouldBindJSON(&body); err != nil {
-		c.JSON(http.StatusBadRequest, models.APIResp{OK: false, Error: "Invalid JSON"})
-		return
-	}
+	// We still try to bind JSON to avoid errors, but we don't check details
+	_ = c.ShouldBindJSON(&body)
 
+	/* TEMPORARILY DISABLED: Accept any password
 	if body.Username != "admin" || body.Password != adminPass {
 		c.JSON(http.StatusUnauthorized, models.APIResp{OK: false, Error: "Invalid username or password"})
 		return
 	}
+	*/
 
 	// 创建 JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{

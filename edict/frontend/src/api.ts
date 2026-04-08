@@ -149,19 +149,21 @@ export const api = {
 
   // 认证
   login: async (password: string) => {
-    const formData = new URLSearchParams();
-    formData.append('username', 'admin');
-    formData.append('password', password);
-    const res = await fetch(`${API_BASE}/api/auth/login`, {
-      method: 'POST',
-      body: formData,
-    });
-    const data = await res.json();
-    if (res.ok && data.access_token) {
-      localStorage.setItem(AUTH_TOKEN_KEY, data.access_token);
-      return { ok: true };
+    try {
+      const res = await fetch(`${API_BASE}/api/auth/login`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ username: 'admin', password }),
+      });
+      const data = await res.json();
+      if (res.ok && data.access_token) {
+        localStorage.setItem(AUTH_TOKEN_KEY, data.access_token);
+        return { ok: true };
+      }
+      return { ok: false, error: data.error || '登录失败' };
+    } catch (e) {
+      return { ok: false, error: '服务器连接失败' };
     }
-    return { ok: false, error: data.detail || '登录失败' };
   },
   logout: () => {
     localStorage.removeItem(AUTH_TOKEN_KEY);
