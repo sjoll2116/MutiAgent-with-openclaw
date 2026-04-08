@@ -109,7 +109,7 @@ export default function TaskModal() {
     try {
       const r = await api.reviewAction(task.id, action, comment);
       if (r.ok) { toast(`✅ Task ${action}ed`); loadAll(); close(); }
-      else toast(r.error, 'err');
+      else toast(r.error || 'Review failed', 'err');
     } catch { toast('Connection error', 'err'); }
   };
 
@@ -217,7 +217,7 @@ export default function TaskModal() {
                     if (comment !== null) {
                       const r = await api.advanceState(task.id, comment);
                       if (r.ok) { toast(`⏩ Advanced`); loadAll(); }
-                      else toast(r.error, 'err');
+                      else toast(r.error || 'Advance failed', 'err');
                     }
                   }}
                   className="w-full btn-premium btn-outline border-neon-violet/30 text-neon-violet hover:bg-neon-violet/10 flex items-center justify-center gap-2 text-[11px]"
