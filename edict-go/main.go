@@ -86,7 +86,7 @@ func main() {
 	initOpenClawConfig()
 
 	port := flag.Int("port", 7891, "HTTP listen port")
-	host := flag.String("host", "127.0.0.1", "HTTP listen address")
+	host := flag.String("host", "0.0.0.0", "HTTP listen address")
 	dataDir := flag.String("data", "", "Path to data/ directory (default: ../data)")
 	distDir := flag.String("dist", "", "Path to dist/ directory for static files (default: ../dashboard/dist)")
 	flag.Parse()
@@ -154,7 +154,7 @@ func main() {
 	{
 		// 读取任务
 		authorized.GET("/tasks", handlers.ListTasks)
-		authorized.POST("/create-task", handlers.CreateTask) // Added missing route
+		authorized.POST("/create-task", handlers.CreateTask)
 		authorized.GET("/tasks/:taskId", handlers.GetTask)
 		authorized.GET("/tasks-stats", handlers.GetTaskStats)
 		authorized.GET("/task-activity/:taskId", handlers.GetTaskActivity)

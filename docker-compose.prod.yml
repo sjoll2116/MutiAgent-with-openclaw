@@ -14,6 +14,8 @@ services:
     volumes:
       - postgres_data_prod:/var/lib/postgresql/data
     restart: always
+    networks:
+      - edict-net
 
   redis:
     image: redis:7-alpine
@@ -21,6 +23,8 @@ services:
     ports:
       - "6379:6379"
     restart: always
+    networks:
+      - edict-net
 
   # ── Go Orchestrator & Static SPA Fast Server ──
   go-scheduler:
@@ -61,6 +65,8 @@ services:
     depends_on:
       - redis
     restart: always
+    networks:
+      - edict-net
 
   # ── Python RAG API ──
   python-api:
@@ -83,6 +89,8 @@ services:
       - postgres-rag
       - redis
     restart: always
+    networks:
+      - edict-net
 
   # ── Caddy Reverse Proxy (HTTPS) ──
   caddy:
@@ -100,10 +108,17 @@ services:
       - go-scheduler
     env_file:
       - .env
+    networks:
+      - edict-net
 
 volumes:
   postgres_data_prod:
   caddy_data:
   caddy_config:
+
+networks:
+  edict-net:
+    driver: bridge
+
 
 
