@@ -4,14 +4,12 @@ import {
   Play, 
   Pause, 
   XCircle, 
-  Archive, 
   ExternalLink, 
   Compass, 
-  CheckCircle2, 
-  Clock, 
   AlertCircle,
   Package,
-  Layers
+  Layers,
+  ChevronRight
 } from 'lucide-react';
 import { useStore, isEdict, isArchived, getPipeStatus, stateLabel, deptColor } from '../store';
 import { api, type Task } from '../api';
@@ -25,25 +23,23 @@ const STATE_ORDER: Record<string, number> = {
 function MiniPipe({ task }: { task: Task }) {
   const stages = getPipeStatus(task);
   return (
-    <div className="flex items-center gap-1 mb-4 overflow-x-auto pb-2 no-scrollbar">
+    <div className="flex items-center gap-1.5 mb-4 overflow-x-auto pb-2 no-scrollbar">
       {stages.map((s, i) => (
-        <div key={s.key} className="flex items-center gap-1 shrink-0">
+        <div key={s.key} className="flex items-center gap-1.5 shrink-0">
           <div 
             className={cn(
-              "px-2 py-1 rounded-md flex items-center gap-1.5 transition-all duration-300",
-              s.status === 'done' && "bg-neon-cyan/10 border border-neon-cyan/20 text-neon-cyan",
-              s.status === 'active' && "bg-neon-violet/20 border border-neon-violet/50 text-neon-violet shadow-neon-violet",
-              s.status === 'pending' && "opacity-20 grayscale border border-transparent"
+              "px-2.5 py-1.5 rounded-lg flex items-center gap-1.5 transition-all text-xs font-semibold",
+              s.status === 'done' && "bg-slate-100 text-slate-600 border border-slate-200",
+              s.status === 'active' && "bg-primary-50 text-primary-700 border border-primary-200 shadow-sm",
+              s.status === 'pending' && "bg-white text-slate-300 border border-slate-100"
             )}
             title={`${s.dept}: ${s.action}`}
           >
-            <span className="text-[14px]">{s.icon}</span>
-            <span className="text-[9px] font-bold uppercase tracking-wider hidden md:block">{s.dept.slice(0, 2)}</span>
+            <span>{s.icon}</span>
+            <span className="hidden md:block">{s.dept.slice(0, 2)}</span>
           </div>
           {i < stages.length - 1 && (
-            <div className="text-slate-line text-[10px]">
-              <Layers className="w-2.5 h-2.5 opacity-20" />
-            </div>
+            <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
           )}
         </div>
       ))}
@@ -67,24 +63,24 @@ function EdictCard({ task }: { task: Task }) {
 
   const handleAction = async (action: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const confirmMsg = action === 'stop' ? '叫停原因' : '取消原因';
-    const reason = prompt(`请输入${confirmMsg}：`);
+    const confirmMsg = action === 'stop' ? 'Stop Reason' : 'Cancel Reason';
+    const reason = prompt(`Enter ${confirmMsg}:`);
     if (reason === null) return;
     
     try {
       const r = await api.taskAction(task.id, action, reason);
-      if (r.ok) { toast(`✅ ${r.message || '操作成功'}`); loadAll(); }
-      else toast(r.error || '操作失败', 'err');
-    } catch { toast('服务器连接失败', 'err'); }
+      if (r.ok) { toast(`✅ ${r.message || 'Success'}`); loadAll(); }
+      else toast(r.error || 'Action failed', 'err');
+    } catch { toast('Network error', 'err'); }
   };
 
   const handleArchive = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       const r = await api.archiveTask(task.id, !task.archived);
-      if (r.ok) { toast('📦 归档状态已更新'); loadAll(); }
-      else toast(r.error || '操作失败', 'err');
-    } catch { toast('服务器连接失败', 'err'); }
+      if (r.ok) { toast('📦 Archive status updated'); loadAll(); }
+      else toast(r.error || 'Action failed', 'err');
+    } catch { toast('Network error', 'err'); }
   };
 
   return (
@@ -95,75 +91,74 @@ function EdictCard({ task }: { task: Task }) {
       exit={{ opacity: 0, scale: 0.95 }}
       whileHover={{ y: -4 }}
       className={cn(
-        "glass-card p-5 cursor-pointer relative group overflow-hidden rounded-2xl",
-        archived && "opacity-40 grayscale-[0.5] border-dashed",
-        isBlocked && "border-neon-glitch/30"
+        "panel p-5 cursor-pointer flex flex-col group transition-all duration-200",
+        archived && "opacity-60 bg-slate-50 border-dashed border-slate-300",
+        isBlocked && "border-red-200 shadow-sm",
+        !isBlocked && !archived && "hover:shadow-card hover:border-primary-200"
       )}
       onClick={() => setModalTaskId(task.id)}
     >
-      {/* Visual Glint Effect */}
-      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent" />
-      
       <MiniPipe task={task} />
       
-      <div className="flex justify-between items-start mb-2">
-        <span className="text-[10px] font-mono font-bold text-neon-cyan tracking-wider">{task.id}</span>
-        <div className="flex gap-2">
-          {isBlocked && <AlertCircle className="w-4 h-4 text-neon-glitch animate-pulse" />}
+      <div className="flex justify-between items-start mb-3">
+        <span className="text-xs font-mono font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{task.id}</span>
+        <div className="flex gap-2 items-center">
+          {isBlocked && <AlertCircle className="w-4 h-4 text-red-500" />}
           <div className={cn(
-            "w-2 h-2 rounded-full",
-            hb.status === 'active' ? "bg-neon-cyan shadow-neon-cyan shadow-[0_0_8px]" : "bg-slate-line"
+            "w-2.5 h-2.5 rounded-full",
+            hb.status === 'active' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" : "bg-slate-300"
           )} />
         </div>
       </div>
 
-      <h3 className="text-sm font-bold text-white mb-4 line-clamp-2 min-h-[2.5rem]">
+      <h3 className="text-[15px] font-semibold text-slate-800 mb-4 line-clamp-2 leading-snug">
         {task.title || '(No Title)'}
       </h3>
 
-      <div className="flex flex-wrap gap-2 mb-4">
+      <div className="flex flex-wrap gap-2 mb-5">
         <span className={cn(
-          "text-[10px] px-2 py-0.5 rounded-full font-bold uppercase border transition-colors",
-          task.state === 'Completed' ? "bg-neon-cyan/10 border-neon-cyan/30 text-neon-cyan" :
-          task.state === 'Blocked' ? "bg-neon-glitch/10 border-neon-glitch/30 text-neon-glitch" :
-          "border-slate-line text-slate-muted"
+          "text-[11px] px-2.5 py-0.5 rounded-full font-semibold border",
+          task.state === 'Completed' ? "bg-emerald-50 border-emerald-200 text-emerald-700" :
+          task.state === 'Blocked' ? "bg-red-50 border-red-200 text-red-700" :
+          task.state === 'Doing' || task.state === 'Executing' ? "bg-primary-50 border-primary-200 text-primary-700" :
+          "border-slate-200 text-slate-600 bg-slate-50"
         )}>
           {stateLabel(task)}
         </span>
         {task.org && (
-          <span className="text-[10px] px-2 py-0.5 rounded-full font-bold border border-slate-line text-slate-muted bg-black/20">
+          <span className="text-[11px] px-2.5 py-0.5 rounded-full font-semibold border border-slate-200 text-slate-600 bg-slate-50">
             {task.org}
           </span>
         )}
       </div>
 
       {todoTotal > 0 && (
-        <div className="space-y-1.5 mb-5">
-          <div className="flex justify-between text-[10px] font-bold text-slate-muted">
+        <div className="space-y-2 mb-5 mt-auto">
+          <div className="flex justify-between text-[11px] font-semibold text-slate-500">
             <span>Progress: {todoDone}/{todoTotal}</span>
-            <span>{progress}%</span>
+            <span className={progress === 100 ? "text-emerald-600" : "text-primary-600"}>{progress}%</span>
           </div>
-          <div className="h-1 bg-obsidian-full rounded-full overflow-hidden border border-white/5">
+          <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
             <motion.div 
               initial={{ width: 0 }}
               animate={{ width: `${progress}%` }}
               className={cn(
                 "h-full rounded-full transition-all duration-1000",
-                progress === 100 ? "bg-neon-cyan shadow-neon-cyan" : "bg-neon-violet shadow-neon-violet"
+                progress === 100 ? "bg-emerald-500" : "bg-primary-500"
               )}
             />
           </div>
         </div>
       )}
 
-      <div className="flex items-center justify-between pt-4 border-t border-slate-line">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between pt-4 mt-auto border-t border-slate-100">
+        <div className="flex items-center gap-2">
           <button 
             onClick={(e) => handleArchive(e)}
-            className="p-1.5 rounded-lg hover:bg-white/5 text-slate-muted hover:text-white transition-colors"
-            title={task.archived ? "Restore" : "Archive"}
+            className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
+            title={task.archived ? "Restore Task" : "Archive Task"}
           >
-            {task.archived ? <ExternalLink className="w-3.5 h-3.5" /> : <Package className="w-3.5 h-3.5" />}
+            {task.archived ? <ExternalLink className="w-4 h-4" /> : <Package className="w-4 h-4" />}
           </button>
         </div>
         
@@ -172,17 +167,17 @@ function EdictCard({ task }: { task: Task }) {
             <>
               <button 
                 onClick={e => handleAction('stop', e)}
-                className="p-1.5 rounded-lg hover:bg-neon-ember/10 text-slate-muted hover:text-neon-ember transition-colors"
-                title="Pause / Halt"
+                className="p-1.5 rounded-lg border border-transparent hover:border-amber-200 hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors"
+                title="Pause Execution"
               >
-                <Pause className="w-3.5 h-3.5" />
+                <Pause className="w-4 h-4" />
               </button>
               <button 
                 onClick={e => handleAction('cancel', e)}
-                className="p-1.5 rounded-lg hover:bg-neon-glitch/10 text-slate-muted hover:text-neon-glitch transition-colors"
-                title="Slay Task"
+                className="p-1.5 rounded-lg border border-transparent hover:border-red-200 hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
+                title="Cancel Task"
               >
-                <XCircle className="w-3.5 h-3.5" />
+                <XCircle className="w-4 h-4" />
               </button>
             </>
           ) : (
@@ -194,12 +189,12 @@ function EdictCard({ task }: { task: Task }) {
                     const r = await api.taskAction(task.id, 'resume', 'Restore Execution');
                     if (r.ok) { toast('▶ Task Resumed'); loadAll(); }
                     else toast(r.error || 'Resume failed', 'err');
-                  } catch { toast('Network Error', 'err'); }
+                  } catch { toast('Network error', 'err'); }
                 }}
-                className="p-1.5 rounded-lg hover:bg-neon-cyan/10 text-slate-muted hover:text-neon-cyan transition-colors"
-                title="Resume"
+                className="p-1.5 rounded-lg border border-transparent hover:border-emerald-200 hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition-colors"
+                title="Resume Execution"
               >
-                <Play className="w-3.5 h-3.5" />
+                <Play className="w-4 h-4" />
               </button>
             )
           )}
@@ -228,7 +223,7 @@ export default function EdictBoard() {
   const handleScan = async () => {
     try {
       const r = await api.schedulerScan();
-      if (r.ok) toast(`🧭 Scan Complete: Found ${r.count || 0} sync points`);
+      if (r.ok) toast(`🧭 Scan Complete: ${r.count || 0} active jobs`);
       else toast(r.error || 'Scan Failed', 'err');
       loadAll();
     } catch { toast('Network Error', 'err'); }
@@ -237,16 +232,16 @@ export default function EdictBoard() {
   return (
     <div className="space-y-6">
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex p-1 bg-obsidian-panel/60 rounded-xl border border-slate-line w-fit">
+        <div className="flex p-1 bg-slate-100 rounded-xl border border-slate-200 w-fit">
           {(['active', 'archived', 'all'] as const).map((f) => (
             <button
               key={f}
               onClick={() => setEdictFilter(f)}
               className={cn(
-                "px-4 py-1.5 rounded-lg text-xs font-bold transition-all duration-300",
+                "px-4 py-1.5 rounded-lg text-sm font-semibold transition-all duration-200",
                 edictFilter === f 
-                  ? "bg-white/10 text-neon-cyan shadow-sm" 
-                  : "text-slate-muted hover:text-white"
+                  ? "bg-white text-primary-700 shadow-sm border border-slate-200 border-b-slate-300" 
+                  : "text-slate-500 hover:text-slate-800"
               )}
             >
               {f === 'active' ? 'Active' : f === 'archived' ? 'Archived' : 'All Tasks'}
@@ -257,25 +252,25 @@ export default function EdictBoard() {
         <div className="flex items-center gap-3">
           <button 
             onClick={handleScan}
-            className="flex items-center gap-2 px-4 py-1.5 rounded-xl border border-slate-line text-xs font-bold text-slate-muted hover:text-neon-violet hover:border-neon-violet/50 transition-all group"
+            className="btn-secondary flex items-center gap-2 group"
           >
-            <Compass className="w-3.5 h-3.5 group-hover:rotate-45 transition-transform" />
+            <Compass className="w-4 h-4 text-slate-500 group-hover:rotate-45 transition-transform" />
             Central Scan
           </button>
         </div>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
         <AnimatePresence mode="popLayout">
           {filteredEdicts.length === 0 ? (
             <motion.div 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="col-span-full py-20 flex flex-col items-center justify-center glass-panel rounded-3xl border-dashed opacity-50"
+              className="col-span-full py-24 flex flex-col items-center justify-center panel border-dashed shadow-none bg-slate-50 text-slate-400"
             >
-              <Package className="w-12 h-12 text-slate-muted mb-4 opacity-20" />
-              <p className="text-slate-muted font-bold text-sm tracking-widest uppercase">The Chamber is Empty</p>
-              <p className="text-[10px] text-slate-muted/60 mt-2">Deploy edicts to watch the swarm coordinate</p>
+              <Package className="w-12 h-12 mb-4 text-slate-300" />
+              <p className="font-semibold text-slate-600 text-sm tracking-wide uppercase">The Chamber is Empty</p>
+              <p className="text-xs text-slate-500 mt-2">Deploy edicts to watch the swarm coordinate</p>
             </motion.div>
           ) : (
             filteredEdicts.map((t) => <EdictCard key={t.id} task={t} />)

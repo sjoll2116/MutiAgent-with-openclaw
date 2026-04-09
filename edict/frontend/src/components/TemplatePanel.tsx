@@ -2,6 +2,21 @@ import { useState } from 'react';
 import { useStore, TEMPLATES, TPL_CATS } from '../store';
 import type { Template } from '../store';
 import { api } from '../api';
+import { cn } from '../lib/utils';
+import { 
+  Play, 
+  Settings2, 
+  Upload, 
+  Eye, 
+  FileText, 
+  X, 
+  AlertTriangle,
+  BrainCircuit,
+  MessageSquare,
+  Clock,
+  TerminalSquare
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function TemplatePanel() {
   const tplCatFilter = useStore((s) => s.tplCatFilter);
@@ -26,6 +41,7 @@ export default function TemplatePanel() {
     setFormVals(vals);
     setFormTpl(tpl);
     setPreviewCmd('');
+    setFileToIngest(null);
   };
 
   const buildCmd = (tpl: Template) => {
@@ -46,46 +62,43 @@ export default function TemplatePanel() {
     if (!formTpl) return;
     const cmd = buildCmd(formTpl);
     if (!cmd.trim()) {
-      toast('请填写必填参数', 'err');
+      toast('Please fill in required fields', 'err');
       return;
     }
 
-    // Pre-check gateway
     try {
       const st = await api.agentsStatus();
       if (st.ok && st.gateway && !st.gateway.alive) {
-        toast('⚠️ Gateway 未启动，任务将无法派发！', 'err');
-        if (!confirm('Gateway 未启动，继续？')) return;
+        toast('⚠️ Gateway offline, dispatch will stall', 'err');
+        if (!confirm('Gateway is not alive. Proceed anyway?')) return;
       }
     } catch {
-      /* ignore */
+      // ignore
     }
 
-    if (!confirm(`确认下发任务？\n\n${cmd.substring(0, 200)}${cmd.length > 200 ? '…' : ''}`)) return;
+    if (!confirm(`Confirm Edict Dispatch?\n\n${cmd.substring(0, 200)}${cmd.length > 200 ? '…' : ''}`)) return;
 
     try {
-      // 1. 如果有上传文件，先执行 RAG 注入
       if (fileToIngest) {
         setIngesting(true);
-        toast(`📤 正在注入知识库: ${fileToIngest.name}...`, 'ok');
+        toast(`📤 Uploading context file: ${fileToIngest.name}...`, 'ok');
         const ir = await api.ragIngestFile(fileToIngest, '', false);
         setIngesting(false);
         if (!ir.ok) {
-          toast(`❌ 知识注入失败: ${ir.error}`, 'err');
-          if (!confirm('知识注入失败，是否仍要继续下发任务？')) return;
+          toast(`❌ Context ingestion failed: ${ir.error}`, 'err');
+          if (!confirm('Context upload failed. Dispatch task anyway?')) return;
         } else {
-          toast('✅ 知识库已更新', 'ok');
+          toast('✅ Context primed', 'ok');
         }
       }
 
-      // 2. 下发任务
       const params: Record<string, string> = {};
       for (const p of formTpl.params) {
         params[p.key] = formVals[p.key] || p.default || '';
       }
       const r = await api.createTask({
         title: cmd.substring(0, 120),
-        org: '任务编排引擎',
+        org: 'Mission Control',
         targetDept: formTpl.depts[0] || '',
         priority: 'normal',
         templateId: formTpl.id,
@@ -93,16 +106,16 @@ export default function TemplatePanel() {
         meta: fileToIngest ? { uploaded_files: [fileToIngest.name] } : {},
       });
       if (r.ok) {
-        toast(`✅ 任务指令已下达`, 'ok');
+        toast(`✅ Edict Dispatched Successfully`, 'ok');
         setFormTpl(null);
         setFileToIngest(null);
         loadAll();
       } else {
-        toast(r.error || '下发任务失败', 'err');
+        toast(r.error || 'Dispatch failed', 'err');
       }
     } catch (err) {
       setIngesting(false);
-      toast('⚠️ 操作失败', 'err');
+      toast('⚠️ Operation failed', 'err');
     }
   };
 
@@ -113,189 +126,213 @@ export default function TemplatePanel() {
       return;
     }
     
-    // 校验后缀
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     const supported = ['pdf', 'docx', 'pptx', 'ppt', 'xlsx', 'xls', 'csv', 'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'txt', 'md', 'json', 'py', 'go'];
     if (!supported.includes(ext)) {
-      toast(`❌ 不支持的文件格式: .${ext}`, 'err');
+      toast(`❌ Unsupported format: .${ext}`, 'err');
       e.target.value = '';
       return;
     }
 
     setFileToIngest(file);
-    toast(`📄 文件已就绪: ${file.name} (${Math.round(file.size / 1024)} KB)`, 'ok');
+    toast(`📄 Context ready: ${file.name} (${Math.round(file.size / 1024)} KB)`, 'ok');
   };
 
   return (
-    <div>
+    <div className="flex flex-col h-full space-y-6">
       {/* Category filter */}
-      <div style={{ display: 'flex', gap: 6, marginBottom: 16, flexWrap: 'wrap' }}>
+      <div className="flex items-center gap-2 pb-2 overflow-x-auto no-scrollbar border-b border-slate-200">
         {TPL_CATS.map((c) => (
-          <span
+          <button
             key={c.name}
-            className={`tpl-cat${tplCatFilter === c.name ? ' active' : ''}`}
             onClick={() => setTplCatFilter(c.name)}
+            className={cn(
+              "px-4 py-2 rounded-lg text-sm font-semibold transition-all whitespace-nowrap flex items-center gap-2",
+              tplCatFilter === c.name 
+                ? "bg-primary-600 text-white shadow-sm" 
+                : "bg-slate-50 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+            )}
           >
-            {c.icon} {c.name}
-          </span>
+            <span>{c.icon}</span> {c.name}
+          </button>
         ))}
       </div>
 
       {/* Grid */}
-      <div className="tpl-grid">
-        {tpls.map((t) => (
-          <div className="tpl-card" key={t.id}>
-            <div className="tpl-top">
-              <span className="tpl-icon">{t.icon}</span>
-              <span className="tpl-name">{t.name}</span>
+      <div className="flex-1 overflow-y-auto min-h-0 pr-2 pb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {tpls.map((t) => (
+            <div className="panel p-5 flex flex-col hover:border-primary-300 hover:shadow-card group cursor-pointer transition-all bg-white" key={t.id} onClick={() => openForm(t)}>
+              <div className="flex items-start gap-4 mb-3">
+                <div className="w-12 h-12 flex items-center justify-center text-3xl bg-slate-50 border border-slate-200 rounded-xl group-hover:scale-105 transition-transform shrink-0 shadow-sm">
+                  {t.icon}
+                </div>
+                <div className="flex-1 min-w-0 pt-0.5">
+                  <h3 className="text-base font-bold text-slate-800 truncate group-hover:text-primary-700 transition-colors mb-1">{t.name}</h3>
+                   <div className="flex flex-wrap gap-1.5">
+                     {t.depts.slice(0, 2).map((d) => (
+                       <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider border border-slate-200 truncate max-w-[100px]" key={d}>{d}</span>
+                     ))}
+                   </div>
+                </div>
+              </div>
+              
+              <p className="text-sm text-slate-500 font-medium mb-5 line-clamp-2 leading-relaxed h-[42px]">
+                {t.desc}
+              </p>
+              
+              <div className="mt-auto pt-4 border-t border-slate-100 flex items-center justify-between">
+                <div className="flex items-center gap-3 text-[11px] font-semibold text-slate-400">
+                  <span className="flex items-center gap-1"><Clock className="w-3.5 h-3.5"/> {t.est}</span>
+                  <span className="flex items-center gap-1">💸 {t.cost}</span>
+                </div>
+                <button className="flex items-center gap-1 text-xs font-bold text-primary-600 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg transition-colors border border-primary-200">
+                  <Play className="w-3 h-3" /> Execute
+                </button>
+              </div>
             </div>
-            <div className="tpl-desc">{t.desc}</div>
-            <div className="tpl-footer">
-              {t.depts.map((d) => (
-                <span className="tpl-dept" key={d}>{d}</span>
-              ))}
-              <span className="tpl-est">
-                {t.est} · {t.cost}
-              </span>
-              <button className="tpl-go" onClick={() => openForm(t)}>
-                下发任务
-              </button>
-            </div>
-          </div>
-        ))}
+          ))}
+        </div>
       </div>
 
       {/* Template Form Modal */}
-      {formTpl && (
-        <div className="modal-bg open" onClick={() => { if (!ingesting) setFormTpl(null); }}>
-          <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <button className="modal-close" onClick={() => setFormTpl(null)}>✕</button>
-            <div className="modal-body">
-              <div style={{ fontSize: 11, color: 'var(--acc)', fontWeight: 700, letterSpacing: '.04em', marginBottom: 4 }}>
-                指令模板
-              </div>
-              <div style={{ fontSize: 20, fontWeight: 800, marginBottom: 6 }}>
-                {formTpl.icon} {formTpl.name}
-              </div>
-              <div style={{ fontSize: 12, color: 'var(--muted)', marginBottom: 18 }}>{formTpl.desc}</div>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 18, flexWrap: 'wrap' }}>
-                {formTpl.depts.map((d) => (
-                  <span className="tpl-dept" key={d}>{d}</span>
-                ))}
-                <span style={{ fontSize: 11, color: 'var(--muted)', marginLeft: 'auto' }}>
-                  {formTpl.est} · {formTpl.cost}
-                </span>
-              </div>
-
-              <form className="tpl-form" onSubmit={execute}>
-                {formTpl.params.map((p) => (
-                  <div className="tpl-field" key={p.key}>
-                    <label className="tpl-label">
-                      {p.label}
-                      {p.required && <span style={{ color: '#ff5270' }}> *</span>}
-                    </label>
-                    {p.type === 'textarea' ? (
-                      <textarea
-                        className="tpl-input"
-                        style={{ minHeight: 80, resize: 'vertical' }}
-                        required={p.required}
-                        value={formVals[p.key] || ''}
-                        onChange={(e) => setFormVals((v) => ({ ...v, [p.key]: e.target.value }))}
-                      />
-                    ) : p.type === 'select' ? (
-                      <select
-                        className="tpl-input"
-                        value={formVals[p.key] || p.default || ''}
-                        onChange={(e) => setFormVals((v) => ({ ...v, [p.key]: e.target.value }))}
-                      >
-                        {(p.options || []).map((o) => (
-                          <option key={o}>{o}</option>
-                        ))}
-                      </select>
-                    ) : (
-                      <input
-                        className="tpl-input"
-                        type="text"
-                        required={p.required}
-                        value={formVals[p.key] || ''}
-                        onChange={(e) => setFormVals((v) => ({ ...v, [p.key]: e.target.value }))}
-                      />
-                    )}
+      <AnimatePresence>
+        {formTpl && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm" onClick={() => { if (!ingesting) setFormTpl(null); }}>
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="relative w-full max-w-2xl max-h-[90vh] panel flex flex-col shadow-2xl bg-white" 
+              onClick={(e) => e.stopPropagation()}
+            >
+              <header className="p-6 border-b border-slate-200 flex justify-between items-start bg-slate-50/50 rounded-t-xl shrink-0">
+                <div className="pr-8">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded uppercase font-mono tracking-widest flex items-center gap-1.5"><TerminalSquare className="w-3.5 h-3.5" /> Edict Protocol</span>
                   </div>
-                ))}
-
-                {/* 知识上传区域 */}
-                <div className="tpl-field" style={{ borderTop: '1px solid var(--line)', paddingTop: 16, marginTop: 8 }}>
-                  <label className="tpl-label">
-                    🧠 知识注入 (多模态支持)
-                    <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)', marginLeft: 8 }}>
-                      支持 PDF, Word, PPT, Excel, 图片, Markdown, 代码等
-                    </span>
-                  </label>
-                  <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
-                    <input
-                      type="file"
-                      accept=".pdf,.docx,.pptx,.ppt,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.bmp,.tiff,.txt,.md,.json,.py,.go"
-                      onChange={handleFileChange}
-                      id="rag-file-upload"
-                      style={{ display: 'none' }}
-                    />
-                    <label
-                      htmlFor="rag-file-upload"
-                      style={{
-                        padding: '8px 14px',
-                        background: 'var(--panel)',
-                        border: '1px solid var(--line)',
-                        borderRadius: 8,
-                        cursor: 'pointer',
-                        fontSize: 12,
-                        display: 'flex',
-                        alignItems: 'center',
-                        gap: 6
-                      }}
-                    >
-                      {fileToIngest ? '📁 更改文件' : '➕ 选择文档'}
-                    </label>
-                    {fileToIngest && (
-                      <span style={{ fontSize: 11, color: 'var(--ok)' }}>
-                        {fileToIngest.name}
-                      </span>
-                    )}
+                  <h2 className="text-xl md:text-2xl font-bold text-slate-900 leading-tight mb-2">
+                    {formTpl.icon} {formTpl.name}
+                  </h2>
+                  <p className="text-sm text-slate-500 font-medium">{formTpl.desc}</p>
+                  
+                  <div className="flex flex-wrap items-center gap-2 mt-4">
+                    {formTpl.depts.map((d) => (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200" key={d}>{d}</span>
+                    ))}
+                    <span className="text-[11px] font-semibold text-slate-400 ml-2">Est: {formTpl.est} | Cost: {formTpl.cost}</span>
                   </div>
                 </div>
-
-                {previewCmd && (
-                  <div
-                    style={{
-                      background: 'var(--panel2)',
-                      border: '1px solid var(--line)',
-                      borderRadius: 8,
-                      padding: 12,
-                      marginBottom: 14,
-                      fontSize: 12,
-                      color: 'var(--muted)',
-                    }}
-                  >
-                    <div style={{ fontSize: 11, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
-                      📋 将发送给任务编排引擎的指令：
-                    </div>
-                    <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.6 }}>{previewCmd}</div>
-                  </div>
+                {!ingesting && (
+                  <button className="w-8 h-8 flex items-center justify-center rounded-lg bg-white border border-slate-200 hover:bg-slate-100 text-slate-500 transition-colors shadow-sm" onClick={() => setFormTpl(null)}>
+                    <X className="w-5 h-5" />
+                  </button>
                 )}
+              </header>
 
-                <div style={{ display: 'flex', gap: 10, justifyContent: 'flex-end', marginTop: 10 }}>
-                  <button type="button" className="btn btn-g" onClick={preview} style={{ padding: '8px 16px', fontSize: 12 }}>
-                    👁 预览指令
-                  </button>
-                  <button type="submit" className="tpl-go" disabled={ingesting} style={{ padding: '8px 20px', fontSize: 13, opacity: ingesting ? 0.6 : 1 }}>
-                    {ingesting ? '📤 正在注入...' : '🚀 下发任务'}
-                  </button>
-                </div>
-              </form>
-            </div>
+              <div className="flex-1 overflow-y-auto p-6 md:p-8 bg-white">
+                <form id="edict-form" onSubmit={execute} className="space-y-6">
+                  {formTpl.params.map((p) => (
+                    <div key={p.key} className="space-y-1.5">
+                      <label className="text-sm font-bold text-slate-700 flex items-center gap-1">
+                        {p.label}
+                        {p.required && <span className="text-red-500">*</span>}
+                      </label>
+                      {p.type === 'textarea' ? (
+                        <textarea
+                          className="input-field min-h-[100px] resize-y"
+                          required={p.required}
+                          value={formVals[p.key] || ''}
+                          onChange={(e) => setFormVals((v) => ({ ...v, [p.key]: e.target.value }))}
+                          placeholder={`Enter ${p.label.toLowerCase()}...`}
+                        />
+                      ) : p.type === 'select' ? (
+                        <select
+                          className="input-field cursor-pointer"
+                          value={formVals[p.key] || p.default || ''}
+                          onChange={(e) => setFormVals((v) => ({ ...v, [p.key]: e.target.value }))}
+                        >
+                          {(p.options || []).map((o) => (
+                            <option key={o}>{o}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          className="input-field"
+                          type="text"
+                          required={p.required}
+                          value={formVals[p.key] || ''}
+                          onChange={(e) => setFormVals((v) => ({ ...v, [p.key]: e.target.value }))}
+                          placeholder={`Enter ${p.label.toLowerCase()}...`}
+                        />
+                      )}
+                    </div>
+                  ))}
+
+                  {/* Context Ingestion */}
+                  <div className="pt-6 border-t border-slate-100 space-y-3">
+                    <label className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                      <BrainCircuit className="w-4 h-4 text-indigo-500" /> Context Injection (RAG)
+                    </label>
+                    <p className="text-xs text-slate-500 font-medium">
+                      Attach documents (PDF, Word, PPT, Excel, Images, Code) to provide context for this edict.
+                    </p>
+                    
+                    <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
+                      <input
+                        type="file"
+                        accept=".pdf,.docx,.pptx,.ppt,.xlsx,.xls,.csv,.png,.jpg,.jpeg,.bmp,.tiff,.txt,.md,.json,.py,.go"
+                        onChange={handleFileChange}
+                        id="rag-file-upload"
+                        className="hidden"
+                      />
+                      <label
+                        htmlFor="rag-file-upload"
+                        className="btn-secondary flex items-center justify-center gap-2 px-6 py-2 cursor-pointer w-full sm:w-auto"
+                      >
+                        <Upload className="w-4 h-4" /> {fileToIngest ? 'Change File' : 'Select Context File'}
+                      </label>
+                      {fileToIngest && (
+                        <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
+                          <FileText className="w-4 h-4" /> {fileToIngest.name}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Preview Render */}
+                  <AnimatePresence>
+                    {previewCmd && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-inner">
+                          <div className="text-[10px] font-bold text-slate-400 mb-3 flex items-center gap-2 uppercase tracking-widest">
+                            <TerminalSquare className="w-3.5 h-3.5" /> Generated Instruction Payload
+                          </div>
+                          <div className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed font-mono">{previewCmd}</div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </form>
+              </div>
+
+              <footer className="p-4 md:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row gap-3 justify-end rounded-b-xl shrink-0">
+                <button type="button" className="btn-secondary" onClick={preview} disabled={ingesting}>
+                  <Eye className="w-4 h-4 mr-2 inline" /> Preview Payload
+                </button>
+                <button type="submit" form="edict-form" className="btn-primary min-w-[140px]" disabled={ingesting}>
+                  {ingesting ? 'Injecting RAG...' : <><Play className="w-4 h-4 mr-2 inline" /> Dispatch Edict</>}
+                </button>
+              </footer>
+            </motion.div>
           </div>
-        </div>
-      )}
+        )}
+      </AnimatePresence>
     </div>
   );
 }

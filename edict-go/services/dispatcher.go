@@ -61,7 +61,7 @@ func dispatchLoop(ctx context.Context) {
 
 		if err != nil && err != redis.Nil {
 			log.Printf("❌ Dispatch poll error: %v", err)
-			time.Sleep(2 * time.Second)
+			time.Sleep(5 * time.Second) // 错误后稍长等待
 			continue
 		}
 
@@ -89,12 +89,13 @@ func recoverPendingDispatches(ctx context.Context, sem chan struct{}) {
 
 	log.Printf("Recovering %d stale dispatch events", len(pending))
 	for _, p := range pending {
-		if p.Idle > 60*time.Second {
+		// 只要消息闲置超过 15 秒（排队间隙），就尝试重拾
+		if p.Idle > 15*time.Second {
 			msgs, err := store.RDB.XClaim(ctx, &redis.XClaimArgs{
 				Stream:   TopicTaskDispatch,
 				Group:    DispatchGroup,
 				Consumer: DispatchConsumer,
-				MinIdle:  60 * time.Second,
+				MinIdle:  15 * time.Second,
 				Messages: []string{p.ID},
 			}).Result()
 			if err == nil {
@@ -134,6 +135,16 @@ func handleDispatch(ctx context.Context, msg redis.XMessage, sem chan struct{}) 
 	if taskID == "" || agent == "" {
 		log.Printf("⚠️ Dispatch message %s invalid: task_id=%s, agent=%s", msg.ID, taskID, agent)
 		store.RDB.XAck(ctx, TopicTaskDispatch, DispatchGroup, msg.ID)
+		return
+	}
+
+	// --- [NEW] Agent 级别忙碌锁定检查 ---
+	isOccupied, conflictingTaskID := isAgentOccupied(agent, taskID)
+	if isOccupied {
+		log.Printf("⏳ [Queue] Agent '%s' is busy with task %s. Deferring task %s...", agent, conflictingTaskID, taskID)
+		// 注意：不要调用 XAck。
+		// 这条消息会留在 PEL (Pending Entries List) 中。
+		// 调度器的 recoverPendingDispatches 会在 30s 后自动重新捞起它。
 		return
 	}
 
@@ -223,6 +234,32 @@ func handleDispatch(ctx context.Context, msg redis.XMessage, sem chan struct{}) 
 
 	// 确认
 	store.RDB.XAck(ctx, TopicTaskDispatch, DispatchGroup, msg.ID)
+}
+
+// isAgentOccupied 检查当前是否有该 Agent 正在处理的其它任务。
+func isAgentOccupied(agentName, currentTaskID string) (bool, string) {
+	var results []struct {
+		ID string
+	}
+	// 查询数据库中所有正在执行的任务，看是否有同一个 agent/org
+	// 排除掉当前正在下发的这个任务 ID (防止由于状态同步导致的自我死锁)
+	err := store.DB.Raw(`
+		SELECT id FROM tasks 
+		WHERE (org = ? OR agent = ?) 
+		AND state = 'Executing' 
+		AND id != ?
+		LIMIT 1
+	`, agentName, agentName, currentTaskID).Scan(&results).Error
+
+	if err != nil {
+		log.Printf("❌ isAgentOccupied Check Error: %v", err)
+		return false, ""
+	}
+
+	if len(results) > 0 {
+		return true, results[0].ID
+	}
+	return false, ""
 }
 
 func updateTaskRetryInfo(taskID, agent string, res openclawResult, attempt int) {

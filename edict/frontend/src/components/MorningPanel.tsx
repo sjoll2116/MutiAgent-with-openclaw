@@ -1,33 +1,26 @@
-import { useEffect, useState, useRef, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Sun, 
   Settings, 
   RefreshCcw, 
-  Newspaper, 
   Globe, 
   TrendingUp, 
-  Hash, 
-  Link as LinkIcon, 
-  Plus, 
   Trash2,
-  CheckCircle2,
-  AlertCircle,
-  ExternalLink,
-  Zap,
-  LayoutGrid,
-  Clock
+  Clock,
+  Radio,
+  FileText
 } from 'lucide-react';
 import { useStore } from '../store';
 import { api } from '../api';
 import type { SubConfig, MorningNewsItem } from '../api';
 import { cn } from '../lib/utils';
 
-const CAT_META: Record<string, { icon: string; color: string; desc: string }> = {
-  '政治': { icon: '🏛️', color: 'text-neon-cyan', desc: 'Global Politics' },
-  '军事': { icon: '⚔️', color: 'text-neon-glitch', desc: 'Military Affairs' },
-  '经济': { icon: '💹', color: 'text-neon-ember', desc: 'Economy & Markets' },
-  'AI大模型': { icon: '🤖', color: 'text-neon-violet', desc: 'AI & LLM Evolution' },
+const CAT_META: Record<string, { icon: string; color: string; desc: string; bg: string }> = {
+  '政治': { icon: '🏛️', color: 'text-indigo-600', bg: 'bg-indigo-50', desc: 'Global Politics' },
+  '军事': { icon: '⚔️', color: 'text-rose-600', bg: 'bg-rose-50', desc: 'Military Affairs' },
+  '经济': { icon: '💹', color: 'text-amber-600', bg: 'bg-amber-50', desc: 'Economy & Markets' },
+  'AI大模型': { icon: '🤖', color: 'text-primary-600', bg: 'bg-primary-50', desc: 'AI & LLM Evolution' },
 };
 
 const DEFAULT_CATS = ['政治', '军事', '经济', 'AI大模型'];
@@ -39,7 +32,6 @@ export default function MorningPanel() {
   const loadSubConfig = useStore((s) => s.loadSubConfig);
   const toast = useStore((s) => s.toast);
 
-  const [showConfig, setShowConfig] = useState(false);
   const [localConfig, setLocalConfig] = useState<SubConfig | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -60,7 +52,6 @@ export default function MorningPanel() {
     try {
       await api.refreshMorning();
       toast('✅ News gathering sequence initiated');
-      // Simple timeout for refreshing state
       setTimeout(() => {
         setRefreshing(false);
         loadMorning();
@@ -78,47 +69,65 @@ export default function MorningPanel() {
   return (
     <div className="flex flex-col h-full space-y-6">
       {/* --- Bento Grid Header Section --- */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-fit">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 h-fit shrink-0">
         
-        {/* Main Status Bento (6 cols) */}
-        <div className="md:col-span-8 glass-panel p-8 rounded-3xl relative overflow-hidden group border border-white/5 bg-gradient-to-br from-obsidian-panel to-black">
-          <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-neon-cyan/10 rounded-full blur-[80px] group-hover:bg-neon-cyan/20 transition-all duration-1000" />
+        {/* Main Status Bento (8 cols) */}
+        <div className="md:col-span-8 panel p-6 md:p-8 flex items-center justify-between relative overflow-hidden bg-white border border-slate-200">
+          <div className="absolute top-[-20%] right-[-10%] w-64 h-64 bg-amber-50 rounded-full blur-[80px] pointer-events-none" />
           
-          <div className="relative z-10">
-            <div className="flex items-center gap-3 mb-6">
-               <div className="p-2 bg-neon-cyan/20 rounded-xl">
-                 <Sun className="w-6 h-6 text-neon-cyan" />
+          <div className="relative z-10 flex-1">
+            <div className="flex items-center justify-between mb-8">
+               <div className="flex items-center gap-3">
+                 <div className="w-10 h-10 flex items-center justify-center bg-amber-50 rounded-xl border border-amber-100 shadow-sm">
+                   <Sun className="w-5 h-5 text-amber-500" />
+                 </div>
+                 <div>
+                   <h2 className="text-2xl font-bold text-slate-800 tracking-tight">天下要闻汇总系统</h2>
+                   <p className="text-xs text-slate-500 font-medium">多源安全与情报播报</p>
+                 </div>
                </div>
-               <h2 className="text-3xl font-black text-white tracking-tight uppercase">Morning Nexus Brief</h2>
+               
+               <button 
+                onClick={refreshNews}
+                disabled={refreshing}
+                className={cn(
+                  "hidden md:flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold transition-all border",
+                  refreshing 
+                    ? "bg-slate-50 text-slate-400 border-slate-200 cursor-not-allowed" 
+                    : "bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm"
+                )}
+               >
+                 <RefreshCcw className={cn("w-4 h-4", refreshing && "animate-spin text-primary-500")} />
+                 {refreshing ? '正在同步全球资讯源...' : '立即请求一次强制更新'}
+               </button>
             </div>
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
                <div className="space-y-1">
-                 <p className="sub-title">Intelligence Flow</p>
-                 <p className="text-xl font-black text-white">{totalNews} <span className="text-xs text-slate-muted">Entries</span></p>
+                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">目前聚合信条数</p>
+                 <p className="text-2xl font-bold text-slate-800">{totalNews} <span className="text-xs font-semibold text-slate-400">个相关条目</span></p>
                </div>
                <div className="space-y-1">
-                 <p className="sub-title">Last Ingest</p>
-                 <p className="text-sm font-black text-neon-cyan uppercase">{morningBrief?.generated_at?.split(' ')[1] || '08:00:00'}</p>
+                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">最近同步标记卡</p>
+                 <p className="text-lg font-bold text-slate-800">{morningBrief?.generated_at?.split(' ')[1] || '08:00:00'}</p>
                </div>
                <div className="space-y-1">
-                 <p className="sub-title">Feed Status</p>
-                 <div className="flex items-center gap-2">
-                   <div className="w-2 h-2 rounded-full bg-neon-cyan shadow-neon-cyan animate-pulse" />
-                   <p className="text-xs font-bold text-white uppercase tracking-widest">Global Sync</p>
+                 <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">链路数据运转状况</p>
+                 <div className="flex items-center gap-2 h-7 mt-0.5">
+                   <span className="flex h-2.5 w-2.5 relative">
+                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                     <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500"></span>
+                   </span>
+                   <p className="text-sm font-bold text-emerald-600">正常拉取工作中</p>
                  </div>
                </div>
-               <div className="flex justify-end items-end">
+               <div className="flex md:hidden items-end pb-1">
                  <button 
                   onClick={refreshNews}
                   disabled={refreshing}
-                  className={cn(
-                    "flex items-center gap-2 px-4 py-2 rounded-xl border border-neon-cyan/30 text-neon-cyan font-bold text-xs uppercase tracking-widest hover:bg-neon-cyan/10 transition-all",
-                    refreshing && "opacity-50 cursor-not-allowed"
-                  )}
+                  className="w-full py-2 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 text-xs font-bold"
                  >
-                   <RefreshCcw className={cn("w-4 h-4", refreshing && "animate-spin")} />
-                   {refreshing ? 'Syncing...' : 'Sync Global'}
+                   {refreshing ? 'Syncing...' : 'Sync'}
                  </button>
                </div>
             </div>
@@ -126,72 +135,75 @@ export default function MorningPanel() {
         </div>
 
         {/* Clock Bento (4 cols) */}
-        <div className="md:col-span-4 glass-panel p-8 rounded-3xl flex flex-col items-center justify-center border border-white/5 bg-black/40">
-           <div className="p-3 bg-neon-violet/20 rounded-2xl mb-4">
-             <Clock className="w-8 h-8 text-neon-violet" />
+        <div className="md:col-span-4 panel p-8 flex flex-col items-center justify-center bg-slate-50 border border-slate-100">
+           <div className="p-3 bg-white border border-slate-200 rounded-xl mb-4 shadow-sm">
+             <Clock className="w-6 h-6 text-indigo-500" />
            </div>
-           <p className="text-4xl font-black text-white tracking-tighter mb-2">
+           <p className="text-3xl font-bold text-slate-800 font-mono tracking-tight mb-1">
              {currentTime.toLocaleTimeString('en-US', { hour12: false })}
            </p>
-           <p className="text-xs font-bold text-slate-muted uppercase tracking-[0.3em]">
+           <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
              {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric' })}
            </p>
         </div>
       </div>
 
       {/* --- Main Content Layout --- */}
-      <div className="flex flex-col lg:flex-row gap-6 flex-1 overflow-hidden">
+      <div className="flex flex-col lg:flex-row gap-6 flex-1 min-h-0">
         
         {/* News Feed --- */}
-        <div className="flex-1 overflow-y-auto pr-2 space-y-10 no-scrollbar pb-20">
+        <div className="flex-1 overflow-y-auto pr-2 pb-6 space-y-8 no-scrollbar">
           <AnimatePresence mode="popLayout">
             {Object.entries(cats).map(([cat, items]) => {
               if (!enabledCats.includes(cat)) return null;
-              const meta = CAT_META[cat] || { icon: '📰', color: 'text-slate-muted', desc: cat };
+              const meta = CAT_META[cat] || { icon: '📰', color: 'text-slate-600', bg: 'bg-slate-100', desc: cat };
+              const newsItems = items as MorningNewsItem[];
+              
+              if (!newsItems.length) return null;
               
               return (
                 <motion.section 
                   layout
                   key={cat}
-                  initial={{ opacity: 0, y: 20 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   className="space-y-4"
                 >
-                  <div className="flex items-center gap-4 px-2">
+                  <div className="flex items-center gap-3 px-1">
                     <span className="text-2xl">{meta.icon}</span>
-                    <h3 className={cn("text-lg font-black uppercase tracking-widest", meta.color)}>{cat}</h3>
-                    <div className="h-px flex-1 bg-white/5" />
-                    <span className="text-[10px] font-bold text-slate-muted uppercase tracking-wider">{items.length} Bulletins</span>
+                    <h3 className={cn("text-lg font-bold tracking-tight text-slate-800")}>{cat}</h3>
+                    <div className="h-px flex-1 bg-slate-200 ml-2" />
+                    <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest bg-slate-100 px-2 py-0.5 rounded ml-2">含有 {newsItems.length} 条已整理新闻简报</span>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {(items as MorningNewsItem[]).map((news, idx) => (
+                  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+                    {newsItems.map((news, idx) => (
                       <motion.div
                         key={idx}
-                        whileHover={{ y: -4, scale: 1.01 }}
-                        className="glass-card p-5 rounded-2xl cursor-pointer group flex flex-col justify-between"
+                        className="panel p-4 flex flex-col justify-between cursor-pointer hover:border-primary-300 hover:shadow-card transition-all group bg-white relative overflow-hidden"
                         onClick={() => window.open(news.link, '_blank')}
                       >
-                         <div className="flex gap-4">
+                         <div className="absolute top-0 left-0 w-1 h-full bg-slate-200 group-hover:bg-primary-400 transition-colors" />
+                         <div className="flex gap-4 pl-2">
                             {news.image && news.image.startsWith('http') && (
-                              <div className="w-16 h-16 rounded-xl overflow-hidden shrink-0 border border-white/5">
-                                <img src={news.image} alt="" className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                              <div className="w-20 h-20 rounded-lg overflow-hidden shrink-0 border border-slate-100 shadow-sm">
+                                <img src={news.image} alt="" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                               </div>
                             )}
-                            <div className="flex-1 space-y-2">
-                               <h4 className="text-sm font-bold text-white leading-snug group-hover:text-neon-cyan transition-colors">
+                            <div className="flex-1 min-w-0 space-y-1.5">
+                               <h4 className="text-sm font-bold text-slate-800 leading-snug group-hover:text-primary-700 transition-colors line-clamp-2">
                                  {news.title}
                                </h4>
-                               <p className="text-[11px] text-slate-muted line-clamp-2 leading-relaxed">
+                               <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">
                                  {news.summary || news.desc}
                                </p>
                             </div>
                          </div>
-                         <div className="mt-4 flex items-center justify-between pt-4 border-t border-white/5">
-                           <span className="text-[9px] font-bold text-neon-violet uppercase flex items-center gap-1.5">
-                             <Globe className="w-3 h-3" /> {news.source}
+                         <div className="mt-4 flex items-center justify-between pt-3 border-t border-slate-100 pl-2">
+                           <span className="text-[10px] font-bold text-slate-500 bg-slate-50 border border-slate-200 px-2 py-0.5 rounded flex items-center gap-1 uppercase truncate max-w-[150px]">
+                             <Globe className="w-3 h-3 text-slate-400 shrink-0" /> {news.source}
                            </span>
-                           <span className="text-[9px] font-mono text-slate-muted">{news.pub_date?.substring(11, 16)}</span>
+                           <span className="text-[10px] font-medium text-slate-400">{news.pub_date?.substring(11, 16)}</span>
                          </div>
                       </motion.div>
                     ))}
@@ -200,19 +212,27 @@ export default function MorningPanel() {
               );
             })}
           </AnimatePresence>
+          
+          {totalNews === 0 && (
+            <div className="flex flex-col items-center justify-center p-20 text-slate-400 opacity-70 bg-white rounded-2xl border border-dashed border-slate-200 h-64 mx-auto w-full max-w-2xl mt-10">
+              <FileText className="w-12 h-12 mb-4 text-slate-300" strokeWidth={1.5} />
+              <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">系统尚无收到任何快报</p>
+              <button className="mt-4 btn-primary text-xs" onClick={refreshNews}>现在立刻拉取系统信源</button>
+            </div>
+          )}
         </div>
 
         {/* Sidebar Controls --- */}
-        <aside className="w-full lg:w-80 space-y-6">
-          <div className="glass-panel p-6 rounded-3xl border border-white/5 space-y-6">
-            <div className="flex items-center gap-2">
-              <Settings className="w-4 h-4 text-neon-cyan" />
-              <h4 className="sub-title !mb-0">Intelligence Filters</h4>
+        <aside className="w-full lg:w-80 space-y-5 shrink-0 pb-6">
+          <div className="panel p-5 space-y-5">
+            <div className="flex items-center gap-2 pb-3 border-b border-slate-100">
+              <Settings className="w-4 h-4 text-slate-400" />
+              <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">面板订阅设置与网络控制</h4>
             </div>
 
             {/* Category Toggles */}
-            <div className="space-y-4">
-               <p className="text-[9px] font-black text-slate-muted uppercase tracking-[0.2em]">Active Channels</p>
+            <div className="space-y-3">
+               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest flex items-center gap-1.5"><Radio className="w-3 h-3"/> 本地已激活的过滤器信道</p>
                <div className="flex flex-wrap gap-2">
                   {Object.keys(CAT_META).map(catName => {
                     const active = enabledCats.includes(catName);
@@ -220,8 +240,8 @@ export default function MorningPanel() {
                       <button 
                         key={catName}
                         className={cn(
-                          "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all border",
-                          active ? "bg-neon-cyan/10 border-neon-cyan/40 text-neon-cyan" : "bg-white/5 border-white/5 text-slate-muted opacity-40 hover:opacity-100"
+                          "px-3 py-1.5 rounded-lg text-xs font-bold transition-all border",
+                          active ? "bg-primary-50 border-primary-200 text-primary-700 shadow-sm" : "bg-slate-50 border-slate-200 text-slate-400 hover:text-slate-600 hover:bg-slate-100"
                         )}
                       >
                         {catName}
@@ -231,46 +251,48 @@ export default function MorningPanel() {
                </div>
             </div>
 
-            {/* News Feed Management */}
-            <div className="space-y-4">
-               <p className="text-[9px] font-black text-slate-muted uppercase tracking-[0.2em]">Custom Sources</p>
+            <div className="space-y-3 pt-3 border-t border-slate-100">
+               <p className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">开放网络数据拉取点设置</p>
                <div className="space-y-2 max-h-48 overflow-y-auto no-scrollbar pr-2">
                  {localConfig?.custom_feeds?.map((f, i) => (
-                   <div key={i} className="p-3 bg-black/40 rounded-xl border border-white/5 flex items-center justify-between group">
-                      <div className="flex-1 truncate">
-                        <p className="text-[10px] font-bold text-white truncate">{f.name}</p>
-                        <p className="text-[8px] text-slate-muted truncate">{f.url}</p>
+                   <div key={i} className="p-3 bg-white rounded-xl border border-slate-200 flex items-center justify-between group shadow-sm">
+                      <div className="flex-1 min-w-0 pr-2">
+                        <p className="text-xs font-bold text-slate-700 truncate mb-0.5">{f.name}</p>
+                        <p className="text-[10px] text-slate-400 truncate font-mono">{f.url}</p>
                       </div>
-                      <button className="p-1 opacity-0 group-hover:opacity-100 text-neon-glitch transition-opacity">
-                        <Trash2 className="w-3 h-3" />
+                      <button className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors border border-transparent hover:border-red-200 shrink-0">
+                        <Trash2 className="w-3.5 h-3.5" />
                       </button>
                    </div>
                  ))}
+                 {(!localConfig?.custom_feeds || localConfig?.custom_feeds.length === 0) && (
+                   <div className="text-xs text-slate-400 italic text-center py-4 bg-slate-50 rounded-lg border border-slate-100">没有设定任何外部同步节点源，正在使用系统预设池内资源列表...</div>
+                 )}
                </div>
-               <button className="w-full py-2 rounded-xl border border-dashed border-slate-line text-[10px] font-bold uppercase tracking-widest text-slate-muted hover:text-white hover:border-slate-muted transition-all">
-                  + Integrate New Source
+               <button className="w-full py-2.5 rounded-xl border border-dashed border-slate-300 text-xs font-bold text-slate-500 hover:text-primary-600 hover:border-primary-300 hover:bg-primary-50 transition-all shadow-sm bg-white">
+                  + 注册并添加新的拉取管道
                </button>
             </div>
             
-            <div className="pt-4 border-t border-white/5">
-               <button className="w-full btn-premium btn-cyan text-xs">
-                 Commit Filter Sync
+            <div className="pt-4 border-t border-slate-100">
+               <button className="w-full btn-primary py-2.5">
+                 保存配置文件生效
                </button>
             </div>
           </div>
 
           {/* Quick Metrics Card */}
-          <div className="glass-panel p-6 rounded-3xl border border-white/5 bg-gradient-to-br from-neon-violet/10 to-transparent">
-             <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="w-4 h-4 text-neon-violet" />
-                <span className="text-[9px] font-black uppercase tracking-widest text-white">MAS Global Trend</span>
+          <div className="panel p-5 bg-gradient-to-br from-indigo-50 to-white border-indigo-100">
+             <div className="flex items-center gap-2 mb-3">
+                <TrendingUp className="w-4 h-4 text-indigo-500" />
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">MAS Telemetry</span>
              </div>
-             <div className="flex items-baseline gap-2">
-                <span className="text-3xl font-black text-white">+24.5%</span>
-                <span className="text-[10px] font-bold text-neon-cyan uppercase">Processing Efficiency</span>
+             <div className="flex items-baseline gap-2 mb-2">
+                <span className="text-3xl font-bold text-slate-800 tracking-tight">+24.5%</span>
+                <span className="text-[10px] font-bold text-indigo-600 uppercase bg-indigo-100/50 px-2 py-0.5 rounded">Efficiency</span>
              </div>
-             <p className="text-[10px] text-slate-muted mt-4 leading-relaxed font-medium">
-               Multi-agent cluster achieved peak utilization during 0800-0900 UTC sync window. No stalls detected.
+             <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
+               Multi-agent cluster achieved peak utilization during 0800-0900 UTC sync window. No ingest stalls detected.
              </p>
           </div>
         </aside>

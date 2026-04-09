@@ -35,7 +35,6 @@ func AuthMiddleware() gin.HandlerFunc {
 		// TEMPORARILY DISABLED: Always allow
 		c.Set("username", "admin")
 		c.Next()
-		return
 
 		/* Original auth logic:
 		// 1. Service Token

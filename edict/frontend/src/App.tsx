@@ -1,30 +1,20 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Bell, 
-  User, 
-  Users,
-  Wrench,
+  LayoutDashboard,
+  Cpu,
+  MessageSquare,
+  Zap,
+  History,
+  Sparkles,
+  Globe,
+  FolderTree,
   Terminal,
   ShieldCheck,
   RefreshCcw,
-  ChevronRight,
   LogOut,
-  LayoutDashboard,
-  Cpu,
-  Bookmark,
-  MessageSquare,
-  Zap,
-  Grid,
-  FileText,
-  Briefcase,
-  History,
-  Archive,
-  Workflow,
-  Globe,
-  FolderTree,
-  Sun,
-  Sparkles
+  Users,
+  Wrench
 } from 'lucide-react';
 import { useStore, TAB_DEFS, startPolling, stopPolling, isEdict, isArchived } from './store';
 import { api } from './api';
@@ -59,7 +49,14 @@ const ICON_MAP: Record<string, any> = {
 };
 
 export default function App() {
-  const [authed, setAuthed] = useState(api.isAuthenticated());
+  const [authed, setAuthed] = useState(() => {
+    try {
+      return api.isAuthenticated();
+    } catch {
+      return false;
+    }
+  });
+  
   const activeTab = useStore((s) => s.activeTab);
   const setActiveTab = useStore((s) => s.setActiveTab);
   const liveStatus = useStore((s) => s.liveStatus);
@@ -91,24 +88,22 @@ export default function App() {
   const activeTasks = (liveStatus?.tasks || []).filter(t => isEdict(t) && !isArchived(t));
 
   return (
-    <div className="flex h-screen bg-obsidian-full overflow-hidden">
+    <div className="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-900">
       {/* --- Sidebar Navigation --- */}
-      <aside className="w-64 border-r border-slate-line bg-obsidian-panel/80 backdrop-blur-xl flex flex-col z-50">
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-1">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-neon-cyan to-neon-violet flex items-center justify-center shadow-neon-cyan/20 shadow-lg">
-              <Terminal className="w-5 h-5 text-obsidian-full" />
+      <aside className="w-64 border-r border-slate-200 bg-white flex flex-col z-50 shadow-subtle shrink-0">
+        <div className="p-6 border-b border-slate-100">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-primary-50 text-primary-600 flex items-center justify-center border border-primary-100">
+              <Terminal className="w-5 h-5" />
             </div>
-            <h1 className="text-xl font-black bg-gradient-to-r from-white to-slate-muted bg-clip-text text-transparent">
-              OPENCLAW
-            </h1>
+            <div>
+              <h1 className="text-lg font-bold text-slate-900 tracking-tight">OPENCLAW</h1>
+              <p className="text-[11px] font-medium text-slate-500 uppercase tracking-widest">MAS Control v2.0</p>
+            </div>
           </div>
-          <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-slate-muted pl-11">
-            MAS Control v2.0
-          </p>
         </div>
 
-        <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-3 py-4 space-y-1.5 overflow-y-auto">
           {TAB_DEFS.map((t) => {
             const Icon = ICON_MAP[t.key] || LayoutDashboard;
             const isActive = activeTab === t.key;
@@ -117,20 +112,23 @@ export default function App() {
                 key={t.key}
                 onClick={() => setActiveTab(t.key)}
                 className={cn(
-                  "w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 group",
+                  "w-full flex items-center justify-between px-3 py-2.5 rounded-lg transition-all duration-200 group text-sm font-medium",
                   isActive 
-                    ? "bg-white/5 text-neon-cyan shadow-sm" 
-                    : "text-slate-muted hover:text-white hover:bg-white/5"
+                    ? "bg-primary-50 text-primary-700" 
+                    : "text-slate-600 hover:bg-slate-50 hover:text-slate-900"
                 )}
               >
                 <div className="flex items-center gap-3">
-                  <Icon className={cn("w-5 h-5 transition-transform duration-300", isActive && "scale-110")} />
-                  <span className="text-sm font-semibold tracking-wide">{t.label}</span>
+                  <Icon className={cn(
+                    "w-[18px] h-[18px] transition-colors", 
+                    isActive ? "text-primary-600" : "text-slate-400 group-hover:text-slate-600"
+                  )} />
+                  <span>{t.label}</span>
                 </div>
                 {isActive && (
                   <motion.div 
-                    layoutId="activeTab" 
-                    className="w-1.5 h-1.5 rounded-full bg-neon-cyan shadow-neon-cyan shadow-[0_0_8px_rgba(0,242,255,0.8)]" 
+                    layoutId="activeTabIndicator" 
+                    className="w-1.5 h-1.5 rounded-full bg-primary-500" 
                   />
                 )}
               </button>
@@ -138,53 +136,56 @@ export default function App() {
           })}
         </nav>
 
-        <div className="p-6 border-t border-slate-line space-y-4 bg-black/20">
-          <div className="flex items-center justify-between">
+        <div className="p-4 border-t border-slate-200 bg-slate-50/50 space-y-4">
+          <div className="flex items-center justify-between bg-white p-3 rounded-lg border border-slate-200 shadow-sm">
             <div className="flex items-center gap-2">
-              <ShieldCheck className={cn("w-4 h-4", syncOk ? "text-neon-cyan" : "text-neon-glitch")} />
-              <span className="text-[10px] font-bold text-slate-muted uppercase tracking-wider">
-                {syncOk ? "Sync Active" : "Server Disconnected"}
+              <ShieldCheck className={cn("w-4 h-4", syncOk ? "text-emerald-500" : "text-red-500")} />
+              <span className="text-xs font-semibold text-slate-700">
+                {syncOk ? "系统联机" : "失去连接"}
               </span>
             </div>
-            <span className="text-[10px] font-mono text-slate-muted">{countdown}s</span>
+            <div className="flex items-center gap-1.5">
+              <span className="relative flex h-2 w-2">
+                {syncOk && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>}
+                <span className={cn("relative inline-flex rounded-full h-2 w-2", syncOk ? "bg-emerald-500" : "bg-red-500")}></span>
+              </span>
+              <span className="text-[10px] font-mono text-slate-500">{countdown}s</span>
+            </div>
           </div>
           
           <button 
             onClick={() => api.logout()}
-            className="w-full flex items-center gap-3 px-4 py-2 text-slate-muted hover:text-neon-glitch transition-colors text-xs font-semibold"
+            className="w-full flex items-center justify-center gap-2 px-4 py-2 text-slate-600 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors text-sm font-medium"
           >
             <LogOut className="w-4 h-4" />
-            Sign Out
+            退出登录
           </button>
         </div>
       </aside>
 
       {/* --- Main Content Area --- */}
-      <main className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Background Aura */}
-        <div className="absolute top-[-10%] right-[-10%] w-[50%] h-[50%] bg-neon-cyan/5 rounded-full blur-[120px] pointer-events-none" />
-        <div className="absolute bottom-[-10%] left-[-10%] w-[50%] h-[50%] bg-neon-violet/5 rounded-full blur-[120px] pointer-events-none" />
-
+      <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-slate-50/50">
         {/* Top bar */}
-        <header className="h-16 px-8 flex items-center justify-between border-b border-slate-line/50 glass-panel z-40">
+        <header className="h-16 px-8 flex items-center justify-between border-b border-slate-200 bg-white z-40 shrink-0">
           <div className="flex items-center gap-4">
-            <h2 className="text-lg font-bold text-white tracking-tight">
+            <h2 className="text-xl font-semibold text-slate-800">
               {TAB_DEFS.find(t => t.key === activeTab)?.label}
             </h2>
-            <div className="h-4 w-[1px] bg-slate-line" />
-            <div className="flex items-center gap-2 px-3 py-1 bg-white/5 rounded-full border border-white/5">
-              <div className="w-1.5 h-1.5 rounded-full bg-neon-cyan animate-pulse shadow-neon-cyan shadow-sm" />
-              <span className="text-[10px] font-bold text-slate-muted uppercase">{activeTasks.length} Active Edicts</span>
+            <div className="h-5 w-[1px] bg-slate-300" />
+            <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-full border border-slate-200">
+              <div className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
+              <span className="text-[11px] font-semibold text-slate-600 uppercase tracking-wide">{activeTasks.length} 个正在执行的指令</span>
             </div>
           </div>
           
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-4">
             <button 
               onClick={() => loadAll()}
-              className="p-2 hover:bg-white/5 rounded-lg transition-colors text-slate-muted hover:text-white"
-              title="Force Refresh"
+              className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-slate-600 bg-white border border-slate-200 hover:bg-slate-50 hover:text-slate-900 rounded-lg transition-all shadow-subtle"
+              title="强制拉取状态"
             >
               <RefreshCcw className="w-4 h-4" />
+              <span>手动同步</span>
             </button>
           </div>
         </header>
@@ -198,7 +199,7 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.2, ease: "easeOut" }}
-              className="h-full"
+              className="h-full max-w-7xl mx-auto w-full"
             >
               {activeTab === 'edicts' && <EdictBoard />}
               {activeTab === 'monitor' && <MonitorPanel />}

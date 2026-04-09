@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Folder, 
-  File, 
   FileText, 
   FileCode, 
   ChevronRight, 
@@ -11,9 +10,9 @@ import {
   Search,
   HardDrive,
   Clock,
-  ExternalLink,
   RefreshCcw,
-  MoreVertical
+  MoreVertical,
+  Database
 } from 'lucide-react';
 import { api, type WorkspaceFile } from '../api';
 import { useStore } from '../store';
@@ -31,13 +30,16 @@ export default function WorkspaceExplorer() {
     try {
       const res = await api.workspaceFiles(p);
       if (res.ok) {
-        setFiles(res.files);
+        // Fix: fallback to empty array if res.files is undefined/null
+        setFiles(res.files || []);
         setPath(p);
       } else {
         toast('Failed to load workspace files', 'err');
+        setFiles([]); // Reset state gracefully on error
       }
     } catch {
-      toast('Network error', 'err');
+      toast('Network error while loading files', 'err');
+      setFiles([]);
     } finally {
       setLoading(false);
     }
@@ -58,12 +60,14 @@ export default function WorkspaceExplorer() {
     fetchFiles(parts.join('/'));
   };
 
-  const filteredFiles = files.filter(f => f.name.toLowerCase().includes(search.toLowerCase()));
+  const filteredFiles = files.filter(f => 
+    f && f.name && f.name.toLowerCase().includes(search.toLowerCase())
+  );
 
   const getFileIcon = (f: WorkspaceFile) => {
-    if (f.isDir) return <Folder className="w-5 h-5 text-neon-cyan" />;
-    if (['.json', '.py', '.go', '.ts', '.tsx'].includes(f.ext)) return <FileCode className="w-5 h-5 text-neon-violet" />;
-    return <FileText className="w-5 h-5 text-slate-muted" />;
+    if (f.isDir) return <Folder className="w-5 h-5 text-primary-500 fill-primary-100/50" />;
+    if (['.json', '.py', '.go', '.ts', '.tsx'].includes(f.ext)) return <FileCode className="w-5 h-5 text-orange-500" />;
+    return <FileText className="w-5 h-5 text-slate-400" />;
   };
 
   const formatSize = (bytes: number) => {
@@ -77,17 +81,17 @@ export default function WorkspaceExplorer() {
   return (
     <div className="flex flex-col h-full space-y-6">
       {/* Header & Breadcrumbs */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="panel px-6 py-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-           <div className="p-3 bg-neon-cyan/20 rounded-2xl">
-             <HardDrive className="w-6 h-6 text-neon-cyan" />
+           <div className="p-3 bg-indigo-50 rounded-xl border border-indigo-100">
+             <Database className="w-6 h-6 text-indigo-600" />
            </div>
            <div>
-             <h2 className="text-xl font-black text-white tracking-tight uppercase">Expert Shared Memory</h2>
+             <h2 className="text-xl font-bold text-slate-900">Expert Shared Memory</h2>
              <div className="flex items-center gap-2 mt-1">
-                <span className="text-[10px] font-bold text-slate-muted uppercase tracking-widest">Workspace</span>
-                <ChevronRight className="w-3 h-3 text-slate-line" />
-                <div className="flex items-center gap-1 text-[10px] font-mono text-neon-cyan">
+                <span className="text-xs font-medium text-slate-500 uppercase tracking-wider">Workspace</span>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-300" />
+                <div className="flex items-center gap-1 text-[13px] font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
                   {path || '/'}
                 </div>
              </div>
@@ -96,44 +100,45 @@ export default function WorkspaceExplorer() {
 
         <div className="flex items-center gap-3">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-muted" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-slate-400" />
             <input 
               type="text" 
               placeholder="Search artifacts..." 
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="input-premium pl-10 text-xs w-48" 
+              className="input-field pl-10 w-64" 
             />
           </div>
           <button 
             onClick={() => fetchFiles(path)}
-            className="p-2.5 rounded-xl border border-white/5 bg-white/5 hover:bg-white/10 text-slate-muted hover:text-white transition-all"
+            className="btn-secondary flex items-center justify-center p-2.5"
+            title="Refresh"
           >
-            <RefreshCcw className={cn("w-4 h-4", loading && "animate-spin")} />
+            <RefreshCcw className={cn("w-4 h-4 text-slate-600", loading && "animate-spin")} />
           </button>
         </div>
       </div>
 
       {/* Explorer Table */}
-      <div className="flex-1 glass-panel rounded-3xl border border-white/5 overflow-hidden flex flex-col">
+      <div className="panel flex-1 flex flex-col min-h-0">
         {/* Table Header */}
-        <div className="grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/5 bg-white/[0.02]">
-          <div className="col-span-6 text-[10px] uppercase font-black tracking-widest text-slate-muted">Entity Name</div>
-          <div className="col-span-2 text-[10px] uppercase font-black tracking-widest text-slate-muted">Size</div>
-          <div className="col-span-3 text-[10px] uppercase font-black tracking-widest text-slate-muted">Modified</div>
+        <div className="grid grid-cols-12 gap-4 px-6 py-3 border-b border-slate-200 bg-slate-50/80">
+          <div className="col-span-6 text-xs font-semibold text-slate-500 uppercase tracking-wider">Entity Name</div>
+          <div className="col-span-2 text-xs font-semibold text-slate-500 uppercase tracking-wider">Size</div>
+          <div className="col-span-3 text-xs font-semibold text-slate-500 uppercase tracking-wider">Modified</div>
           <div className="col-span-1"></div>
         </div>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar">
+        <div className="flex-1 overflow-y-auto">
           {path && (
             <div 
               onClick={goBack}
-              className="flex items-center gap-4 px-6 py-3 border-b border-white/[0.02] hover:bg-white/5 cursor-pointer group transition-colors"
+              className="flex items-center gap-4 px-6 py-3.5 border-b border-slate-100 hover:bg-slate-50 cursor-pointer group transition-colors"
             >
               <div className="w-10 flex justify-center">
-                <ArrowLeft className="w-4 h-4 text-neon-violet group-hover:-translate-x-1 transition-transform" />
+                <ArrowLeft className="w-4 h-4 text-slate-400 group-hover:-translate-x-1 transition-transform" />
               </div>
-              <span className="text-xs font-bold text-slate-muted uppercase tracking-widest">Go Back / Parent</span>
+              <span className="text-sm font-medium text-slate-600">Go Up / Parent Directory</span>
             </div>
           )}
 
@@ -141,43 +146,42 @@ export default function WorkspaceExplorer() {
             {filteredFiles.map((f, i) => (
               <motion.div
                 layout
-                key={f.name}
-                initial={{ opacity: 0, y: 10 }}
+                key={`${f.name}-${i}`}
+                initial={{ opacity: 0, y: 5 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: i * 0.02 }}
+                transition={{ delay: Math.min(i * 0.02, 0.2) }}
                 onClick={() => f.isDir ? navigateTo(f.name) : null}
                 className={cn(
-                  "grid grid-cols-12 gap-4 px-6 py-4 border-b border-white/[0.02] hover:bg-white/5 group transition-colors items-center",
+                  "grid grid-cols-12 gap-4 px-6 py-3.5 border-b border-slate-100 hover:bg-sky-50/50 group transition-colors items-center",
                   f.isDir ? "cursor-pointer" : "cursor-default"
                 )}
               >
-                <div className="col-span-6 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-xl bg-black/40 flex items-center justify-center border border-white/5">
+                <div className="col-span-6 flex items-center gap-3">
+                  <div className="flex items-center justify-center p-2 rounded-lg bg-white border border-slate-100 shadow-sm">
                     {getFileIcon(f)}
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-white group-hover:text-neon-cyan transition-colors">{f.name}</p>
-                    <p className="text-[9px] text-slate-muted font-bold uppercase tracking-tighter">{f.isDir ? 'Directory cluster' : `${f.ext || 'binary'} stream`}</p>
+                    <p className="text-sm font-medium text-slate-900 group-hover:text-primary-600 transition-colors">{f.name}</p>
+                    <p className="text-xs text-slate-500">{f.isDir ? 'Directory' : `${f.ext || 'Binary'} file`}</p>
                   </div>
                 </div>
 
-                <div className="col-span-2 text-xs font-mono text-slate-muted opacity-60">
+                <div className="col-span-2 text-sm text-slate-500">
                    {formatSize(f.size)}
                 </div>
 
-                <div className="col-span-3 flex items-center gap-2 text-xs font-mono text-slate-muted opacity-60">
-                   <Clock className="w-3.5 h-3.5" />
-                   {new Date(f.modTime).toLocaleString()}
+                <div className="col-span-3 flex items-center gap-2 text-sm text-slate-500">
+                   <Clock className="w-4 h-4 text-slate-400" />
+                   {new Date(f.modTime).toLocaleDateString()} {new Date(f.modTime).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
                 </div>
 
                 <div className="col-span-1 flex justify-end">
-                   {!f.isDir && (
-                     <button className="p-2 opacity-0 group-hover:opacity-100 hover:bg-neon-cyan/20 rounded-lg text-neon-cyan transition-all">
-                        <Download className="w-4 h-4" />
+                   {!f.isDir ? (
+                     <button className="p-2 opacity-0 group-hover:opacity-100 hover:bg-slate-100 rounded-lg text-slate-600 transition-all">
+                        <Download className="w-[18px] h-[18px]" />
                      </button>
-                   )}
-                   {f.isDir && (
-                     <ChevronRight className="w-4 h-4 text-slate-line" />
+                   ) : (
+                     <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-primary-400 transition-colors" />
                    )}
                 </div>
               </motion.div>
@@ -185,21 +189,26 @@ export default function WorkspaceExplorer() {
           </AnimatePresence>
 
           {filteredFiles.length === 0 && !loading && (
-            <div className="h-full flex flex-col items-center justify-center opacity-20 py-20">
-               <Folder className="w-12 h-12 mb-4" />
-               <p className="text-sm font-bold uppercase tracking-[0.2em]">Zero artifacts in directory</p>
+            <div className="h-full flex flex-col items-center justify-center opacity-60 py-24 text-slate-400">
+               <HardDrive className="w-16 h-16 mb-4 text-slate-300" strokeWidth={1} />
+               <p className="text-base font-medium text-slate-600">No artifacts found in this directory</p>
+               <p className="text-sm mt-1">Directory is completely empty or search yielded no results.</p>
             </div>
           )}
         </div>
       </div>
 
       {/* Footer Info */}
-      <div className="flex items-center justify-between px-6 py-4 glass-panel rounded-2xl border border-white/5">
-         <div className="flex items-center gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-muted">
-            <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-neon-cyan shadow-neon-cyan" /> Secure Mount Active</span>
-            <span className="flex items-center gap-1.5"><div className="w-1.5 h-1.5 rounded-full bg-neon-violet shadow-neon-violet" /> RW Permissions Locked</span>
+      <div className="flex items-center justify-between px-6 py-3 panel shrink-0">
+         <div className="flex items-center gap-4 text-xs font-semibold text-slate-600">
+            <span className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-emerald-500" /> Mount Active
+            </span>
+            <span className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-slate-300" /> Read-Only Mode
+            </span>
          </div>
-         <p className="text-[9px] font-mono text-slate-muted opacity-40">Managed by Orchestrator Virtual Disk Layer v1.0</p>
+         <p className="text-xs text-slate-400">Virtual Disk Layer</p>
       </div>
     </div>
   );

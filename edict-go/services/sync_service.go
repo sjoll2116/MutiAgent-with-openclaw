@@ -30,6 +30,8 @@ func StartRuntimeSync(ctx context.Context) {
 				if err := SyncRuntime(); err != nil {
 					log.Printf("⚠️ Runtime sync error: %v", err)
 				}
+				// --- [NEW] 清理僵尸任务 (释放死锁) ---
+				CleanupZombieTasks()
 			}
 		}
 	}()
@@ -361,4 +363,44 @@ func ifThenElse(condition bool, a, b interface{}) interface{} {
 		return a
 	}
 	return b
+}
+
+// CleanupZombieTasks 扫描长时间处于 Executing 且无更新的任务，将其强制置为 Blocked 以释放 Agent 锁。
+func CleanupZombieTasks() {
+	var zombieTasks []models.GormTask
+	// 查找所有 Executing 且超过 30 分钟未更新的任务
+	timeoutThreshold := time.Now().Add(-30 * time.Minute)
+	
+	err := store.DB.Where("state = ? AND updated_at < ?", "Executing", timeoutThreshold).Find(&zombieTasks).Error
+	if err != nil {
+		log.Printf("❌ CleanupZombieTasks Query Error: %v", err)
+		return
+	}
+
+	for _, gt := range zombieTasks {
+		log.Printf("💀 [Cleanup] Detected zombie task %s (Agent: %s, Last update: %v). Releasing lock.", gt.ID, gt.Org, gt.UpdatedAt)
+		
+		err := store.WithTasks(func(allTasks []models.Task) ([]models.Task, error) {
+			t := store.FindTask(allTasks, gt.ID)
+			if t == nil {
+				return allTasks, nil
+			}
+			t.State = "Blocked"
+			t.Now = "⚠️ 调度超时：由于 Agent 进程长时间未响应（>30min），系统已强制释放节点锁。"
+			t.Block = "系统检测到运行超时"
+			t.LastError = "Runtime state locked due to process timeout"
+			t.FlowLog = append(t.FlowLog, models.FlowEntry{
+				At:     store.NowISO(),
+				From:   "系统守护进程",
+				To:     "系统",
+				Remark: "🚨 检测到任务僵死，已强制释放 Agent 占用状态，排队任务现在可以进入。",
+			})
+			t.UpdatedAt = store.NowISO()
+			return allTasks, nil
+		})
+		
+		if err != nil {
+			log.Printf("❌ Failed to cleanup zombie task %s: %v", gt.ID, err)
+		}
+	}
 }

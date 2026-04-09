@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { api } from '../api';
 import { useStore } from '../store';
+import { TerminalSquare, Lock, ArrowRight, ShieldCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 export default function LoginPage({ onLogin }: { onLogin: () => void }) {
     const [password, setPassword] = useState('');
@@ -15,106 +17,76 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
             if (res.ok) {
                 onLogin();
             } else {
-                toast(res.error || '登录失败', 'err');
+                toast(res.error || 'Authentication Failed', 'err');
             }
         } catch (err) {
-            toast('服务器连接失败', 'err');
+            toast('Network Error', 'err');
         } finally {
             setLoading(false);
         }
     };
 
     return (
-        <div className="login-container" style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            height: '100vh',
-            background: 'var(--bg)'
-        }}>
-            <div className="login-card" style={{
-                background: 'var(--panel)',
-                backdropFilter: 'blur(20px)',
-                border: '1px solid var(--line)',
-                borderRadius: '24px',
-                padding: '48px',
-                width: '100%',
-                maxWidth: '400px',
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.2)',
-                textAlign: 'center'
-            }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>🦞</div>
-                <h1 style={{
-                    fontSize: '28px',
-                    fontWeight: 800,
-                    marginBottom: '8px',
-                    letterSpacing: '-0.02em',
-                    background: 'linear-gradient(to right, var(--text), var(--muted))',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent'
-                }}>
-                    OpenClaw MAS
-                </h1>
-                <p style={{ color: 'var(--muted)', fontSize: '14px', marginBottom: '32px' }}>
-                    指挥-执行分离多智能体系统
-                </p>
-
-                <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ textAlign: 'left' }}>
-                        <label style={{ fontSize: '12px', fontWeight: 600, color: '#94a3b8', display: 'block', marginBottom: '8px', marginLeft: '4px' }}>
-                            访问密码
-                        </label>
-                        <input
-                            type="password"
-                            placeholder="请输入管理员密码"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            autoFocus
-                            style={{
-                                width: '100%',
-                                padding: '14px 18px',
-                                background: 'rgba(0, 0, 0, 0.2)',
-                                border: '1px solid rgba(255, 255, 255, 0.1)',
-                                borderRadius: '12px',
-                                color: '#fff',
-                                fontSize: '15px',
-                                outline: 'none',
-                                transition: 'border-color 0.2s'
-                            }}
-                            onFocus={(e) => e.target.style.borderColor = 'var(--acc)'}
-                            onBlur={(e) => e.target.style.borderColor = 'rgba(255, 255, 255, 0.1)'}
-                        />
+        <div className="min-h-screen bg-slate-50 flex items-center justify-center p-4 selection:bg-primary-200 font-sans">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, ease: "easeOut" }}
+              className="w-full max-w-md bg-white rounded-3xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-slate-200 overflow-hidden relative"
+            >
+                <div className="h-2 w-full bg-gradient-to-r from-primary-500 via-indigo-500 to-emerald-500" />
+                
+                <div className="p-8 md:p-10">
+                    <div className="flex justify-center mb-8">
+                       <div className="w-16 h-16 rounded-2xl bg-slate-50 border border-slate-200 flex items-center justify-center shadow-inner">
+                         <TerminalSquare className="w-8 h-8 text-primary-600" />
+                       </div>
                     </div>
 
-                    <button
-                        type="submit"
-                        disabled={loading}
-                        style={{
-                            padding: '14px',
-                            background: 'var(--acc)',
-                            color: '#fff',
-                            border: 'none',
-                            borderRadius: '12px',
-                            fontSize: '15px',
-                            fontWeight: 700,
-                            cursor: 'pointer',
-                            marginTop: '8px',
-                            boxShadow: '0 10px 15px -3px rgba(124, 58, 237, 0.3)',
-                            transition: 'transform 0.1s, filter 0.2s'
-                        }}
-                        onMouseDown={(e) => e.currentTarget.style.transform = 'scale(0.98)'}
-                        onMouseUp={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                        onMouseOver={(e) => e.currentTarget.style.filter = 'brightness(1.1)'}
-                        onMouseOut={(e) => e.currentTarget.style.filter = 'brightness(1)'}
-                    >
-                        {loading ? '验证中...' : '进入系统'}
-                    </button>
-                </form>
+                    <div className="text-center mb-10">
+                        <h1 className="text-2xl font-black text-slate-800 tracking-tight mb-2">
+                            OpenClaw MAS
+                        </h1>
+                        <p className="text-sm font-semibold text-slate-500">
+                            多智能体引擎控制台
+                        </p>
+                    </div>
 
-                <div style={{ marginTop: '32px', fontSize: '12px', color: 'rgba(255, 255, 255, 0.3)' }}>
-                    EDICT OS v2.0.0
+                    <form onSubmit={handleSubmit} className="space-y-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-bold text-slate-600 uppercase tracking-widest flex items-center gap-2 px-1">
+                                <Lock className="w-3.5 h-3.5 text-slate-400" /> 系统权限认证
+                            </label>
+                            <input
+                                type="password"
+                                placeholder="输入管理员访问密钥"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                autoFocus
+                                className="w-full px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 text-sm font-medium focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-500/10 transition-all placeholder:text-slate-400 shadow-inner"
+                            />
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full flex items-center justify-center gap-2 py-4 bg-primary-600 hover:bg-primary-700 text-white rounded-xl font-bold shadow-[0_4px_14px_0_rgb(79,70,229,0.3)] hover:shadow-[0_6px_20px_rgba(79,70,229,0.23)] transition-all disabled:opacity-70 disabled:cursor-not-allowed group active:scale-[0.98]"
+                        >
+                            {loading ? (
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <>
+                                登入系统管理中枢 <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                              </>
+                            )}
+                        </button>
+                    </form>
+
+                    <div className="mt-10 flex items-center justify-center gap-2 text-xs font-semibold text-slate-400">
+                        <ShieldCheck className="w-4 h-4 text-emerald-500" /> EDICT OS v2.0.0
+                    </div>
                 </div>
-            </div>
+            </motion.div>
         </div>
     );
 }

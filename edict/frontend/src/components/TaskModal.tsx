@@ -11,18 +11,11 @@ import {
   Play, 
   Pause, 
   XCircle, 
-  RefreshCcw, 
-  ArrowUpCircle, 
-  RotateCcw,
-  Search,
-  MessageSquare,
-  Cpu,
-  Zap,
-  ShieldCheck,
   FastForward,
-  MoreVertical,
   ClipboardList,
-  FileText
+  FileText,
+  ShieldCheck,
+  Server
 } from 'lucide-react';
 import { useStore, getPipeStatus, deptColor, stateLabel } from '../store';
 import { api } from '../api';
@@ -33,13 +26,14 @@ import { cn } from '../lib/utils';
 
 function StatusBadge({ state }: { state: string }) {
   const variants: Record<string, string> = {
-    Completed: "bg-neon-cyan/20 text-neon-cyan border-neon-cyan/30",
-    Blocked: "bg-neon-glitch/20 text-neon-glitch border-neon-glitch/30",
-    Executing: "bg-neon-violet/20 text-neon-violet border-neon-violet/30 animate-pulse",
-    Planning: "bg-white/10 text-slate-muted border-white/5",
+    Completed: "bg-emerald-50 text-emerald-700 border-emerald-200",
+    Blocked: "bg-red-50 text-red-700 border-red-200",
+    Executing: "bg-primary-50 text-primary-700 border-primary-200 animate-pulse",
+    Planning: "bg-slate-100 text-slate-600 border-slate-200",
+    Doing: "bg-primary-50 text-primary-700 border-primary-200",
   };
   return (
-    <span className={cn("px-3 py-1 rounded-full text-[10px] font-black uppercase border tracking-widest", variants[state] || "border-slate-line text-slate-muted")}>
+    <span className={cn("px-3 py-1 rounded-full text-[11px] font-bold uppercase border tracking-wider", variants[state] || "bg-slate-50 border-slate-200 text-slate-500")}>
       {state}
     </span>
   );
@@ -121,60 +115,61 @@ export default function TaskModal() {
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           onClick={close}
-          className="absolute inset-0 bg-black/80 backdrop-blur-md"
+          className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
         />
 
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 20 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 20 }}
-          className="relative w-full max-w-6xl h-full glass-panel rounded-[2.5rem] border border-white/10 overflow-hidden flex flex-col shadow-2xl"
+          className="relative w-full max-w-6xl h-full panel flex flex-col shadow-2xl overflow-hidden"
           onClick={e => e.stopPropagation()}
         >
           {/* --- Header --- */}
-          <header className="p-8 border-b border-white/5 flex items-start justify-between bg-white/[0.02]">
-            <div className="space-y-1">
+          <header className="p-6 md:p-8 border-b border-slate-200 flex items-start justify-between bg-white shrink-0">
+            <div className="space-y-1.5 flex-1 pr-6">
               <div className="flex items-center gap-3">
-                <span className="text-xs font-mono font-black text-neon-cyan tracking-widest">{task.id}</span>
+                <span className="text-xs font-mono font-semibold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">{task.id}</span>
                 <StatusBadge state={task.state} />
               </div>
-              <h2 className="text-2xl md:text-3xl font-black text-white leading-tight max-w-2xl">{task.title}</h2>
+              <h2 className="text-xl md:text-2xl font-bold text-slate-900 leading-tight line-clamp-2">{task.title}</h2>
             </div>
             
-                <div className="flex items-center gap-4">
-                  <div className="hidden md:flex flex-col items-end mr-4">
-                    <div className="flex items-center gap-2">
-                      <span className={cn(
-                        "w-2 h-2 rounded-full",
-                        hb.status === 'active' ? "bg-neon-cyan animate-pulse shadow-neon-cyan" : "bg-slate-line"
-                      )} />
-                      <span className="text-[10px] font-bold text-white uppercase">{hb.label || 'Standby'}</span>
-                    </div>
-                    <span className="text-[9px] text-slate-muted font-bold uppercase tracking-widest mt-1">
-                      Heartbeat: {hb.status === 'active' ? 'Locked' : 'Stalled'}
-                    </span>
-                  </div>
-                  <button 
-                    onClick={close}
-                    className="w-12 h-12 rounded-2xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-slate-muted hover:text-white transition-all transition-colors"
-                  >
-                    <X className="w-6 h-6" />
-                  </button>
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex flex-col items-end mr-4">
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    "w-2.5 h-2.5 rounded-full",
+                    hb.status === 'active' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] animate-pulse" : "bg-slate-300"
+                  )} />
+                  <span className="text-[11px] font-bold text-slate-700 uppercase">{hb.label || 'Standby'}</span>
                 </div>
+                <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">
+                  Heartbeat: {hb.status === 'active' ? 'Locked' : 'Stalled'}
+                </span>
+              </div>
+              <button 
+                onClick={close}
+                className="w-10 h-10 rounded-xl bg-slate-50 hover:bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-500 hover:text-slate-800 transition-colors"
+                title="Close Modal"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
           </header>
 
-          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
+          <div className="flex-1 overflow-hidden flex flex-col lg:flex-row bg-slate-50/50">
             {/* --- Left Column: Info & Control --- */}
-            <div className="w-full lg:w-96 border-r border-white/5 p-8 overflow-y-auto no-scrollbar space-y-8 bg-black/20">
+            <div className="w-full lg:w-96 border-r border-slate-200 p-6 md:p-8 overflow-y-auto bg-white space-y-8 flex-shrink-0">
               
               {/* Fault Diagnosis Banner */}
               {task.last_error && (
-                <div className="p-4 rounded-2xl bg-neon-glitch/10 border border-neon-glitch/30 neon-border-glitch animate-pulse-subtle">
+                <div className="p-4 rounded-xl bg-red-50 border border-red-200">
                   <div className="flex items-center gap-2 mb-2">
-                    <AlertTriangle className="w-4 h-4 text-neon-glitch" />
-                    <span className="text-[10px] font-black uppercase text-neon-glitch tracking-widest">Self-Healing Diagnosis</span>
+                    <AlertTriangle className="w-4 h-4 text-red-600" />
+                    <span className="text-xs font-bold uppercase text-red-700 tracking-wider">Self-Healing Diagnosis</span>
                   </div>
-                  <pre className="text-[9px] font-mono text-white/80 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+                  <pre className="text-[11px] font-mono text-red-800/80 overflow-x-auto whitespace-pre-wrap leading-relaxed bg-red-100/50 p-3 rounded-lg border border-red-100">
                     {task.last_error}
                   </pre>
                 </div>
@@ -182,29 +177,31 @@ export default function TaskModal() {
 
               {/* Action Hub */}
               <div className="space-y-4">
-                <h4 className="sub-title">Orchestrator Controls</h4>
-                <div className="grid grid-cols-2 gap-2">
+                <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                  <Terminal className="w-4 h-4 text-slate-400" /> Orchestrator Controls
+                </h4>
+                <div className="grid grid-cols-2 gap-3">
                   {['Planning', 'Executing', 'Dispatching', 'PlanReview', 'ResultReview'].includes(task.state) && (
                     <>
-                      <button onClick={() => handleManualAction('stop')} className="btn-premium btn-outline flex items-center justify-center gap-2 text-[11px]">
-                        <Pause className="w-3.5 h-3.5" /> Halt
+                      <button onClick={() => handleManualAction('stop')} className="btn-secondary flex items-center justify-center gap-2">
+                        <Pause className="w-4 h-4" /> Halt
                       </button>
-                      <button onClick={() => handleManualAction('cancel')} className="btn-premium btn-outline flex items-center justify-center gap-2 text-[11px] hover:text-neon-glitch">
-                        <XCircle className="w-3.5 h-3.5" /> Kill
+                      <button onClick={() => handleManualAction('cancel')} className="btn-secondary border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 hover:text-red-700 flex items-center justify-center gap-2">
+                        <XCircle className="w-4 h-4" /> Kill
                       </button>
                     </>
                   )}
                   {['Blocked', 'Cancelled'].includes(task.state) && (
-                    <button onClick={() => doAction('resume')} className="col-span-2 btn-premium btn-cyan flex items-center justify-center gap-2 text-[11px]">
-                      <Play className="w-3.5 h-3.5" /> Resume Mission
+                    <button onClick={() => doAction('resume')} className="col-span-2 btn-primary flex items-center justify-center gap-2">
+                      <Play className="w-4 h-4" /> Resume Mission
                     </button>
                   )}
                   {['ResultReview', 'PlanReview'].includes(task.state) && (
                     <>
-                      <button onClick={() => doReview('approve')} className="btn-premium bg-neon-cyan/20 border-neon-cyan/40 text-neon-cyan flex items-center justify-center gap-2 text-[11px]">
+                      <button onClick={() => doReview('approve')} className="px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium text-sm hover:bg-emerald-100 transition-colors flex items-center justify-center gap-2">
                         Approve
                       </button>
-                      <button onClick={() => doReview('reject')} className="btn-premium bg-neon-glitch/20 border-neon-glitch/40 text-neon-glitch flex items-center justify-center gap-2 text-[11px]">
+                      <button onClick={() => doReview('reject')} className="px-4 py-2 rounded-lg bg-red-50 text-red-700 border border-red-200 font-medium text-sm hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
                         Reject
                       </button>
                     </>
@@ -216,50 +213,51 @@ export default function TaskModal() {
                     const comment = prompt("Manual override comment:");
                     if (comment !== null) {
                       const r = await api.advanceState(task.id, comment);
-                      if (r.ok) { toast(`⏩ Advanced`); loadAll(); }
+                      if (r.ok) { toast(`⏩ Advanced Stage manually`); loadAll(); }
                       else toast(r.error || 'Advance failed', 'err');
                     }
                   }}
-                  className="w-full btn-premium btn-outline border-neon-violet/30 text-neon-violet hover:bg-neon-violet/10 flex items-center justify-center gap-2 text-[11px]"
+                  className="w-full px-4 py-2 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 font-medium text-sm hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
                 >
-                  <FastForward className="w-3.5 h-3.5" /> Force Advance Stage
+                  <FastForward className="w-4 h-4" /> Force Advance Stage
                 </button>
               </div>
 
               {/* Scheduler Metadata */}
               {schedData && (
                 <div className="space-y-4">
-                  <h4 className="sub-title">Scheduler Telemetry</h4>
+                  <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                    <Server className="w-4 h-4 text-slate-400" /> Scheduler Telemetry
+                  </h4>
                   <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 bg-black/40 rounded-xl border border-white/5">
-                      <div className="text-[9px] font-bold text-slate-muted uppercase mb-1">Stall Timer</div>
-                      <div className="text-sm font-black text-white">{schedData.stalledSec}s</div>
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="text-xs font-semibold text-slate-500 uppercase mb-1">Stall Timer</div>
+                      <div className="text-lg font-bold text-slate-800">{schedData.stalledSec}s</div>
                     </div>
-                    <div className="p-3 bg-black/40 rounded-xl border border-white/5">
-                      <div className="text-[9px] font-bold text-slate-muted uppercase mb-1">Retries</div>
-                      <div className="text-sm font-black text-white">{schedData.scheduler?.retryCount || 0}</div>
+                    <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
+                      <div className="text-xs font-semibold text-slate-500 uppercase mb-1">Retries</div>
+                      <div className="text-lg font-bold text-slate-800">{schedData.scheduler?.retryCount || 0}</div>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => api.schedulerRetry(task.id, 'Manual Retry')} className="flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-bold uppercase transition-all tracking-wider text-slate-muted hover:text-white">Retry</button>
-                    <button onClick={() => api.schedulerEscalate(task.id, 'Escalating')} className="flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-bold uppercase transition-all tracking-wider text-slate-muted hover:text-white">Escalate</button>
-                    <button onClick={() => api.schedulerRollback(task.id, 'Rollback')} className="flex-1 px-3 py-2 bg-white/5 hover:bg-white/10 rounded-lg text-[9px] font-bold uppercase transition-all tracking-wider text-slate-muted hover:text-white">Rollback</button>
+                    <button onClick={() => api.schedulerRetry(task.id, 'Manual Retry')} className="flex-1 btn-secondary text-xs">Retry</button>
+                    <button onClick={() => api.schedulerEscalate(task.id, 'Escalating')} className="flex-1 btn-secondary text-xs">Escalate</button>
+                    <button onClick={() => api.schedulerRollback(task.id, 'Rollback')} className="flex-1 btn-secondary text-xs border-red-200 hover:bg-red-50 hover:text-red-600">Rollback</button>
                   </div>
                 </div>
               )}
 
               {/* Basic Fields */}
-              <div className="space-y-4">
-                 <h4 className="sub-title">Operational Metadata</h4>
+              <div className="space-y-4 pt-4 border-t border-slate-100">
                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                       <span className="text-[10px] text-slate-muted font-bold uppercase">Assignee Org</span>
-                       <span className="text-[10px] text-neon-cyan font-black">{task.org || 'UNASSIGNED'}</span>
+                       <span className="text-xs text-slate-500 font-medium">Assignee Org</span>
+                       <span className="text-xs text-primary-700 bg-primary-50 border border-primary-100 px-2.5 py-0.5 rounded font-semibold">{task.org || 'UNASSIGNED'}</span>
                     </div>
                     {task.eta && (
                       <div className="flex items-center justify-between">
-                        <span className="text-[10px] text-slate-muted font-bold uppercase">ETA</span>
-                        <span className="text-[10px] text-white font-black">{task.eta}</span>
+                        <span className="text-xs text-slate-500 font-medium">ETA</span>
+                        <span className="text-xs text-slate-800 font-medium bg-slate-100 px-2 py-0.5 rounded">{task.eta}</span>
                       </div>
                     )}
                  </div>
@@ -267,9 +265,9 @@ export default function TaskModal() {
             </div>
 
             {/* --- Right Column: Activity & Logs --- */}
-            <div className="flex-1 flex flex-col overflow-hidden">
+            <div className="flex-1 flex flex-col min-w-0">
               {/* Tabs */}
-              <div className="flex px-8 pt-6 border-b border-white/5 gap-8">
+              <div className="flex px-8 pt-4 border-b border-slate-200 gap-8 bg-white shrink-0 shadow-sm z-10">
                 {[
                   { id: 'activity', label: 'Evolution Trace', icon: Activity },
                   { id: 'todos', label: 'Edict Steps', icon: ClipboardList },
@@ -279,65 +277,69 @@ export default function TaskModal() {
                     key={tab.id}
                     onClick={() => setActiveSegment(tab.id as any)}
                     className={cn(
-                      "pb-4 flex items-center gap-2 text-xs font-bold transition-all relative",
-                      activeSegment === tab.id ? "text-neon-cyan" : "text-slate-muted hover:text-slate-text"
+                      "pb-4 pt-2 flex items-center gap-2 text-sm font-semibold transition-all relative",
+                      activeSegment === tab.id ? "text-primary-600" : "text-slate-500 hover:text-slate-800"
                     )}
                   >
                     <tab.icon className="w-4 h-4" />
                     {tab.label}
                     {activeSegment === tab.id && (
-                      <motion.div layoutId="tabMarker" className="absolute bottom-0 left-0 right-0 h-0.5 bg-neon-cyan shadow-neon-cyan" />
+                      <motion.div layoutId="tabMarker" className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary-600" />
                     )}
                   </button>
                 ))}
               </div>
 
-              <div className="flex-1 overflow-y-auto p-8 no-scrollbar relative">
+              <div className="flex-1 overflow-y-auto p-6 md:p-8 relative">
                 <AnimatePresence mode="wait">
                   {activeSegment === 'activity' && (
                     <motion.div 
                       key="activity"
-                      initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                      className="space-y-8"
+                      initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}
+                      className="space-y-10"
                     >
                       {/* Modern Pipeline Visualization */}
-                      <section className="space-y-4">
-                        <h4 className="sub-title">Evolution Pipeline</h4>
-                        <div className="flex items-center gap-1 overflow-x-auto pb-4 no-scrollbar">
+                      <section className="space-y-5">
+                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Evolution Pipeline</h4>
+                        <div className="flex items-center gap-1.5 overflow-x-auto pb-4 pt-2 px-1 no-scrollbar">
                           {getPipeStatus(task).map((s, i, arr) => (
-                            <div key={s.key} className="flex items-center gap-1 shrink-0">
+                            <div key={s.key} className="flex items-center gap-1.5 shrink-0">
                                <div className={cn(
-                                 "flex flex-col items-center p-3 rounded-2xl min-w-[100px] transition-all",
-                                 s.status === 'active' ? "bg-neon-violet/10 border-2 border-neon-violet shadow-neon-violet/20" : 
-                                 s.status === 'done' ? "bg-neon-cyan/5 border border-neon-cyan/20 opacity-80" : 
-                                 "bg-white/5 border border-white/5 opacity-30"
+                                 "flex flex-col items-center p-4 rounded-xl min-w-[120px] transition-all border",
+                                 s.status === 'active' ? "bg-primary-50 border-primary-200 shadow-md transform -translate-y-1" : 
+                                 s.status === 'done' ? "bg-emerald-50 border-emerald-100 opacity-90" : 
+                                 "bg-white border-slate-100 opacity-60"
                                )}>
-                                 <span className="text-2xl mb-1">{s.icon}</span>
-                                 <span className={cn("text-[10px] font-black uppercase tracking-wider", s.status === 'active' ? "text-neon-violet" : s.status === 'done' ? "text-neon-cyan" : "text-slate-muted")}>
-                                   {s.dept.slice(0, 4)}
+                                 <span className="text-3xl mb-2 grayscale opacity-90">{s.icon}</span>
+                                 <span className={cn("text-xs font-bold uppercase tracking-wider mb-0.5", 
+                                   s.status === 'active' ? "text-primary-700" : 
+                                   s.status === 'done' ? "text-emerald-700" : "text-slate-500"
+                                 )}>
+                                   {s.dept.slice(0, 10)}
                                  </span>
-                                 <span className="text-[8px] text-slate-muted font-bold opacity-60">{s.action}</span>
+                                 <span className="text-[10px] uppercase text-slate-500 font-semibold">{s.action}</span>
                                </div>
-                               {i < arr.length - 1 && <ChevronRight className="w-4 h-4 text-slate-line" />}
+                               {i < arr.length - 1 && <ChevronRight className="w-5 h-5 text-slate-300" />}
                             </div>
                           ))}
                         </div>
                       </section>
 
                       {/* Flow Log Timeline */}
-                      <section className="space-y-4">
-                        <h4 className="sub-title">Collaborative Flow Log</h4>
-                        <div className="relative border-l border-slate-line pl-6 ml-2 space-y-6">
+                      <section className="space-y-5">
+                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Collaborative Flow Log</h4>
+                        <div className="relative border-l-2 border-slate-200 pl-6 ml-3 space-y-8">
+                           {task.flow_log?.length === 0 && <p className="text-sm text-slate-500 italic">No collaborative logs recorded yet.</p>}
                            {task.flow_log?.map((fl, i) => (
                              <div key={i} className="relative">
-                               <div className="absolute -left-[29px] top-1 w-2 h-2 rounded-full bg-neon-cyan shadow-neon-cyan shadow-sm" />
-                               <div className="flex items-center gap-2 mb-1">
-                                 <span className="text-[10px] font-black text-neon-cyan uppercase">{fl.from}</span>
-                                 <ChevronRight className="w-3 h-3 text-slate-muted opacity-40" />
-                                 <span className="text-[10px] font-black text-neon-violet uppercase">{fl.to}</span>
-                                 <span className="ml-auto text-[9px] font-mono text-slate-muted">{fl.at?.substring(11, 16)}</span>
+                               <div className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-white border-[3px] border-primary-500 shadow-sm" />
+                               <div className="flex items-center gap-2 mb-2 p-1.5 bg-slate-100 w-fit rounded-lg border border-slate-200/60">
+                                 <span className="text-[10px] font-bold text-slate-700 uppercase px-1">{fl.from}</span>
+                                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                                 <span className="text-[10px] font-bold text-primary-700 uppercase px-1">{fl.to}</span>
+                                 <span className="ml-2 text-[10px] font-mono text-slate-500">{fl.at?.substring(11, 19)}</span>
                                </div>
-                               <p className="text-[11px] text-white/70 font-medium leading-relaxed italic border-l-2 border-white/5 pl-3">
+                               <p className="text-sm text-slate-700 leading-relaxed bg-white p-4 rounded-xl border border-slate-200 shadow-subtle">
                                  {fl.remark}
                                </p>
                              </div>
@@ -350,26 +352,35 @@ export default function TaskModal() {
                   {activeSegment === 'todos' && (
                     <motion.div 
                       key="todos"
-                      initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
+                      initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}
                       className="space-y-6"
                     >
-                      <h4 className="sub-title">Step-by-Step Edicts</h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Step-by-Step Edicts</h4>
+                      </div>
+                      
                       <div className="space-y-3">
+                         {task.todos?.length === 0 && <p className="text-sm text-slate-500 italic text-center py-10">No specific steps defined for this edict.</p>}
                          {task.todos?.map(td => (
                            <div key={td.id} className={cn(
-                             "p-4 rounded-2xl border transition-all",
-                             td.status === 'completed' ? "bg-neon-cyan/5 border-neon-cyan/20 opacity-60 grayscale-[0.5]" : 
-                             td.status === 'in-progress' ? "bg-neon-violet/10 border-neon-violet/30 neon-border-violet" :
-                             "bg-white/5 border-white/5"
+                             "p-5 rounded-2xl border transition-all shadow-subtle",
+                             td.status === 'completed' ? "bg-slate-50 border-slate-200 opacity-60" : 
+                             td.status === 'in-progress' ? "bg-white border-primary-300 shadow-md ring-1 ring-primary-50" :
+                             "bg-white border-slate-200"
                            )}>
-                             <div className="flex items-center justify-between mb-2">
-                               <div className="flex items-center gap-3">
-                                 {td.status === 'completed' ? <CheckCircle2 className="w-4 h-4 text-neon-cyan" /> : <Clock className="w-4 h-4 text-slate-muted" />}
-                                 <span className="text-xs font-black text-white">{td.title}</span>
+                             <div className="flex items-start justify-between mb-2 gap-4">
+                               <div className="flex items-start gap-3 mt-0.5">
+                                 {td.status === 'completed' ? <CheckCircle2 className="w-5 h-5 text-emerald-500 shrink-0" /> : <Clock className="w-5 h-5 text-slate-300 shrink-0" />}
+                                 <span className={cn(
+                                   "text-sm font-bold",
+                                   td.status === 'completed' ? "text-slate-500 line-through decoration-slate-300" : "text-slate-800"
+                                 )}>{td.title}</span>
                                </div>
-                               <span className="text-[9px] font-bold text-slate-muted uppercase">#{td.id}</span>
+                               <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase shrink-0">#{td.id}</span>
                              </div>
-                             {td.detail && <p className="text-[10px] text-slate-muted pl-7">{td.detail}</p>}
+                             {td.detail && (
+                               <p className="text-[12px] text-slate-600 pl-8 leading-relaxed mt-1">{td.detail}</p>
+                             )}
                            </div>
                          ))}
                       </div>
@@ -379,31 +390,33 @@ export default function TaskModal() {
                   {activeSegment === 'logs' && (
                     <motion.div 
                       key="logs"
-                      initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}
-                      className="h-full flex flex-col"
+                      initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}
+                      className="h-[600px] flex flex-col"
                     >
-                      <h4 className="sub-title mb-4">Raw Swarm Intelligence Logs</h4>
-                      <div className="flex-1 bg-black/40 rounded-3xl border border-white/5 p-4 font-mono text-[10px] overflow-y-auto space-y-4 no-scrollbar" ref={logRef}>
+                      <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Raw Swarm Intelligence Logs</h4>
+                      <div className="flex-1 bg-slate-900 rounded-2xl border border-slate-800 p-4 font-mono text-[11px] overflow-y-auto space-y-4 no-scrollbar shadow-inner" ref={logRef}>
+                        {activityData?.activity?.length === 0 && <div className="text-slate-500 text-center py-10 opacity-70">No raw activity recorded.</div>}
                         {activityData?.activity?.map((a, i) => (
-                          <div key={i} className="flex gap-4 group">
-                             <div className="w-16 shrink-0 text-right opacity-30 text-[9px]">{typeof a.at === 'string' ? a.at.substring(11, 19) : ''}</div>
-                             <div className="flex-1 space-y-1">
-                                <div className="flex items-center gap-2">
-                                  <span className="text-neon-cyan font-black uppercase text-[8px]">{a.agent || 'SYSTEM'}</span>
-                                  <span className="px-1.5 py-0.5 rounded bg-white/5 text-slate-muted text-[7px] uppercase font-black">{a.kind}</span>
-                                </div>
-                                <div className="text-slate-text leading-relaxed">
-                                  {a.kind === 'assistant' && a.text}
-                                  {a.kind === 'progress' && a.text}
-                                  {a.kind === 'tool_result' && (
-                                    <div className={cn("p-2 rounded bg-black/40 border border-white/5", a.exitCode === 0 ? "border-neon-cyan/20" : "border-neon-glitch/20")}>
-                                      <span className="text-neon-cyan font-bold">[{a.tool}]</span> {a.output?.substring(0, 300)}
-                                    </div>
-                                  )}
-                                  {a.kind === 'thinking' && <span className="opacity-40 italic">{a.text}</span>}
-                                </div>
-                             </div>
-                          </div>
+                           <div key={i} className="flex gap-4 group">
+                              <div className="w-16 shrink-0 text-right text-slate-500 text-[10px] mt-0.5">{typeof a.at === 'string' ? a.at.substring(11, 19) : ''}</div>
+                              <div className="flex-1 space-y-1.5 pb-2 border-b border-white/5">
+                                 <div className="flex items-center gap-2">
+                                   <span className="text-primary-400 font-bold uppercase text-[9px]">{a.agent || 'SYSTEM'}</span>
+                                   <span className="px-1.5 py-0.5 rounded bg-white/10 text-slate-300 text-[8px] uppercase font-bold">{a.kind}</span>
+                                 </div>
+                                 <div className="text-slate-300 leading-relaxed max-w-3xl whitespace-pre-wrap break-words">
+                                   {a.kind === 'assistant' && a.text}
+                                   {a.kind === 'progress' && <span className="text-blue-300">ℹ {a.text}</span>}
+                                   {a.kind === 'tool_result' && (
+                                     <div className={cn("p-3 mt-1 rounded bg-black/60 border", a.exitCode === 0 ? "border-emerald-500/30" : "border-red-500/30")}>
+                                       <div className="text-emerald-400 font-bold mb-1">[{a.tool}]</div> 
+                                       <div className="text-slate-400 font-mono text-[10px]">{a.output?.substring(0, 1000)}{a.output && a.output.length > 1000 ? '\n...[truncated]' : ''}</div>
+                                     </div>
+                                   )}
+                                   {a.kind === 'thinking' && <span className="text-slate-500 italic block border-l-2 border-slate-700 pl-2">"{a.text}"</span>}
+                                 </div>
+                              </div>
+                           </div>
                         ))}
                       </div>
                     </motion.div>

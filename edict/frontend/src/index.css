@@ -3,101 +3,62 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    --obsidian-full: 5, 5, 5;
-    --obsidian-panel: 14, 14, 14;
-    --neon-cyan: 0, 242, 255;
-    --neon-violet: 140, 92, 255;
-    --slate-text: 224, 224, 224;
-    --slate-muted: 128, 128, 128;
-    --slate-line: 38, 38, 38;
-  }
-
   body {
-    @apply bg-obsidian-full text-slate-text font-outfit antialiased selection:bg-neon-cyan/30 selection:text-white;
-    background-image:
-      radial-gradient(circle at 0% 0%, rgba(140, 92, 255, 0.03) 0%, transparent 50%),
-      radial-gradient(circle at 100% 100%, rgba(0, 242, 255, 0.03) 0%, transparent 50%);
-    background-attachment: fixed;
-  }
-
-  /* Custom Scrollbar */
-  ::-webkit-scrollbar {
-    @apply w-1.5 h-1.5;
-  }
-
-  ::-webkit-scrollbar-track {
-    @apply bg-transparent;
-  }
-
-  ::-webkit-scrollbar-thumb {
-    @apply bg-slate-line rounded-full hover:bg-slate-muted/50 transition-colors;
-  }
-
-  code,
-  pre {
-    @apply font-mono;
+    @apply bg-slate-50 text-slate-900 font-sans antialiased;
   }
 }
 
 @layer components {
+  /* Common UI Elements for Pro Max Theme */
+  .panel {
+    @apply bg-white rounded-xl border border-slate-200 shadow-subtle overflow-hidden;
+  }
+  
   .glass-panel {
-    @apply bg-obsidian-glass backdrop-blur-xl border border-white/5 shadow-glass;
+    @apply bg-white/80 backdrop-blur-md rounded-xl border border-slate-200 shadow-subtle;
   }
 
-  .glass-card {
-    @apply bg-obsidian-panel/40 backdrop-blur-md border border-slate-line hover:border-slate-muted/40 transition-all duration-300;
+  /* Form Elements */
+  .input-field {
+    @apply w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-900
+           transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 placeholder-slate-400;
   }
 
-  .neon-border-cyan {
-    @apply border-neon-cyan/50 shadow-neon-cyan;
+  .btn-primary {
+    @apply px-4 py-2 bg-primary-600 text-white font-medium text-sm rounded-lg
+           hover:bg-primary-700 active:bg-primary-800 transition-colors shadow-sm;
   }
 
-  .neon-border-violet {
-    @apply border-neon-violet/50 shadow-neon-violet;
+  .btn-secondary {
+    @apply px-4 py-2 bg-white text-slate-700 font-medium text-sm rounded-lg
+           border border-slate-200 hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 transition-all shadow-sm;
   }
 
-  .btn-premium {
-    @apply relative overflow-hidden px-6 py-2.5 rounded-xl font-semibold transition-all duration-300 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed;
+  .btn-danger {
+    @apply px-4 py-2 bg-red-600 text-white font-medium text-sm rounded-lg
+           hover:bg-red-700 active:bg-red-800 transition-colors shadow-sm;
+  }
+  
+  .badge-primary {
+    @apply px-2 py-0.5 rounded-full bg-primary-50 text-primary-700 text-xs font-semibold border border-primary-200;
+  }
+  
+  .badge-neutral {
+    @apply px-2 py-0.5 rounded-full bg-slate-100 text-slate-600 text-xs font-semibold border border-slate-200;
   }
 
-  .btn-cyan {
-    @apply bg-neon-cyan text-obsidian-full hover:shadow-neon-cyan hover:brightness-110;
+  /* Scrollbar override for webkit */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
   }
-
-  .btn-outline {
-    @apply border border-slate-line bg-transparent text-slate-text hover:bg-white/5 hover:border-slate-muted;
+  ::-webkit-scrollbar-track {
+    background: transparent;
   }
-
-  .input-premium {
-    @apply bg-obsidian-full border border-slate-line rounded-xl px-4 py-2.5 text-slate-text focus:outline-none focus:border-neon-cyan/50 focus:ring-1 focus:ring-neon-cyan/20 transition-all;
+  ::-webkit-scrollbar-thumb {
+    @apply bg-slate-300 rounded-full;
   }
-
-  .sub-title {
-    @apply text-[10px] uppercase tracking-[0.2em] font-bold text-slate-muted mb-2;
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-slate-400;
   }
-}
-
-/* Animations */
-@keyframes pulse-subtle {
-
-  0%,
-  100% {
-    opacity: 1;
-    transform: scale(1);
-  }
-
-  50% {
-    opacity: 0.8;
-    transform: scale(0.98);
-  }
-}
-
-.animate-pulse-subtle {
-  animation: pulse-subtle 3s infinite ease-in-out;
-}
-
-/* Tab Active Indicator */
-.tab-active {
-  @apply text-neon-cyan relative after:absolute after:bottom-0 after:left-0 after:right-0 after:h-0.5 after:bg-neon-cyan after:shadow-neon-cyan;
 }
