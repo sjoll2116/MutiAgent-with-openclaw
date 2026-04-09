@@ -245,7 +245,7 @@ func isAgentOccupied(agentName, currentTaskID string) (bool, string) {
 	// 排除掉当前正在下发的这个任务 ID (防止由于状态同步导致的自我死锁)
 	err := store.DB.Raw(`
 		SELECT id FROM tasks 
-		WHERE (org = ? OR agent = ?) 
+		WHERE (org = ? OR official = ?) 
 		AND state = 'Executing' 
 		AND id != ?
 		LIMIT 1

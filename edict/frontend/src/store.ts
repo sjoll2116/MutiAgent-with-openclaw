@@ -470,9 +470,16 @@ export function startPolling() {
   useStore.getState().loadAll();
 
   const connect = () => {
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const host = window.location.host;
-    _ws = new WebSocket(`${protocol}//${host}/ws/live-status`);
+    const API_BASE = import.meta.env.VITE_API_URL || '';
+    let wsUrl = '';
+    if (API_BASE) {
+      wsUrl = API_BASE.replace(/^http/, 'ws') + '/ws/live-status';
+    } else {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const host = window.location.host;
+      wsUrl = `${protocol}//${host}/ws/live-status`;
+    }
+    _ws = new WebSocket(wsUrl);
 
     _ws.onopen = () => {
       console.log('WS connected');
