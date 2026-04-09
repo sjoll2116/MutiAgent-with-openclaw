@@ -521,6 +521,21 @@ func ListTasks(c *gin.Context) {
 	})
 }
 
+// GetLiveStatus handles GET /api/live-status
+func GetLiveStatus(c *gin.Context) {
+	// 获取最近的活跃任务列表
+	tasks, err := store.QueryTasks("", "", "", 300, 0)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, models.APIResp{OK: false, Error: err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"tasks":      tasks,
+		"syncStatus": gin.H{"ok": true},
+	})
+}
+
 // GetTask handles GET /api/tasks/:taskId.
 func GetTask(c *gin.Context) {
 	taskID := c.Param("taskId")

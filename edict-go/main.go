@@ -140,7 +140,7 @@ func main() {
 	r.POST("/api/auth/login", handlers.LoginHandler)
 
 	// ── 公共查询路由 ──
-	r.GET("/api/live-status", handlers.JSONFile("live_status.json"))
+	r.GET("/api/live-status", handlers.GetLiveStatus)
 	r.GET("/api/agent-config", handlers.JSONFile("agent_config.json"))
 	r.GET("/api/model-change-log", handlers.JSONFileArray("model_change_log.json"))
 	r.GET("/api/last-result", handlers.JSONFile("last_model_change_result.json"))
