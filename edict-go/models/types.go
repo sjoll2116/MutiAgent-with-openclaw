@@ -26,15 +26,17 @@ type ProgressEntry struct {
 
 // TodoItem 表示一个单一的待办事项 / 子任务。
 type TodoItem struct {
-	ID         string `json:"id"`
-	Title      string `json:"title"`
-	Status     string `json:"status,omitempty"`
-	Detail     string `json:"detail,omitempty"`
-	Stage      int    `json:"stage,omitempty"`      // 所属执行阶段 (1, 2, 3...)
-	Agent      string `json:"agent,omitempty"`      // 指派的 Agent ID
-	RetryCount int    `json:"retryCount,omitempty"` // 已重试次数
-	MaxRetry   int    `json:"maxRetry,omitempty"`   // 最大重试次数 (默认 2)
-	FailReason string `json:"failReason,omitempty"` // 失败/跳过原因
+	ID            string   `json:"id"`
+	Title         string   `json:"title"`
+	Status        string   `json:"status,omitempty"`
+	Detail        string   `json:"detail,omitempty"`
+	Stage         int      `json:"stage,omitempty"`         // 所属执行阶段 (可用作分组展示建议)
+	Agent         string   `json:"agent,omitempty"`         // Dispatcher 最终指派的 Agent ID
+	DependsOn     []string `json:"dependsOn,omitempty"`     // 依赖的前置 Todo ID 列表 (实现 DAG)
+	RequestedRole string   `json:"requestedRole,omitempty"` // 该原子任务建议的专家角色类型
+	RetryCount    int      `json:"retryCount,omitempty"`    // 已重试次数
+	MaxRetry      int      `json:"maxRetry,omitempty"`      // 最大重试次数 (默认 2)
+	FailReason    string   `json:"failReason,omitempty"`    // 失败/跳过原因
 }
 
 // Task 是存储在 tasks_source.json 中的核心数据模型。

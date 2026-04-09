@@ -257,9 +257,14 @@ func mapGormToTask(gt models.GormTask) models.Task {
 	var gTodos []models.GormTodoItem
 	DB.Where("task_id = ?", gt.ID).Find(&gTodos)
 	for _, gtd := range gTodos {
+		var depends []string
+		if gtd.DependsOn != "" {
+			_ = json.Unmarshal([]byte(gtd.DependsOn), &depends)
+		}
 		t.Todos = append(t.Todos, models.TodoItem{
 			ID: gtd.TodoID, Title: gtd.Title, Status: gtd.Status, Detail: gtd.Detail,
 			Stage: gtd.Stage, Agent: gtd.Agent,
+			DependsOn: depends, RequestedRole: gtd.RequestedRole,
 			RetryCount: gtd.RetryCount, MaxRetry: gtd.MaxRetry, FailReason: gtd.FailReason,
 		})
 	}
@@ -303,10 +308,13 @@ func mapProgressToGorm(taskID string, pe models.ProgressEntry) models.GormProgre
 }
 
 func mapTodoToGorm(taskID string, todo models.TodoItem) models.GormTodoItem {
+	depends, _ := json.Marshal(todo.DependsOn)
 	return models.GormTodoItem{
 		TaskID: taskID, TodoID: todo.ID, Title: todo.Title, Status: todo.Status, Detail: todo.Detail,
 		Stage: todo.Stage, Agent: todo.Agent,
-		RetryCount: todo.RetryCount, MaxRetry: todo.MaxRetry, FailReason: todo.FailReason,
+		DependsOn:     string(depends),
+		RequestedRole: todo.RequestedRole,
+		RetryCount:    todo.RetryCount, MaxRetry: todo.MaxRetry, FailReason: todo.FailReason,
 	}
 }
 

@@ -659,124 +659,108 @@ func handleTodoFailure(taskID, todoID, agent string, result openclawResult, trac
 
 // checkStageCompletion 检查当前 Stage 的所有 Todo 是否完成/跳过。
 // 若当前 Stage 结算完毕：推进到下一 Stage 或进入 ResultReview。
+// checkStageCompletion 升级为基于 DAG 的就绪检查与智能调度。
+// 它会扫描所有未开始的任务，检查其依赖是否满足，并进行智能 Agent 分配与派发。
 func checkStageCompletion(taskID, traceID string) {
 	task, err := store.GetTaskByID(taskID)
 	if err != nil || task == nil {
 		return
 	}
-	if task.Scheduler == nil {
-		return
-	}
 
-	currentStage := getIntFromScheduler(task.Scheduler, "currentStage", 1)
-	totalStages := getIntFromScheduler(task.Scheduler, "totalStages", 1)
-
-	// 统计当前 Stage 的 todo 状态
-	pending, completed, skipped := 0, 0, 0
-	for _, todo := range task.Todos {
-		if todo.Stage != currentStage {
-			continue
-		}
-		switch todo.Status {
-		case "completed":
-			completed++
-		case "skipped":
-			skipped++
-		default: // not-started, in-progress, failed
-			pending++
+	// 1. 统计总体状态
+	allDone := true
+	anyReady := false
+	completedIDs := make(map[string]bool)
+	for _, td := range task.Todos {
+		if td.Status == "completed" || td.Status == "skipped" {
+			completedIDs[td.ID] = true
+		} else {
+			allDone = false
 		}
 	}
 
-	log.Printf("📊 Task %s Stage %d/%d: pending=%d completed=%d skipped=%d",
-		taskID, currentStage, totalStages, pending, completed, skipped)
-
-	// 仍有进行中/未开始的 todo → 等待
-	if pending > 0 {
-		return
-	}
-
-	// ── 当前 Stage 结算完毕 ──
-	if currentStage >= totalStages {
-		// 全部 Stage 完成 → 进入 ResultReview（Dispatcher 汇总验收）
-		log.Printf("🏁 All %d stages completed for task %s (completed=%d skipped=%d)",
-			totalStages, taskID, completed, skipped)
-
+	// 2. 如果全部完成，推进到 ResultReview
+	if allDone && len(task.Todos) > 0 {
+		log.Printf("🏁 All tasks in DAG completed for task %s, entering ResultReview", taskID)
 		store.WithTasks(func(allTasks []models.Task) ([]models.Task, error) {
 			t := store.FindTask(allTasks, taskID)
-			if t == nil {
-				return allTasks, nil
-			}
+			if t == nil { return allTasks, nil }
 			t.State = "ResultReview"
 			t.Org = "任务调度引擎"
-			if skipped > 0 {
-				t.Now = fmt.Sprintf("⚠️ 所有阶段完成（%d 个子任务被跳过），进入汇总验收",
-					skipped)
-			} else {
-				t.Now = "✅ 所有执行阶段完成，进入成果验收"
-			}
-			t.Scheduler["currentStage"] = totalStages
+			t.Now = "✅ 全部子任务已按依赖序列执行完毕，正在汇总成果"
 			t.FlowLog = append(t.FlowLog, models.FlowEntry{
-				At:     store.NowISO(),
-				From:   "执行智能体集群",
-				To:     "任务调度引擎",
-				Remark: fmt.Sprintf("🏁 全部 %d 阶段执行完毕，进入汇总验收", totalStages),
+				At: store.NowISO(), From: "执行智能体集群", To: "任务调度引擎",
+				Remark: "🏁 DAG 依赖链执行完毕，进入汇总验收阶段",
 			})
 			t.UpdatedAt = store.NowISO()
 			return allTasks, nil
 		})
-
-		PublishEvent(TopicTaskStatus, traceID, "task.status", "stage-controller",
-			EventPayload{
-				"task_id":      taskID,
-				"from":         "Executing",
-				"to":           "ResultReview",
-				"assignee_org": "任务调度引擎",
-			})
+		PublishEvent(TopicTaskStatus, traceID, "task.status", "dag-controller", EventPayload{
+			"task_id": taskID, "from": "Executing", "to": "ResultReview", "assignee_org": "任务调度引擎",
+		})
 		return
 	}
 
-	// ── 推进到下一 Stage ──
-	nextStage := currentStage + 1
-	log.Printf("➡️ Task %s advancing: Stage %d → Stage %d", taskID, currentStage, nextStage)
+	// 3. 寻找并派发就绪任务
+	matcher := NewAgentMatcher()
+	var toDispatch []models.TodoItem
 
-	// 收集下一 Stage 的 todos（用于发布 dispatch 事件）
-	var nextTodos []models.TodoItem
-	for _, todo := range task.Todos {
-		if todo.Stage == nextStage {
-			nextTodos = append(nextTodos, todo)
-		}
-	}
-
-	store.WithTasks(func(allTasks []models.Task) ([]models.Task, error) {
+	err = store.WithTasks(func(allTasks []models.Task) ([]models.Task, error) {
 		t := store.FindTask(allTasks, taskID)
-		if t == nil {
-			return allTasks, nil
+		if t == nil { return allTasks, nil }
+
+		modified := false
+		for i, todo := range t.Todos {
+			if todo.Status != "not-started" {
+				continue
+			}
+
+			// 检查依赖
+			ready := true
+			for _, depID := range todo.DependsOn {
+				if !completedIDs[depID] {
+					ready = false
+					break
+				}
+			}
+
+			if ready {
+				// 智能选型：由 Dispatcher 最终决定执行智能体
+				if t.Todos[i].Agent == "" {
+					assigned := matcher.Match(todo.RequestedRole, todo.Title)
+					if assigned == "" {
+						// 兜底：如果完全匹配不到，暂时发给通用开发
+						assigned = "agency_engineering_senior_developer"
+					}
+					t.Todos[i].Agent = assigned
+					log.Printf("🤖 Dispatcher assigned agent '%s' to todo %s", assigned, todo.ID)
+				}
+				
+				t.Todos[i].Status = "in-progress" // 标记为进行中防止重复派发
+				toDispatch = append(toDispatch, t.Todos[i])
+				anyReady = true
+				modified = true
+			}
 		}
-		t.Scheduler["currentStage"] = nextStage
-		t.Now = fmt.Sprintf("➡️ Stage %d 完成，推进到 Stage %d", currentStage, nextStage)
-		t.FlowLog = append(t.FlowLog, models.FlowEntry{
-			At:     store.NowISO(),
-			From:   fmt.Sprintf("Stage %d", currentStage),
-			To:     fmt.Sprintf("Stage %d", nextStage),
-			Remark: fmt.Sprintf("➡️ Stage %d 结算完毕 (完成:%d 跳过:%d)，推进到 Stage %d",
-				currentStage, completed, skipped, nextStage),
-		})
-		t.UpdatedAt = store.NowISO()
+		
+		if modified {
+			t.UpdatedAt = store.NowISO()
+		}
 		return allTasks, nil
 	})
 
-	// 为下一 Stage 的每个 todo 发布 dispatch 事件
-	for _, todo := range nextTodos {
-		if todo.Agent != "" {
-			PublishEvent(TopicTaskDispatch, traceID, "task.dispatch.request",
-				"stage-controller", EventPayload{
-					"task_id": taskID,
-					"agent":   todo.Agent,
-					"todo_id": todo.ID,
-					"state":   "Executing",
-					"message": fmt.Sprintf("📌 Stage %d 子任务: %s\n\n%s",
-						nextStage, todo.Title, todo.Detail),
-				})
-		}
+	// 4. 发送派单事件
+	for _, todo := range toDispatch {
+		PublishEvent(TopicTaskDispatch, traceID, "task.dispatch.request", "dag-controller", EventPayload{
+			"task_id": taskID,
+			"agent":   todo.Agent,
+			"todo_id": todo.ID,
+			"state":   "Executing",
+			"message": fmt.Sprintf("项目指令: %s\n\n详情: %s", todo.Title, todo.Detail),
+		})
+	}
+
+	if anyReady {
+		log.Printf("🚀 DAG: %d ready todos dispatched for task %s", len(toDispatch), taskID)
 	}
 }

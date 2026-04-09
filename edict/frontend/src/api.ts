@@ -39,6 +39,10 @@ async function postJ<T>(url: string, data: unknown): Promise<T> {
     window.dispatchEvent(new Event('auth_required'));
     throw new Error('401');
   }
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    throw new Error(errData.error || errData.message || String(res.status));
+  }
   return res.json();
 }
 
@@ -68,31 +72,37 @@ export const api = {
     ),
 
   // 操作类
+  updateTaskTodos: (taskId: string, todos: TodoItem[]) =>
+    postJ<ActionResult>(`${API_BASE}/api/task-todos`, { task_id: taskId, todos }),
+  updateTodoItem: (taskId: string, todoId: string, data: Partial<TodoItem>) =>
+    postJ<ActionResult>(`${API_BASE}/api/task-todos`, { task_id: taskId, todo_id: todoId, ...data }),
+  updateTaskScheduler: (taskId: string, scheduler: Record<string, any>) =>
+    postJ<ActionResult>(`${API_BASE}/api/task-scheduler`, { task_id: taskId, scheduler }),
   setModel: (agentId: string, model: string) =>
     postJ<ActionResult>(`${API_BASE}/api/set-model`, { agentId, model }),
   agentWake: (agentId: string) =>
     postJ<ActionResult>(`${API_BASE}/api/agent-wake`, { agentId }),
   taskAction: (taskId: string, action: string, reason: string) =>
-    postJ<ActionResult>(`${API_BASE}/api/task-action`, { taskId, action, reason }),
+    postJ<ActionResult>(`${API_BASE}/api/task-action`, { task_id: taskId, action, reason }),
   reviewAction: (taskId: string, action: string, comment: string) =>
-    postJ<ActionResult>(`${API_BASE}/api/review-action`, { taskId, action, comment }),
+    postJ<ActionResult>(`${API_BASE}/api/review-action`, { task_id: taskId, action, comment }),
   advanceState: (taskId: string, comment: string) =>
-    postJ<ActionResult>(`${API_BASE}/api/advance-state`, { taskId, comment }),
+    postJ<ActionResult>(`${API_BASE}/api/advance-state`, { task_id: taskId, comment }),
   archiveTask: (taskId: string, archived: boolean) =>
-    postJ<ActionResult>(`${API_BASE}/api/archive-task`, { taskId, archived }),
+    postJ<ActionResult>(`${API_BASE}/api/archive-task`, { task_id: taskId, archived }),
   archiveAllCompleted: () =>
-    postJ<ActionResult & { count?: number }>(`${API_BASE}/api/archive-task`, { archiveAllDone: true }),
+    postJ<ActionResult & { count?: number }>(`${API_BASE}/api/archive-task`, { archive_all_done: true }),
   schedulerScan: (thresholdSec = 180) =>
     postJ<ActionResult & { count?: number; actions?: ScanAction[]; checkedAt?: string }>(
       `${API_BASE}/api/scheduler-scan`,
       { thresholdSec }
     ),
   schedulerRetry: (taskId: string, reason: string) =>
-    postJ<ActionResult>(`${API_BASE}/api/scheduler-retry`, { taskId, reason }),
+    postJ<ActionResult>(`${API_BASE}/api/scheduler-retry`, { task_id: taskId, reason }),
   schedulerEscalate: (taskId: string, reason: string) =>
-    postJ<ActionResult>(`${API_BASE}/api/scheduler-escalate`, { taskId, reason }),
+    postJ<ActionResult>(`${API_BASE}/api/scheduler-escalate`, { task_id: taskId, reason }),
   schedulerRollback: (taskId: string, reason: string) =>
-    postJ<ActionResult>(`${API_BASE}/api/scheduler-rollback`, { taskId, reason }),
+    postJ<ActionResult>(`${API_BASE}/api/scheduler-rollback`, { task_id: taskId, reason }),
   refreshMorning: () =>
     postJ<ActionResult>(`${API_BASE}/api/morning-brief/refresh`, {}),
   saveMorningConfig: (config: SubConfig) =>
@@ -203,6 +213,8 @@ export interface TodoItem {
   detail?: string;
   stage?: number;
   agent?: string;
+  dependsOn?: string[];
+  requestedRole?: string;
   failReason?: string;
   maxRetry?: number;
   retryCount?: number;
@@ -215,6 +227,7 @@ export interface Heartbeat {
 
 export interface Task {
   id: string;
+  trace_id?: string;
   title: string;
   state: string;
   org: string;
@@ -376,6 +389,7 @@ export interface ActivityEntry {
   text?: string;
   thinking?: string;
   agent?: string;
+  agentLabel?: string;
   from?: string;
   to?: string;
   remark?: string;
@@ -465,7 +479,7 @@ export interface ScanAction {
 export interface CreateTaskPayload {
   title: string;
   org: string;
-  targetDept?: string;
+  target_dept?: string;
   priority?: string;
   templateId?: string;
   params?: Record<string, string>;

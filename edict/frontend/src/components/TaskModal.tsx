@@ -406,6 +406,16 @@ export default function TaskModal() {
                              {td.detail && (
                                <p className="text-[12px] text-slate-600 pl-8 leading-relaxed mt-1">{td.detail}</p>
                              )}
+                             {td.dependsOn && td.dependsOn.length > 0 && td.status === 'not-started' && (
+                               <div className="mt-3 pl-8 flex flex-wrap gap-2">
+                                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Awaiting:</span>
+                                 {td.dependsOn.map(depId => (
+                                   <span key={depId} className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">
+                                      #{depId}
+                                   </span>
+                                 ))}
+                               </div>
+                             )}
                            </div>
                          ))}
                       </div>

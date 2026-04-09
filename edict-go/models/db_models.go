@@ -71,8 +71,10 @@ type GormTodoItem struct {
 	Status     string `gorm:"type:varchar(50);default:not-started"`
 	Detail     string
 	Stage      int    `gorm:"column:stage;default:0"`
-	Agent      string `gorm:"column:agent;type:varchar(100)"`
-	RetryCount int    `gorm:"column:retry_count;default:0"`
+	Agent         string `gorm:"column:agent;type:varchar(100)"`
+	DependsOn     string `gorm:"column:depends_on;type:text"`      // 存储为 JSON 字符串或逗号分隔
+	RequestedRole string `gorm:"column:requested_role;type:varchar(100)"`
+	RetryCount    int    `gorm:"column:retry_count;default:0"`
 	MaxRetry   int    `gorm:"column:max_retry;default:2"`
 	FailReason string `gorm:"column:fail_reason;type:text"`
 }
