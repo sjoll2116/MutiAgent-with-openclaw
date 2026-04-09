@@ -161,6 +161,35 @@ export default function TemplatePanel() {
       {/* Grid */}
       <div className="flex-1 overflow-y-auto min-h-0 pr-2 pb-6">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {/* Custom Arbitrary Task Card */}
+          <div className="panel p-5 flex flex-col hover:border-primary-400 hover:shadow-card group cursor-pointer border-dashed border-2 bg-slate-50/50 hover:bg-white transition-all" onClick={() => openForm({
+            id: 'tpl-custom', cat: '自定义', icon: '✨', name: '自由发布任务',
+            desc: '抛开常驻固定模板，直接用自然语言描述你需要多智能体系统协助完成的任何复杂事项。',
+            depts: ['任务编排引擎'], est: '动态评估', cost: '按量推算',
+            params: [{ key: 'prompt', label: '您的具体需求描述', type: 'textarea', required: true }],
+            command: '{prompt}'
+          })}>
+             <div className="flex items-start gap-4 mb-3">
+               <div className="w-12 h-12 flex items-center justify-center text-3xl bg-white border border-slate-200 rounded-xl group-hover:scale-105 transition-transform shrink-0 shadow-sm">
+                 ✨
+               </div>
+               <div className="flex-1 min-w-0 pt-0.5">
+                 <h3 className="text-base font-bold text-slate-800 truncate group-hover:text-primary-700 transition-colors mb-1">自由编排任务</h3>
+                 <div className="flex flex-wrap gap-1.5">
+                    <span className="text-[10px] bg-slate-200 text-slate-600 px-2 py-0.5 rounded font-bold uppercase tracking-wider border border-slate-300">智能调度集群</span>
+                 </div>
+               </div>
+             </div>
+             
+             <p className="text-sm text-slate-500 font-medium mb-5 line-clamp-2 leading-relaxed">
+               直接用大白话输入复杂的、需要跨部门协同的宏观意图与工作。
+             </p>
+             <div className="mt-auto pt-4 flex items-center justify-center text-primary-600 font-bold text-sm bg-white border border-primary-200 rounded-lg py-2 group-hover:bg-primary-50 transition-colors">
+               <MessageSquare className="w-4 h-4 mr-2" /> 起草自由指令
+             </div>
+          </div>
+
+          {/* Built-in Templates */}
           {tpls.map((t) => (
             <div className="panel p-5 flex flex-col hover:border-primary-300 hover:shadow-card group cursor-pointer transition-all bg-white" key={t.id} onClick={() => openForm(t)}>
               <div className="flex items-start gap-4 mb-3">

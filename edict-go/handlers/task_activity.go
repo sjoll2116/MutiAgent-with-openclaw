@@ -136,6 +136,61 @@ func GetTaskActivity(c *gin.Context) {
 				prevTodos = pl.Todos
 			}
 		}
+
+		// 3. 补充获取属于该宏观任务的所有底层执行态（OC-系列子任务）的智能通信日志
+		if store.DB != nil && task.TraceID != "" && strings.HasPrefix(task.ID, "MAS-") {
+			var childProgs []models.GormProgressEntry
+			// 关联同 TraceID 下的所有独立底层思考子任务
+			store.DB.Where("task_id IN (SELECT id FROM tasks WHERE trace_id = ? AND id LIKE 'OC-%')", task.TraceID).Order("at asc").Find(&childProgs)
+			
+			for _, cp := range childProgs {
+				if cp.Text == "" {
+					continue
+				}
+				
+				kind := "assistant"
+				if cp.Agent == "Tool" {
+					kind = "tool_result"
+					// Extract toolName and outText from the string formatted by sync_service
+					if strings.HasPrefix(cp.Text, "Tool '") {
+						parts := strings.SplitN(cp.Text[6:], "'", 2)
+						if len(parts) >= 2 {
+							toolName := parts[0]
+							outText := strings.TrimSpace(strings.TrimPrefix(parts[1], " returned: "))
+							outText = strings.TrimSpace(strings.TrimPrefix(outText, " finished"))
+							
+							activity = append(activity, models.ActivityEntry{
+								At:       cp.At.Format(time.RFC3339),
+								Kind:     kind,
+								Tool:     toolName,
+								Output:   outText,
+								Agent:    "tool",
+								ExitCode: 0,
+							})
+							continue
+						}
+					}
+				} else if cp.Agent == "user" {
+					kind = "user"
+				}
+				
+				actualAgent := cp.AgentLabel
+				if actualAgent == "" {
+					parts := strings.Split(cp.TaskID, "-")
+					if len(parts) >= 2 {
+						actualAgent = parts[1]
+					}
+				}
+
+				activity = append(activity, models.ActivityEntry{
+					At:    cp.At.Format(time.RFC3339),
+					Kind:  kind,
+					Text:  cp.Text,
+					Agent: actualAgent,
+				})
+			}
+		}
+
 		// 最后一个进度条的 agent
 		if agentID == "" {
 			last := task.ProgressLog[len(task.ProgressLog)-1]

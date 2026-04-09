@@ -199,7 +199,7 @@ type ActivityEntry struct {
 	To     string `json:"to,omitempty"`
 	Remark string `json:"remark,omitempty"`
 
-	// kind=progress
+	// kind=progress & assistant
 	Text       string  `json:"text,omitempty"`
 	Agent      string  `json:"agent,omitempty"`
 	AgentLabel string  `json:"agentLabel,omitempty"`
@@ -208,6 +208,11 @@ type ActivityEntry struct {
 	Tokens     int     `json:"tokens,omitempty"`
 	Cost       float64 `json:"cost,omitempty"`
 	Elapsed    int     `json:"elapsed,omitempty"`
+
+	// kind=tool_result
+	Tool       string  `json:"tool,omitempty"`
+	Output     string  `json:"output,omitempty"`
+	ExitCode   int     `json:"exitCode,omitempty"`
 
 	// kind=todos
 	Items []TodoItem `json:"items,omitempty"`
