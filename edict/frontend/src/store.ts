@@ -14,6 +14,7 @@ import {
   type MorningBrief,
   type SubConfig,
   type ChangeLogEntry,
+  type WorkspaceFile,
 } from './api';
 
 // ── Pipeline Definition (PIPE) ──
@@ -59,7 +60,7 @@ export function stateLabel(t: Task): string {
 }
 
 export function isEdict(t: Task): boolean {
-  return /^(JJC|MAS)-/i.test(t.id || '');
+  return /^(JJC|MAS|OC)-/i.test(t.id || '');
 }
 
 export function isSession(t: Task): boolean {
@@ -99,18 +100,21 @@ export const TAB_DEFS: { key: TabKey; label: string; icon: string }[] = [
   { key: 'morning', label: '天下要闻', icon: '🌅' },
 ];
 
-// ── DEPTS for monitor ──
+// ── DEPTS (Now Dynamic via Selector) ──
 
-export const DEPTS = [
+export interface DeptInfo {
+  id: string;
+  label: string;
+  emoji: string;
+  role: string;
+  rank: string;
+}
+
+export const FALLBACK_DEPTS: DeptInfo[] = [
   { id: 'coordinator', label: '协调中枢', emoji: '🤴', role: '协调中枢', rank: '核心' },
   { id: 'planner', label: '任务编排引擎', emoji: '📜', role: '规划引擎', rank: '核心' },
   { id: 'reviewer', label: '安全审查引擎', emoji: '🔍', role: '审核引擎', rank: '核心' },
   { id: 'dispatcher', label: '任务调度引擎', emoji: '📮', role: '调度引擎', rank: '核心' },
-  { id: 'doc_writer', label: '文档编写员', emoji: '📚', role: '文档撰写', rank: '执行' },
-  { id: 'data_analyst', label: '数据分析师', emoji: '💰', role: '数据分析', rank: '执行' },
-  { id: 'software_engineer', label: '代码架构师', emoji: '🔧', role: '软件研发', rank: '执行' },
-  { id: 'qa_engineer', label: '质量保证师', emoji: '⚖️', role: '质量保障', rank: '执行' },
-  { id: 'monitor', label: '情报监控员', emoji: '📰', role: '系统监控', rank: '外围' },
 ];
 
 // ── Templates ──
@@ -266,6 +270,9 @@ interface AppStore {
   selectedOfficial: string | null;
   modalTaskId: string | null;
   countdown: number;
+  tasks: Task[];
+  workspaceFiles: WorkspaceFile[];
+  isLoading: boolean;
 
   // Toast
   toasts: { id: number; msg: string; type: 'ok' | 'err' }[];
@@ -279,6 +286,9 @@ interface AppStore {
   setModalTaskId: (id: string | null) => void;
   setCountdown: (n: number) => void;
   toast: (msg: string, type?: 'ok' | 'err') => void;
+  fetchMissionControl: () => Promise<void>;
+  loadWorkspace: (path: string) => Promise<void>;
+  getDepts: () => DeptInfo[];
 
   // Data fetching
   loadLive: () => Promise<void>;
@@ -308,6 +318,9 @@ export const useStore = create<AppStore>((set, get) => ({
   selectedOfficial: null,
   modalTaskId: null,
   countdown: 5,
+  tasks: [],
+  workspaceFiles: [],
+  isLoading: false,
 
   toasts: [],
 
@@ -334,10 +347,27 @@ export const useStore = create<AppStore>((set, get) => ({
     }, 3000);
   },
 
+  getDepts: () => {
+    const s = get();
+    if (s.agentConfig?.agents && s.agentConfig.agents.length > 0) {
+      return s.agentConfig.agents.map(a => {
+        const isCore = ['coordinator', 'planner', 'reviewer', 'dispatcher'].includes(a.id);
+        return {
+          id: a.id,
+          label: a.label,
+          emoji: a.emoji,
+          role: a.role,
+          rank: isCore ? '核心' : '执行'
+        };
+      });
+    }
+    return FALLBACK_DEPTS;
+  },
+
   loadLive: async () => {
     try {
       const data = await api.liveStatus();
-      set({ liveStatus: data });
+      set({ liveStatus: data, tasks: data.tasks || [] });
       // Also preload officials for monitor tab
       const s = get();
       if (!s.officialsData) {
@@ -345,6 +375,34 @@ export const useStore = create<AppStore>((set, get) => ({
       }
     } catch {
       // silently fail
+    }
+  },
+
+  fetchMissionControl: async () => {
+    set({ isLoading: true });
+    await get().loadLive();
+    set({ isLoading: false });
+  },
+
+  loadWorkspace: async (path: string) => {
+    set({ isLoading: true });
+    try {
+      const res = await api.workspaceFiles(path);
+      if (res.ok) {
+        // Map backend snake_case to frontend camelCase
+        const mapped = res.files.map((f: any) => ({
+          name: f.name,
+          isDir: f.is_dir ?? f.isDir,
+          size: f.size_bytes ?? f.size,
+          modTime: f.mod_time ?? f.modTime,
+          ext: f.ext,
+        }));
+        set({ workspaceFiles: mapped });
+      }
+    } catch {
+      // fail
+    } finally {
+      set({ isLoading: false });
     }
   },
 

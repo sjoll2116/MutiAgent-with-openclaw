@@ -336,3 +336,17 @@ var JunkTitles = map[string]bool{
 	"可以": true, "不行": true, "行": true, "ok": true, "yes": true,
 	"no": true, "你去开启": true, "测试": true, "试试": true, "看看": true,
 }
+
+// AgentConfig 表示 agent_config.json 的结构。
+type AgentConfig struct {
+	Agents []AgentMeta `json:"agents"`
+}
+
+// AgentMeta 表示单个智能体的元数据。
+type AgentMeta struct {
+	ID    string `json:"id"`
+	Label string `json:"label"`
+	Emoji string `json:"emoji"`
+	Role  string `json:"role"`
+	Model string `json:"model"`
+}

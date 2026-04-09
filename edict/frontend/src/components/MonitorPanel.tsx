@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { useStore, DEPTS, isEdict, stateLabel } from '../store';
+import { useStore, isEdict, stateLabel } from '../store';
 import { api, type OfficialInfo } from '../api';
 
 export default function MonitorPanel() {
@@ -9,6 +9,7 @@ export default function MonitorPanel() {
   const loadAgentsStatus = useStore((s) => s.loadAgentsStatus);
   const setModalTaskId = useStore((s) => s.setModalTaskId);
   const toast = useStore((s) => s.toast);
+  const getDepts = useStore((s) => s.getDepts);
 
   useEffect(() => {
     loadAgentsStatus();
@@ -111,7 +112,7 @@ export default function MonitorPanel() {
 
       {/* Duty Grid */}
       <div className="duty-grid">
-        {DEPTS.map((d) => {
+        {getDepts().map((d: any) => {
           const myTasks = activeTasks.filter((t) => t.org === d.label);
           const isActive = myTasks.some((t) => t.state === 'Doing');
           const isBlocked = myTasks.some((t) => t.state === 'Blocked');

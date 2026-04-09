@@ -32,16 +32,12 @@ type AgentDept struct {
 	Rank  string `json:"rank"`
 }
 
-var agentDepts = []AgentDept{
+// fallbackDepts 为 agent_config.json 缺失时使用的硬编码核心节点
+var fallbackDepts = []AgentDept{
 	{ID: "coordinator", Label: "协调中枢", Emoji: "🤴", Role: "协调中枢", Rank: "核心"},
 	{ID: "planner", Label: "任务编排引擎", Emoji: "📜", Role: "规划引擎", Rank: "核心"},
 	{ID: "reviewer", Label: "安全审查引擎", Emoji: "🔍", Role: "审核引擎", Rank: "核心"},
 	{ID: "dispatcher", Label: "任务调度引擎", Emoji: "📮", Role: "调度引擎", Rank: "核心"},
-	{ID: "data_analyst", Label: "数据分析师", Emoji: "💰", Role: "数据分析", Rank: "执行"},
-	{ID: "doc_writer", Label: "文档编写员", Emoji: "📚", Role: "文档撰写", Rank: "执行"},
-	{ID: "software_engineer", Label: "代码架构师", Emoji: "🔧", Role: "软件研发", Rank: "执行"},
-	{ID: "qa_engineer", Label: "质量保证师", Emoji: "⚖️", Role: "质量保障", Rank: "执行"},
-	{ID: "monitor", Label: "情报监控员", Emoji: "📰", Role: "系统监控", Rank: "外围"},
 }
 
 func oclawHome() string {
@@ -75,9 +71,26 @@ func GetAgentsStatus(c *gin.Context) {
 		gatewayProbe = checkGatewayProbe()
 	}
 
-	agents := make([]agentStatus, 0, len(agentDepts))
+	// 动态加载 Agent 名单
+	var currentDepts []AgentDept
+	var cfg models.AgentConfig
+	if err := store.ReadJSONFile("agent_config.json", &cfg); err == nil && len(cfg.Agents) > 0 {
+		for _, a := range cfg.Agents {
+			rank := "执行"
+			if a.ID == "coordinator" || a.ID == "planner" || a.ID == "reviewer" || a.ID == "dispatcher" {
+				rank = "核心"
+			}
+			currentDepts = append(currentDepts, AgentDept{
+				ID: a.ID, Label: a.Label, Emoji: a.Emoji, Role: a.Role, Rank: rank,
+			})
+		}
+	} else {
+		currentDepts = fallbackDepts
+	}
+
+	agents := make([]agentStatus, 0, len(currentDepts))
 	seen := map[string]bool{}
-	for _, dept := range agentDepts {
+	for _, dept := range currentDepts {
 		if seen[dept.ID] {
 			continue
 		}

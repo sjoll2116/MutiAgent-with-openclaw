@@ -214,6 +214,7 @@ export interface Task {
   state: string;
   org: string;
   now: string;
+  priority: string;
   eta: string;
   block: string;
   ac: string;
