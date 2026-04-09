@@ -264,16 +264,20 @@ export default function TaskModal() {
               </div>
 
               {/* Task Result / Output */}
-              {task.output && (
-                <div className="space-y-3 pt-4 border-t border-slate-100">
-                   <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                     <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Deliverable Output
-                   </h4>
+              <div className="space-y-3 pt-4 border-t border-slate-100">
+                 <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                   <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Deliverable Output
+                 </h4>
+                 {task.output ? (
                    <div className="text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200 whitespace-pre-wrap max-h-[32rem] overflow-y-auto break-words shadow-inner font-mono leading-relaxed">
                      {task.output}
                    </div>
-                </div>
-              )}
+                 ) : (
+                   <div className="text-xs text-slate-400 italic bg-slate-50/50 p-4 rounded-xl border-dashed border border-slate-200 text-center">
+                     尚未生成任何交互输出 / No output generated yet.
+                   </div>
+                 )}
+              </div>
             </div>
 
             {/* --- Right Column: Activity & Logs --- */}
