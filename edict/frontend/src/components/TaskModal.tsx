@@ -262,6 +262,18 @@ export default function TaskModal() {
                     )}
                  </div>
               </div>
+
+              {/* Task Result / Output */}
+              {task.output && (
+                <div className="space-y-3 pt-4 border-t border-slate-100">
+                   <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
+                     <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Deliverable Output
+                   </h4>
+                   <div className="text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200 whitespace-pre-wrap max-h-[32rem] overflow-y-auto break-words shadow-inner font-mono leading-relaxed">
+                     {task.output}
+                   </div>
+                </div>
+              )}
             </div>
 
             {/* --- Right Column: Activity & Logs --- */}
@@ -376,7 +388,16 @@ export default function TaskModal() {
                                    td.status === 'completed' ? "text-slate-500 line-through decoration-slate-300" : "text-slate-800"
                                  )}>{td.title}</span>
                                </div>
-                               <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase shrink-0">#{td.id}</span>
+                               <div className="flex gap-2 shrink-0">
+                                 {td.agent && (
+                                   <span className="text-[10px] font-bold text-primary-600 bg-primary-50 border border-primary-100 px-2 py-0.5 rounded uppercase">
+                                     {td.agent}
+                                   </span>
+                                 )}
+                                 <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-0.5 rounded uppercase">
+                                   #{td.id}
+                                 </span>
+                               </div>
                              </div>
                              {td.detail && (
                                <p className="text-[12px] text-slate-600 pl-8 leading-relaxed mt-1">{td.detail}</p>

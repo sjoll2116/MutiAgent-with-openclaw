@@ -334,7 +334,7 @@ func EnsureScheduler(task *models.Task) map[string]any {
 		}
 	}
 	setDefault("enabled", true)
-	setDefault("stallThresholdSec", 180)
+	setDefault("stallThresholdSec", 600)
 	setDefault("maxRetry", 1)
 	setDefault("retryCount", 0)
 	setDefault("escalationLevel", 0)

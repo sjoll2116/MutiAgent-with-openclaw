@@ -197,10 +197,15 @@ export interface FlowEntry {
 }
 
 export interface TodoItem {
-  id: string | number;
+  id: string;
   title: string;
-  status: 'not-started' | 'in-progress' | 'completed';
+  status: 'not-started' | 'in-progress' | 'completed' | 'failed' | 'skipped';
   detail?: string;
+  stage?: number;
+  agent?: string;
+  failReason?: string;
+  maxRetry?: number;
+  retryCount?: number;
 }
 
 export interface Heartbeat {

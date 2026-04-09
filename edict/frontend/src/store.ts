@@ -60,7 +60,7 @@ export function stateLabel(t: Task): string {
 }
 
 export function isEdict(t: Task): boolean {
-  return /^(JJC|MAS|OC)-/i.test(t.id || '');
+  return /^(JJC|MAS)-/i.test(t.id || '');
 }
 
 export function isSession(t: Task): boolean {
