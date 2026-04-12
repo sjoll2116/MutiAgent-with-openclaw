@@ -254,7 +254,10 @@ class ChaosExperiment:
 `python3 scripts/kanban_update.py todo MAS-xxx <todo_id> "<title>" completed --detail "<产出详情>"`
 
 ### 3. 实时进度上报 (Progress Tracking)
-> 🚨 在每完成一项思考、环境检查或代码编写后，必须用 progress 向用户展示动态！
-`python3 scripts/kanban_update.py progress MAS-xxx "正在做XX" "分析✅|执行🔄|验证|完成汇总"`
+> 💡 **重要更新**：看板顶部的进度条与百分比现已由系统后台自动同步。
+> 🚨 在每完成一个核心思考节点、关键文件操作或技术决策后，你仍需通过 progress 展示你的“逻辑踪迹”，以便用户和调度器实时掌握你的思维跳动。
 
+**上报示例**：
+`python3 scripts/kanban_update.py progress MAS-xxx "正在分析项目目录结构，评估依赖库的兼容性..."`
+`python3 scripts/kanban_update.py progress MAS-xxx "核心功能模块开发完成，准备进入单元测试阶段..."`
 当你成功产出成果并完成 `flow` 移交回"任务调度引擎"后，请直接结束对话，等待系统下一次唤醒。

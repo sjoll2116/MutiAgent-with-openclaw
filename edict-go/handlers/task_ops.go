@@ -131,6 +131,7 @@ func TaskAction(c *gin.Context) {
 			store.SaveEvalSample("agent", task.ID, task.Title, context, task.Output, metadata)
 		}
 
+		services.SyncTaskProgress(task)
 		return tasks, nil
 	})
 
@@ -485,6 +486,7 @@ func AdvanceState(c *gin.Context) {
 			dispatched = " (已自动派发 Agent)"
 		}
 		resultMsg = body.TaskID + " " + fromLabel + " → " + toLabel + dispatched
+		services.SyncTaskProgress(task)
 		return tasks, nil
 	})
 	if err != nil {

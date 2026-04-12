@@ -657,13 +657,106 @@ func handleTodoFailure(taskID, todoID, agent string, result openclawResult, trac
 	}
 }
 
-// checkStageCompletion 检查当前 Stage 的所有 Todo 是否完成/跳过。
-// 若当前 Stage 结算完毕：推进到下一 Stage 或进入 ResultReview。
+// hasCycle 检查任务依赖中是否存在环。
+func hasCycle(todos []models.TodoItem) bool {
+	adj := make(map[string][]string)
+	for _, t := range todos {
+		adj[t.ID] = t.DependsOn
+	}
+
+	visited := make(map[string]int) // 0: unvisited, 1: visiting, 2: visited
+	var dfs func(string) bool
+	dfs = func(u string) bool {
+		visited[u] = 1
+		for _, v := range adj[u] {
+			if visited[v] == 1 {
+				return true
+			}
+			if visited[v] == 0 && dfs(v) {
+				return true
+			}
+		}
+		visited[u] = 2
+		return false
+	}
+
+	for _, t := range todos {
+		if visited[t.ID] == 0 {
+			if dfs(t.ID) {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// SyncTaskProgress 根据 Todos 状态和任务阶段自动同步看板进度展示。
+func SyncTaskProgress(task *models.Task) {
+	if task == nil {
+		return
+	}
+
+	total := len(task.Todos)
+	completed := 0
+	var activeTodo *models.TodoItem
+	for _, td := range task.Todos {
+		if td.Status == "completed" || td.Status == "skipped" {
+			completed++
+		} else if td.Status == "in-progress" && activeTodo == nil {
+			activeTodo = &td
+		}
+	}
+
+	// 1. 自动更新 Now (当前态描述)
+	newNow := ""
+	switch task.State {
+	case "Planning":
+		newNow = "📝 正在分析需求并起草架构方案..."
+	case "PlanReview":
+		newNow = "🔍 方案已提交，正在进行合规性与安全性审议..."
+	case "Executing":
+		if total > 0 {
+			if activeTodo != nil {
+				newNow = fmt.Sprintf("[%d/%d] 正在执行: %s", completed, total, activeTodo.Title)
+			} else {
+				newNow = fmt.Sprintf("[%d/%d] 所有就绪任务已派发，等待结果汇总...", completed, total)
+			}
+		} else {
+			newNow = "🚀 正在进行系统调度核心任务..."
+		}
+	case "ResultReview":
+		newNow = "🏁 任务已跑通，正在进行成果汇总与质量终审"
+	case "Completed":
+		newNow = "✅ 任务已全部完成并归档"
+	default:
+		// 如果本来就有内容且不是系统默认的，则保留
+		if task.Now != "" {
+			newNow = task.Now
+		} else {
+			newNow = "📡 系统正在处理中..."
+		}
+	}
+	task.Now = newNow
+}
+
 // checkStageCompletion 升级为基于 DAG 的就绪检查与智能调度。
 // 它会扫描所有未开始的任务，检查其依赖是否满足，并进行智能 Agent 分配与派发。
 func checkStageCompletion(taskID, traceID string) {
 	task, err := store.GetTaskByID(taskID)
 	if err != nil || task == nil {
+		return
+	}
+
+	// 0. 拓扑安全检查
+	if hasCycle(task.Todos) {
+		log.Printf("❌ DAG Cycle detected for task %s, blocking task", taskID)
+		store.WithTasks(func(allTasks []models.Task) ([]models.Task, error) {
+			t := store.FindTask(allTasks, taskID)
+			if t == nil { return allTasks, nil }
+			t.State = "Blocked"
+			t.Block = "🚫 调度检测到循环依赖，请编排引擎检查 DAG 拓扑逻辑"
+			return allTasks, nil
+		})
 		return
 	}
 
@@ -744,6 +837,7 @@ func checkStageCompletion(taskID, traceID string) {
 		}
 		
 		if modified {
+			SyncTaskProgress(t) // 自动同步进度
 			t.UpdatedAt = store.NowISO()
 		}
 		return allTasks, nil

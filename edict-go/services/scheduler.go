@@ -42,31 +42,32 @@ func (m *AgentMatcher) Match(requestedRole string, title string) string {
 	// 2. 如果没有明确 Role，根据标题语义模糊匹配角色职责 (Duty/Role)
 	t := strings.ToLower(title)
 	
-	// 简单关键词启发式匹配 (后续可扩展为向量匹配)
+	// 简单关键词启发式匹配 (参考 agent_config.json 中的 ID)
 	keywords := map[string]string{
-		"代码": "software_engineer",
+		"代码": "agency_engineering_senior_developer",
 		"前端": "agency_engineering_frontend_developer",
 		"后端": "agency_engineering_senior_developer",
-		"测试": "qa_engineer",
+		"测试": "agency_testing_api_tester",
 		"文档": "agency_engineering_technical_writer",
-		"设计": "agency_engineering_software_architect",
+		"架构": "agency_engineering_software_architect",
 		"数据": "agency_engineering_data_engineer",
-		"分析": "data_analyst",
-		"安全": "reviewer",
+		"安全": "agency_engineering_security_engineer",
+		"运维": "agency_engineering_devops_automator",
 	}
 
 	for kw, agentID := range keywords {
 		if strings.Contains(t, kw) {
-			// 验证该 Agent 是否存在于配置中
-			for _, a := range m.Agents {
-				if a.ID == agentID {
-					return a.ID
-				}
-			}
+			return agentID
 		}
 	}
 
-	// 3. 兜底策略：如果还是没找到，分发给系统默认专家池或调度器
+	// 3. 按角色大类匹配 (比如 "产品专家")
+	for _, a := range m.Agents {
+		if strings.Contains(strings.ToLower(a.Role), t) {
+			return a.ID
+		}
+	}
+
 	return "" 
 }
 

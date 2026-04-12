@@ -133,6 +133,8 @@ if __name__ == '__main__':
         stage = 0
         agent = ''
         detail = ''
+        depends_on = []
+        role = ''
         
         i = 0
         while i < len(t_args):
@@ -142,10 +144,22 @@ if __name__ == '__main__':
             elif t_args[i] == '--agent' and i + 1 < len(t_args):
                 agent = t_args[i+1]
                 i += 2
+            elif t_args[i] == '--depends-on' and i + 1 < len(t_args):
+                depends_on = [x.strip() for x in t_args[i+1].split(',')]
+                i += 2
+            elif t_args[i] == '--role' and i + 1 < len(t_args):
+                role = t_args[i+1]
+                i += 2
             elif t_args[i] == '--detail' and i + 1 < len(t_args):
                 detail = t_args[i+1]
                 i += 2
             else:
                 i += 1
                 
-        cmd_todo(task_id, todo_id, title, status, stage, agent, detail)
+        payload = {
+            "task_id": task_id, "todo_id": todo_id, "title": title, 
+            "status": status, "detail": detail,
+            "stage": stage, "agent": agent,
+            "dependsOn": depends_on, "requestedRole": role
+        }
+        _api_call("task-todos", payload)
