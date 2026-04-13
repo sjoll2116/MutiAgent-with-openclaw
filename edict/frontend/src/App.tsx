@@ -57,11 +57,11 @@ export default function App() {
     }
   });
   
-  const activeTab = useStore((s) => s.activeTab);
-  const setActiveTab = useStore((s) => s.setActiveTab);
-  const liveStatus = useStore((s) => s.liveStatus);
-  const countdown = useStore((s) => s.countdown);
-  const loadAll = useStore((s) => s.loadAll);
+  const activeTab = useStore((s: any) => s.activeTab);
+  const setActiveTab = useStore((s: any) => s.setActiveTab);
+  const liveStatus = useStore((s: any) => s.liveStatus);
+  const countdown = useStore((s: any) => s.countdown);
+  const loadAll = useStore((s: any) => s.loadAll);
 
   // Monitor Authentication
   useEffect(() => {
@@ -85,7 +85,7 @@ export default function App() {
   if (!authed) return <LoginPage onLogin={() => setAuthed(true)} />;
 
   const syncOk = liveStatus?.syncStatus?.ok;
-  const activeTasks = (liveStatus?.tasks || []).filter(t => isEdict(t) && !isArchived(t));
+  const activeTasks = (liveStatus?.tasks || []).filter((t: any) => isEdict(t) && !isArchived(t));
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden font-sans text-slate-900">

@@ -19,14 +19,14 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function MemorialPanel() {
-  const liveStatus = useStore((s) => s.liveStatus);
+  const liveStatus = useStore((s: any) => s.liveStatus);
   const [filter, setFilter] = useState('all');
   const [detailTask, setDetailTask] = useState<Task | null>(null);
-  const toast = useStore((s) => s.toast);
+  const toast = useStore((s: any) => s.toast);
 
   const tasks = liveStatus?.tasks || [];
-  let mems = tasks.filter((t) => isEdict(t) && ['Completed', 'Cancelled'].includes(t.state));
-  if (filter !== 'all') mems = mems.filter((t) => t.state === filter);
+  let mems = tasks.filter((t: any) => isEdict(t) && ['Completed', 'Cancelled'].includes(t.state));
+  if (filter !== 'all') mems = mems.filter((t: any) => t.state === filter);
 
   const exportMemorial = (t: Task) => {
     const fl = t.flow_log || [];
@@ -87,9 +87,9 @@ export default function MemorialPanel() {
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
-            {mems.map((t) => {
+            {mems.map((t: any) => {
               const fl = t.flow_log || [];
-              const depts = [...new Set(fl.map((f) => f.from).concat(fl.map((f) => f.to)).filter((x) => x && x !== '用户'))];
+              const depts: string[] = [...new Set(fl.map((f: any) => f.from).concat(fl.map((f: any) => f.to)).filter((x: any) => !!x && x !== '用户'))] as string[];
               const firstAt = fl.length ? (fl[0].at || '').substring(0, 16).replace('T', ' ') : '';
               const lastAt = fl.length ? (fl[fl.length - 1].at || '').substring(0, 16).replace('T', ' ') : '';
               const isCompleted = t.state === 'Completed';

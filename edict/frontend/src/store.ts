@@ -302,7 +302,7 @@ interface AppStore {
 
 let _toastId = 0;
 
-export const useStore = create<AppStore>((set, get) => ({
+export const useStore = create<AppStore>((set: any, get: any) => ({
   liveStatus: null,
   agentConfig: null,
   changeLog: [],
@@ -341,16 +341,16 @@ export const useStore = create<AppStore>((set, get) => ({
 
   toast: (msg, type = 'ok') => {
     const id = ++_toastId;
-    set((s) => ({ toasts: [...s.toasts, { id, msg, type }] }));
+    set((s: any) => ({ toasts: [...s.toasts, { id, msg, type }] }));
     setTimeout(() => {
-      set((s) => ({ toasts: s.toasts.filter((t) => t.id !== id) }));
+      set((s: any) => ({ toasts: s.toasts.filter((t: any) => t.id !== id) }));
     }, 3000);
   },
 
   getDepts: () => {
     const s = get();
     if (s.agentConfig?.agents && s.agentConfig.agents.length > 0) {
-      return s.agentConfig.agents.map(a => {
+      return s.agentConfig.agents.map((a: any) => {
         const isCore = ['coordinator', 'planner', 'reviewer', 'dispatcher'].includes(a.id);
         return {
           id: a.id,

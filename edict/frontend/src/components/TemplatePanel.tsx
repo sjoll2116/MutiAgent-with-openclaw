@@ -99,7 +99,7 @@ export default function TemplatePanel() {
       const r = await api.createTask({
         title: cmd.substring(0, 120),
         org: 'Mission Control',
-        targetDept: formTpl.depts[0] || '',
+        target_dept: formTpl.depts[0] || '',
         priority: 'normal',
         templateId: formTpl.id,
         params,
