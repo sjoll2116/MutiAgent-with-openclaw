@@ -17,10 +17,10 @@ import type { SubConfig, MorningNewsItem } from '../api';
 import { cn } from '../lib/utils';
 
 const CAT_META: Record<string, { icon: string; color: string; desc: string; bg: string }> = {
-  '政治': { icon: '🏛️', color: 'text-indigo-600', bg: 'bg-indigo-50', desc: 'Global Politics' },
-  '军事': { icon: '⚔️', color: 'text-rose-600', bg: 'bg-rose-50', desc: 'Military Affairs' },
-  '经济': { icon: '💹', color: 'text-amber-600', bg: 'bg-amber-50', desc: 'Economy & Markets' },
-  'AI大模型': { icon: '🤖', color: 'text-primary-600', bg: 'bg-primary-50', desc: 'AI & LLM Evolution' },
+  '政治': { icon: '🏛️', color: 'text-indigo-600', bg: 'bg-indigo-50', desc: '全球政治' },
+  '军事': { icon: '⚔️', color: 'text-rose-600', bg: 'bg-rose-50', desc: '军事态势' },
+  '经济': { icon: '💹', color: 'text-amber-600', bg: 'bg-amber-50', desc: '经济与市场' },
+  'AI大模型': { icon: '🤖', color: 'text-primary-600', bg: 'bg-primary-50', desc: 'AI与大模型演进' },
 };
 
 const DEFAULT_CATS = ['政治', '军事', '经济', 'AI大模型'];
@@ -51,13 +51,13 @@ export default function MorningPanel() {
     setRefreshing(true);
     try {
       await api.refreshMorning();
-      toast('✅ News gathering sequence initiated');
+      toast('✅ 简报聚合序列已启动');
       setTimeout(() => {
         setRefreshing(false);
         loadMorning();
       }, 5000);
     } catch {
-      toast('Gathering failed', 'err');
+      toast('聚合失败', 'err');
       setRefreshing(false);
     }
   };
@@ -127,7 +127,7 @@ export default function MorningPanel() {
                   disabled={refreshing}
                   className="w-full py-2 rounded-lg bg-slate-50 text-slate-600 border border-slate-200 text-xs font-bold"
                  >
-                   {refreshing ? 'Syncing...' : 'Sync'}
+                   {refreshing ? '同步中...' : '同步'}
                  </button>
                </div>
             </div>
@@ -285,14 +285,14 @@ export default function MorningPanel() {
           <div className="panel p-5 bg-gradient-to-br from-indigo-50 to-white border-indigo-100">
              <div className="flex items-center gap-2 mb-3">
                 <TrendingUp className="w-4 h-4 text-indigo-500" />
-                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">MAS Telemetry</span>
+                <span className="text-[10px] font-bold uppercase tracking-widest text-slate-600">遥测数据</span>
              </div>
              <div className="flex items-baseline gap-2 mb-2">
                 <span className="text-3xl font-bold text-slate-800 tracking-tight">+24.5%</span>
-                <span className="text-[10px] font-bold text-indigo-600 uppercase bg-indigo-100/50 px-2 py-0.5 rounded">Efficiency</span>
+                <span className="text-[10px] font-bold text-indigo-600 uppercase bg-indigo-100/50 px-2 py-0.5 rounded">效率提升</span>
              </div>
              <p className="text-[11px] text-slate-500 leading-relaxed font-medium">
-               Multi-agent cluster achieved peak utilization during 0800-0900 UTC sync window. No ingest stalls detected.
+               多智能体集群在最近的同步窗口期间达到协同调度峰值。未检测到摄入停滞。
              </p>
           </div>
         </aside>

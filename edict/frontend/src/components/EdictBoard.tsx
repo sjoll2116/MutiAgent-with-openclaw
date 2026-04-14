@@ -63,24 +63,24 @@ function EdictCard({ task }: { task: Task }) {
 
   const handleAction = async (action: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const confirmMsg = action === 'stop' ? 'Stop Reason' : 'Cancel Reason';
-    const reason = prompt(`Enter ${confirmMsg}:`);
+    const confirmMsg = action === 'stop' ? '暂停原因' : '取消原因';
+    const reason = prompt(`输入 ${confirmMsg}:`);
     if (reason === null) return;
     
     try {
       const r = await api.taskAction(task.id, action, reason);
-      if (r.ok) { toast(`✅ ${r.message || 'Success'}`); loadAll(); }
-      else toast(r.error || 'Action failed', 'err');
-    } catch { toast('Network error', 'err'); }
+      if (r.ok) { toast(`✅ ${r.message || '操作成功'}`); loadAll(); }
+      else toast(r.error || '操作失败', 'err');
+    } catch { toast('网络异常', 'err'); }
   };
 
   const handleArchive = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       const r = await api.archiveTask(task.id, !task.archived);
-      if (r.ok) { toast('📦 Archive status updated'); loadAll(); }
-      else toast(r.error || 'Action failed', 'err');
-    } catch { toast('Network error', 'err'); }
+      if (r.ok) { toast('📦 归档状态已更新'); loadAll(); }
+      else toast(r.error || '操作失败', 'err');
+    } catch { toast('网络异常', 'err'); }
   };
 
   return (
@@ -112,7 +112,7 @@ function EdictCard({ task }: { task: Task }) {
       </div>
 
       <h3 className="text-[15px] font-semibold text-slate-800 mb-4 line-clamp-2 leading-snug">
-        {task.title || '(No Title)'}
+        {task.title || '(无标题)'}
       </h3>
 
       <div className="flex flex-wrap gap-2 mb-5">
@@ -135,7 +135,7 @@ function EdictCard({ task }: { task: Task }) {
       {todoTotal > 0 && (
         <div className="space-y-2 mb-5 mt-auto">
           <div className="flex justify-between text-[11px] font-semibold text-slate-500">
-            <span>Progress: {todoDone}/{todoTotal}</span>
+            <span>进度: {todoDone}/{todoTotal}</span>
             <span className={progress === 100 ? "text-emerald-600" : "text-primary-600"}>{progress}%</span>
           </div>
           <div className="h-1.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/50">
@@ -156,7 +156,7 @@ function EdictCard({ task }: { task: Task }) {
           <button 
             onClick={(e) => handleArchive(e)}
             className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition-colors"
-            title={task.archived ? "Restore Task" : "Archive Task"}
+            title={task.archived ? "恢复任务" : "归档任务"}
           >
             {task.archived ? <ExternalLink className="w-4 h-4" /> : <Package className="w-4 h-4" />}
           </button>
@@ -168,14 +168,14 @@ function EdictCard({ task }: { task: Task }) {
               <button 
                 onClick={e => handleAction('stop', e)}
                 className="p-1.5 rounded-lg border border-transparent hover:border-amber-200 hover:bg-amber-50 text-slate-400 hover:text-amber-600 transition-colors"
-                title="Pause Execution"
+                title="暂停执行"
               >
                 <Pause className="w-4 h-4" />
               </button>
               <button 
                 onClick={e => handleAction('cancel', e)}
                 className="p-1.5 rounded-lg border border-transparent hover:border-red-200 hover:bg-red-50 text-slate-400 hover:text-red-600 transition-colors"
-                title="Cancel Task"
+                title="取消任务"
               >
                 <XCircle className="w-4 h-4" />
               </button>
@@ -187,12 +187,12 @@ function EdictCard({ task }: { task: Task }) {
                   e.stopPropagation();
                   try {
                     const r = await api.taskAction(task.id, 'resume', 'Restore Execution');
-                    if (r.ok) { toast('▶ Task Resumed'); loadAll(); }
-                    else toast(r.error || 'Resume failed', 'err');
-                  } catch { toast('Network error', 'err'); }
+                    if (r.ok) { toast('▶ 任务恢复执行'); loadAll(); }
+                    else toast(r.error || '恢复失败', 'err');
+                  } catch { toast('网络异常', 'err'); }
                 }}
                 className="p-1.5 rounded-lg border border-transparent hover:border-emerald-200 hover:bg-emerald-50 text-slate-400 hover:text-emerald-600 transition-colors"
-                title="Resume Execution"
+                title="恢复执行"
               >
                 <Play className="w-4 h-4" />
               </button>
@@ -223,10 +223,10 @@ export default function EdictBoard() {
   const handleScan = async () => {
     try {
       const r = await api.schedulerScan();
-      if (r.ok) toast(`🧭 Scan Complete: ${r.count || 0} active jobs`);
-      else toast(r.error || 'Scan Failed', 'err');
+      if (r.ok) toast(`🧭 调度完成: 发现 ${r.count || 0} 个活跃任务`);
+      else toast(r.error || '调度失败', 'err');
       loadAll();
-    } catch { toast('Network Error', 'err'); }
+    } catch { toast('网络异常', 'err'); }
   };
 
   return (
@@ -244,7 +244,7 @@ export default function EdictBoard() {
                   : "text-slate-500 hover:text-slate-800"
               )}
             >
-              {f === 'active' ? 'Active' : f === 'archived' ? 'Archived' : 'All Tasks'}
+              {f === 'active' ? '执行中' : f === 'archived' ? '已归档' : '所有指令'}
             </button>
           ))}
         </div>
@@ -255,7 +255,7 @@ export default function EdictBoard() {
             className="btn-secondary flex items-center gap-2 group"
           >
             <Compass className="w-4 h-4 text-slate-500 group-hover:rotate-45 transition-transform" />
-            Central Scan
+            系统中央调度
           </button>
         </div>
       </header>
@@ -269,8 +269,8 @@ export default function EdictBoard() {
               className="col-span-full py-24 flex flex-col items-center justify-center panel border-dashed shadow-none bg-slate-50 text-slate-400"
             >
               <Package className="w-12 h-12 mb-4 text-slate-300" />
-              <p className="font-semibold text-slate-600 text-sm tracking-wide uppercase">The Chamber is Empty</p>
-              <p className="text-xs text-slate-500 mt-2">Deploy edicts to watch the swarm coordinate</p>
+              <p className="font-semibold text-slate-600 text-sm tracking-wide uppercase">大厅暂无指令</p>
+              <p className="text-xs text-slate-500 mt-2">发布新指令以驱使集群协同工作</p>
             </motion.div>
           ) : (
             filteredEdicts.map((t) => <EdictCard key={t.id} task={t} />)

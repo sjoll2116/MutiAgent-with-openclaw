@@ -88,16 +88,16 @@ export type TabKey =
   | 'skills' | 'sessions' | 'memorials' | 'templates' | 'morning' | 'workspace';
 
 export const TAB_DEFS: { key: TabKey; label: string; icon: string }[] = [
-  { key: 'edicts', label: '任务看板', icon: '📋' },
-  { key: 'monitor', label: '节点调度', icon: '🏛️' },
-  { key: 'officials', label: 'Agent 总览', icon: '👔' },
-  { key: 'workspace', label: '共享空间', icon: '📂' },
+  { key: 'edicts', label: '指令大厅', icon: '📋' },
+  { key: 'monitor', label: '系统监控', icon: '🏛️' },
+  { key: 'officials', label: '智能体管理', icon: '👔' },
+  { key: 'workspace', label: '工作空间', icon: '📂' },
   { key: 'models', label: '模型配置', icon: '🤖' },
   { key: 'skills', label: '技能配置', icon: '🎯' },
-  { key: 'sessions', label: '会话列表', icon: '💬' },
-  { key: 'memorials', label: '任务归档', icon: '📜' },
-  { key: 'templates', label: '指令库', icon: '📋' },
-  { key: 'morning', label: '天下要闻', icon: '🌅' },
+  { key: 'sessions', label: '会话管理', icon: '💬' },
+  { key: 'memorials', label: '报告面板', icon: '📜' },
+  { key: 'templates', label: '模板管理', icon: '📋' },
+  { key: 'morning', label: '晨间简报', icon: '🌅' },
 ];
 
 // ── DEPTS (Now Dynamic via Selector) ──

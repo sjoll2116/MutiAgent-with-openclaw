@@ -59,63 +59,65 @@ export default function TemplatePanel() {
 
   const execute = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formTpl) return;
-    const cmd = buildCmd(formTpl);
+    const currentTpl = formTpl;
+    if (!currentTpl) return;
+
+    const cmd = buildCmd(currentTpl);
     if (!cmd.trim()) {
-      toast('Please fill in required fields', 'err');
+      toast('请填写必填项目', 'err');
       return;
     }
 
     try {
       const st = await api.agentsStatus();
       if (st.ok && st.gateway && !st.gateway.alive) {
-        toast('⚠️ Gateway offline, dispatch will stall', 'err');
-        if (!confirm('Gateway is not alive. Proceed anyway?')) return;
+        toast('⚠️ 网关离线，调度将受阻', 'err');
+        if (!confirm('检测到网关未存活。确定强行派发吗？')) return;
       }
     } catch {
       // ignore
     }
 
-    if (!confirm(`Confirm Edict Dispatch?\n\n${cmd.substring(0, 200)}${cmd.length > 200 ? '…' : ''}`)) return;
+    if (!confirm(`确认发布指令？\n\n${cmd.substring(0, 200)}${cmd.length > 200 ? '…' : ''}`)) return;
 
     try {
       if (fileToIngest) {
         setIngesting(true);
-        toast(`📤 Uploading context file: ${fileToIngest.name}...`, 'ok');
+        toast(`📤 正在上传上下文文件: ${fileToIngest.name}...`, 'ok');
         const ir = await api.ragIngestFile(fileToIngest, '', false);
         setIngesting(false);
         if (!ir.ok) {
-          toast(`❌ Context ingestion failed: ${ir.error}`, 'err');
-          if (!confirm('Context upload failed. Dispatch task anyway?')) return;
+          toast(`❌ 上下文注入失败: ${ir.error}`, 'err');
+          if (!confirm('上下文文件上传失败，是否无论如何继续发布派发任务？')) return;
         } else {
-          toast('✅ Context primed', 'ok');
+          toast('✅ 上下文已就绪', 'ok');
         }
       }
 
       const params: Record<string, string> = {};
-      for (const p of formTpl.params) {
+      for (const p of currentTpl.params) {
         params[p.key] = formVals[p.key] || p.default || '';
       }
       const r = await api.createTask({
         title: cmd.substring(0, 120),
         org: 'Mission Control',
-        target_dept: formTpl.depts[0] || '',
+        target_dept: currentTpl.depts[0] || '',
         priority: 'normal',
-        templateId: formTpl.id,
+        templateId: currentTpl.id,
         params,
         meta: fileToIngest ? { uploaded_files: [fileToIngest.name] } : {},
       });
       if (r.ok) {
-        toast(`✅ Edict Dispatched Successfully`, 'ok');
+        toast(`✅ 指令发布成功`, 'ok');
         setFormTpl(null);
         setFileToIngest(null);
         loadAll();
       } else {
-        toast(r.error || 'Dispatch failed', 'err');
+        toast(r.error || '派发失败', 'err');
       }
     } catch (err) {
       setIngesting(false);
-      toast('⚠️ Operation failed', 'err');
+      toast('⚠️ 操作失败', 'err');
     }
   };
 
@@ -129,13 +131,13 @@ export default function TemplatePanel() {
     const ext = file.name.split('.').pop()?.toLowerCase() || '';
     const supported = ['pdf', 'docx', 'pptx', 'ppt', 'xlsx', 'xls', 'csv', 'png', 'jpg', 'jpeg', 'bmp', 'tiff', 'txt', 'md', 'json', 'py', 'go'];
     if (!supported.includes(ext)) {
-      toast(`❌ Unsupported format: .${ext}`, 'err');
+      toast(`❌ 不支持的格式: .${ext}`, 'err');
       e.target.value = '';
       return;
     }
 
     setFileToIngest(file);
-    toast(`📄 Context ready: ${file.name} (${Math.round(file.size / 1024)} KB)`, 'ok');
+    toast(`📄 上下文准备就绪: ${file.name} (${Math.round(file.size / 1024)} KB)`, 'ok');
   };
 
   return (
@@ -216,7 +218,7 @@ export default function TemplatePanel() {
                   <span className="flex items-center gap-1">💸 {t.cost}</span>
                 </div>
                 <button className="flex items-center gap-1 text-xs font-bold text-primary-600 bg-primary-50 hover:bg-primary-100 px-3 py-1.5 rounded-lg transition-colors border border-primary-200">
-                  <Play className="w-3 h-3" /> Execute
+                  <Play className="w-3 h-3" /> 立即执行
                 </button>
               </div>
             </div>
@@ -249,7 +251,7 @@ export default function TemplatePanel() {
                     {formTpl.depts.map((d) => (
                       <span className="text-[10px] font-bold px-2 py-0.5 rounded uppercase tracking-wider bg-indigo-50 text-indigo-700 border border-indigo-200" key={d}>{d}</span>
                     ))}
-                    <span className="text-[11px] font-semibold text-slate-400 ml-2">Est: {formTpl.est} | Cost: {formTpl.cost}</span>
+                    <span className="text-[11px] font-semibold text-slate-400 ml-2">预计耗时: {formTpl.est} | 成本预估: {formTpl.cost}</span>
                   </div>
                 </div>
                 {!ingesting && (
@@ -273,7 +275,7 @@ export default function TemplatePanel() {
                           required={p.required}
                           value={formVals[p.key] || ''}
                           onChange={(e) => setFormVals((v) => ({ ...v, [p.key]: e.target.value }))}
-                          placeholder={`Enter ${p.label.toLowerCase()}...`}
+                          placeholder={`请输入 ${p.label}...`}
                         />
                       ) : p.type === 'select' ? (
                         <select
@@ -292,7 +294,7 @@ export default function TemplatePanel() {
                           required={p.required}
                           value={formVals[p.key] || ''}
                           onChange={(e) => setFormVals((v) => ({ ...v, [p.key]: e.target.value }))}
-                          placeholder={`Enter ${p.label.toLowerCase()}...`}
+                          placeholder={`请输入 ${p.label}...`}
                         />
                       )}
                     </div>
@@ -301,10 +303,10 @@ export default function TemplatePanel() {
                   {/* Context Ingestion */}
                   <div className="pt-6 border-t border-slate-100 space-y-3">
                     <label className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                      <BrainCircuit className="w-4 h-4 text-indigo-500" /> Context Injection (RAG)
+                      <BrainCircuit className="w-4 h-4 text-indigo-500" /> 知识上下文注入 (RAG)
                     </label>
                     <p className="text-xs text-slate-500 font-medium">
-                      Attach documents (PDF, Word, PPT, Excel, Images, Code) to provide context for this edict.
+                      在此附件上传相关文档或资源 (支持PDF, Word, PPT, Excel, 图片, 代码)，系统将自动为智能体提供参考。
                     </p>
                     
                     <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-center">
@@ -319,7 +321,7 @@ export default function TemplatePanel() {
                         htmlFor="rag-file-upload"
                         className="btn-secondary flex items-center justify-center gap-2 px-6 py-2 cursor-pointer w-full sm:w-auto"
                       >
-                        <Upload className="w-4 h-4" /> {fileToIngest ? 'Change File' : 'Select Context File'}
+                        <Upload className="w-4 h-4" /> {fileToIngest ? '替换附件' : '选择上下文文件'}
                       </label>
                       {fileToIngest && (
                         <div className="flex items-center gap-2 text-sm font-semibold text-emerald-700 bg-emerald-50 px-3 py-1.5 rounded-lg border border-emerald-200">
@@ -340,7 +342,7 @@ export default function TemplatePanel() {
                       >
                         <div className="mt-6 bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-inner">
                           <div className="text-[10px] font-bold text-slate-400 mb-3 flex items-center gap-2 uppercase tracking-widest">
-                            <TerminalSquare className="w-3.5 h-3.5" /> Generated Instruction Payload
+                            <TerminalSquare className="w-3.5 h-3.5" /> 最终生成任务指令载荷
                           </div>
                           <div className="text-sm text-slate-300 whitespace-pre-wrap leading-relaxed font-mono">{previewCmd}</div>
                         </div>
@@ -352,10 +354,10 @@ export default function TemplatePanel() {
 
               <footer className="p-4 md:p-6 border-t border-slate-200 bg-slate-50 flex flex-col sm:flex-row gap-3 justify-end rounded-b-xl shrink-0">
                 <button type="button" className="btn-secondary" onClick={preview} disabled={ingesting}>
-                  <Eye className="w-4 h-4 mr-2 inline" /> Preview Payload
+                  <Eye className="w-4 h-4 mr-2 inline" /> 实时概览指令载荷
                 </button>
                 <button type="submit" form="edict-form" className="btn-primary min-w-[140px]" disabled={ingesting}>
-                  {ingesting ? 'Injecting RAG...' : <><Play className="w-4 h-4 mr-2 inline" /> Dispatch Edict</>}
+                  {ingesting ? '系统解析RAG中...' : <><Play className="w-4 h-4 mr-2 inline" /> 发布智能体任务</>}
                 </button>
               </footer>
             </motion.div>

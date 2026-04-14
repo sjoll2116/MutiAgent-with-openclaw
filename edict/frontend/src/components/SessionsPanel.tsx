@@ -27,13 +27,13 @@ function extractAgent(t: Task): string {
 
 function humanTitle(t: Task, labelMap: Record<string, string>): string {
   let title = t.title || '';
-  if (title === 'heartbeat 会话') return '💓 Heartbeat Check';
+  if (title === 'heartbeat 会话') return '💓 心跳检测';
   const m = title.match(/^agent:(\w+):(\w+)/);
   if (m) {
     const agLabel = labelMap[m[1]] || m[1];
-    if (m[2] === 'main') return agLabel + ' · Main Session';
-    if (m[2] === 'subagent') return agLabel + ' · Subtask Execution';
-    if (m[2] === 'cron') return agLabel + ' · Cron Task';
+    if (m[2] === 'main') return agLabel + ' · 主干会话';
+    if (m[2] === 'subagent') return agLabel + ' · 子任务执行';
+    if (m[2] === 'cron') return agLabel + ' · 定时调度任务';
     return agLabel + ' · ' + m[2];
   }
   return title.replace(/ 会话$/, '') || t.id;
@@ -41,12 +41,12 @@ function humanTitle(t: Task, labelMap: Record<string, string>): string {
 
 function channelLabel(t: Task): { icon: any; text: string; bg: string; color: string } {
   const now = t.now || '';
-  if (now.includes('feishu/direct')) return { icon: MessageSquare, text: 'Feishu Direct', bg: 'bg-indigo-50', color: 'text-indigo-600' };
-  if (now.includes('feishu')) return { icon: MessageSquare, text: 'Feishu Group', bg: 'bg-blue-50', color: 'text-blue-600' };
-  if (now.includes('webchat')) return { icon: Globe, text: 'WebChat', bg: 'bg-emerald-50', color: 'text-emerald-600' };
-  if (now.includes('cron')) return { icon: Clock, text: 'Cron', bg: 'bg-slate-100', color: 'text-slate-600' };
-  if (now.includes('direct')) return { icon: Send, text: 'Direct Sync', bg: 'bg-primary-50', color: 'text-primary-600' };
-  return { icon: LinkIcon, text: 'Session', bg: 'bg-slate-100', color: 'text-slate-500' };
+  if (now.includes('feishu/direct')) return { icon: MessageSquare, text: '飞书私聊', bg: 'bg-indigo-50', color: 'text-indigo-600' };
+  if (now.includes('feishu')) return { icon: MessageSquare, text: '飞书群聊', bg: 'bg-blue-50', color: 'text-blue-600' };
+  if (now.includes('webchat')) return { icon: Globe, text: '网页聊天', bg: 'bg-emerald-50', color: 'text-emerald-600' };
+  if (now.includes('cron')) return { icon: Clock, text: '定时器', bg: 'bg-slate-100', color: 'text-slate-600' };
+  if (now.includes('direct')) return { icon: Send, text: '同步分发', bg: 'bg-primary-50', color: 'text-primary-600' };
+  return { icon: LinkIcon, text: '普通会话', bg: 'bg-slate-100', color: 'text-slate-500' };
 }
 
 function lastMessage(t: Task): string {
@@ -85,8 +85,8 @@ export default function SessionsPanel() {
       {/* Filters */}
       <div className="flex items-center gap-2 pb-2 overflow-x-auto no-scrollbar border-b border-slate-200">
         {[
-          { key: 'all', label: `All Sessions (${sessions.length})` },
-          { key: 'active', label: 'Active Only' },
+          { key: 'all', label: `所有会话 (${sessions.length})` },
+          { key: 'active', label: '仅进行中' },
           ...agentIds.slice(0, 8).map((id) => ({ key: id, label: labelMap[id] || id })),
         ].map((f) => (
           <button
@@ -109,7 +109,7 @@ export default function SessionsPanel() {
          {!filtered.length ? (
             <div className="flex flex-col items-center justify-center p-20 text-slate-400 opacity-70 bg-white rounded-2xl border border-dashed border-slate-200 h-64 mx-auto w-full max-w-2xl mt-10">
               <MessageSquare className="w-12 h-12 mb-4 text-slate-300" strokeWidth={1.5} />
-              <p className="text-sm font-semibold uppercase tracking-widest">No active sessions found</p>
+              <p className="text-sm font-semibold uppercase tracking-widest">暂无进行中的会话</p>
             </div>
          ) : (
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -177,7 +177,7 @@ export default function SessionsPanel() {
 
                    <div className="mt-auto flex items-center justify-between text-[11px] font-semibold text-slate-400 pt-3 border-t border-slate-100">
                      {totalTk ? <span className="flex items-center gap-1 text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-100"><Database className="w-3 h-3" /> {totalTk.toLocaleString()}</span> : <span />}
-                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {updatedAt ? timeAgo(updatedAt) : 'Just now'}</span>
+                     <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {updatedAt ? timeAgo(updatedAt) : '刚刚'}</span>
                    </div>
                  </div>
                );
@@ -261,9 +261,9 @@ function SessionDetailModal({
           {(totalTokens != null || inputTokens != null || outputTokens != null) && (
             <div className="grid grid-cols-3 gap-4">
               {[
-                { l: 'Total Tokens', v: totalTokens, c: 'text-primary-600', i: Database },
-                { l: 'Input', v: inputTokens, c: 'text-slate-700', i: AlignLeft },
-                { l: 'Output', v: outputTokens, c: 'text-indigo-600', i: Command },
+                { l: '消耗总计', v: totalTokens, c: 'text-primary-600', i: Database },
+                { l: '输入', v: inputTokens, c: 'text-slate-700', i: AlignLeft },
+                { l: '输出', v: outputTokens, c: 'text-indigo-600', i: Command },
               ].map((s, i) => s.v != null && (
                 <div key={i} className="bg-slate-50 border border-slate-100 rounded-xl p-4 flex flex-col items-center text-center shadow-sm">
                   <s.i className={cn("w-4 h-4 mb-2", s.c)} />
@@ -277,13 +277,13 @@ function SessionDetailModal({
           {/* Recent Activity */}
           <div className="flex-1 flex flex-col min-h-0">
             <h3 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4 flex items-center gap-2">
-              <Activity className="w-4 h-4 text-slate-400" /> Interaction Logs <span className="text-xs bg-slate-100 text-slate-500 px-2 rounded-full border border-slate-200 shadow-sm ml-1">{acts.length}</span>
+              <Activity className="w-4 h-4 text-slate-400" /> 交互式日志 <span className="text-xs bg-slate-100 text-slate-500 px-2 rounded-full border border-slate-200 shadow-sm ml-1">{acts.length}</span>
             </h3>
             <div className="flex-1 bg-white border border-slate-200 rounded-xl overflow-y-auto shadow-inner no-scrollbar max-h-[400px]">
               {!acts.length ? (
                 <div className="p-10 text-slate-400 text-sm font-medium flex flex-col items-center justify-center h-full opacity-70">
                   <BotMessageSquare className="w-10 h-10 mb-2 text-slate-300" strokeWidth={1} />
-                  No interaction history recorded.
+                  暂无交互历史记录
                 </div>
               ) : (
                 <div className="divide-y divide-slate-100">
@@ -304,14 +304,14 @@ function SessionDetailModal({
                             isAsst ? "bg-primary-100 text-primary-700" : isUser ? "bg-slate-200 text-slate-700" : "bg-slate-100 text-slate-500"
                           )}>
                             {isAsst ? <Bot className="w-3 h-3"/> : isUser ? <UserIcon/> : <Command className="w-3 h-3"/>}
-                            {isAsst ? 'Assistant' : isUser ? 'User' : isTool ? 'Tool' : 'System Event'}
+                            {isAsst ? 'AI助手' : isUser ? '人类用户' : isTool ? '工具调用' : '系统事件'}
                           </span>
                           <span className="text-[10px] font-mono text-slate-400 ml-auto bg-white px-1.5 rounded border border-slate-100">
                             {((a.at as string) || '').substring(11, 19)}
                           </span>
                         </div>
                         <div className="text-sm leading-relaxed text-slate-700 whitespace-pre-wrap word-break-all">
-                          {a.text || <span className="italic text-slate-400">Empty payload</span>}
+                          {a.text || <span className="italic text-slate-400">空载荷</span>}
                         </div>
                       </div>
                     );
@@ -325,7 +325,7 @@ function SessionDetailModal({
             <div className="mt-4 p-4 bg-slate-50 border border-slate-200 rounded-xl text-xs flex items-start gap-3">
               <Database className="w-4 h-4 text-slate-400 shrink-0 mt-0.5" />
               <div className="flex-1 min-w-0">
-                <div className="font-bold text-slate-700 mb-1">Output Artifacts</div>
+                <div className="font-bold text-slate-700 mb-1">输出产物</div>
                 <div className="text-slate-500 break-all font-mono">{t.output}</div>
               </div>
             </div>

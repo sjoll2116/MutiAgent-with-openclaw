@@ -92,7 +92,7 @@ export default function SkillsConfig() {
       const r = await api.remoteSkillsList();
       if (r.ok) setRemoteSkills(r.remoteSkills || []);
     } catch {
-      toast('Failed to load remote skills', 'err');
+      toast('加载远程库失败', 'err');
     }
     setRemoteLoading(false);
   };
@@ -104,7 +104,7 @@ export default function SkillsConfig() {
       if (r.ok) {
         setSkillModal({ agentId, name: skillName, content: r.content || '', path: r.path || '' });
       } else {
-        setSkillModal({ agentId, name: skillName, content: '❌ ' + (r.error || 'Read failed'), path: '' });
+        setSkillModal({ agentId, name: skillName, content: '❌ ' + (r.error || '解析文档失败'), path: '' });
       }
     } catch {
       setSkillModal({ agentId, name: skillName, content: '❌ 服务器连接失败', path: '' });
@@ -118,14 +118,14 @@ export default function SkillsConfig() {
     try {
       const r = await api.addSkill(addForm.agentId, formData.name, formData.desc, formData.trigger);
       if (r.ok) {
-        toast(`✅ Skill ${formData.name} added to ${addForm.agentLabel}`, 'ok');
+        toast(`✅ 已向 ${addForm.agentLabel} 挂载技能 ${formData.name}`, 'ok');
         setAddForm(null);
         loadAgentConfig();
       } else {
-        toast(r.error || 'Creation failed', 'err');
+        toast(r.error || '创建失败', 'err');
       }
     } catch {
-      toast('Connection failed', 'err');
+      toast('连接失败', 'err');
     }
     setSubmitting(false);
   };
@@ -138,16 +138,16 @@ export default function SkillsConfig() {
     try {
       const r = await api.addRemoteSkill(agentId, skillName, sourceUrl, description);
       if (r.ok) {
-        toast(`✅ Remote skill ${skillName} added to ${agentId}`, 'ok');
+        toast(`✅ 远程节点 ${skillName} 已配置到 ${agentId}`, 'ok');
         setAddRemoteForm(false);
         setRemoteFormData({ agentId: '', skillName: '', sourceUrl: '', description: '' });
         loadRemoteSkills();
         loadAgentConfig();
       } else {
-        toast(r.error || 'Addition failed', 'err');
+        toast(r.error || '挂载失败', 'err');
       }
     } catch {
-      toast('Connection failed', 'err');
+      toast('通讯失败', 'err');
     }
     setRemoteSubmitting(false);
   };
@@ -158,13 +158,13 @@ export default function SkillsConfig() {
     try {
       const r = await api.updateRemoteSkill(skill.agentId, skill.skillName);
       if (r.ok) {
-        toast(`✅ Skill ${skill.skillName} updated`, 'ok');
+        toast(`✅ 模块 ${skill.skillName} 更新完毕`, 'ok');
         loadRemoteSkills();
       } else {
-        toast(r.error || 'Update failed', 'err');
+        toast(r.error || '更新异常', 'err');
       }
     } catch {
-      toast('Connection error', 'err');
+      toast('连接异常', 'err');
     }
     setUpdatingSkill(null);
   };
@@ -175,31 +175,31 @@ export default function SkillsConfig() {
     try {
       const r = await api.removeRemoteSkill(skill.agentId, skill.skillName);
       if (r.ok) {
-        toast(`🗑️ Skill ${skill.skillName} removed`, 'ok');
+        toast(`🗑️ 已移除功能集 ${skill.skillName}`, 'ok');
         loadRemoteSkills();
         loadAgentConfig();
       } else {
-        toast(r.error || 'Removal failed', 'err');
+        toast(r.error || '移除操作未生效', 'err');
       }
     } catch {
-      toast('Connection failed', 'err');
+      toast('连接被阻断', 'err');
     }
     setRemovingSkill(null);
   };
 
   const handleQuickImport = async (skillUrl: string, skillName: string) => {
-    if (!quickPickAgent) { toast('Please select a target Agent', 'err'); return; }
+    if (!quickPickAgent) { toast('拦截：请先指派接收实体目标', 'err'); return; }
     try {
       const r = await api.addRemoteSkill(quickPickAgent, skillName, skillUrl, '');
       if (r.ok) {
-        toast(`✅ ${skillName} imported for ${quickPickAgent}`, 'ok');
+        toast(`✅ 成功将 ${skillName} 部署至 ${quickPickAgent}`, 'ok');
         loadRemoteSkills();
         loadAgentConfig();
       } else {
-        toast(r.error || 'Import failed', 'err');
+        toast(r.error || '导入配置中断', 'err');
       }
     } catch {
-      toast('Connection failed', 'err');
+      toast('未能建立稳定连接', 'err');
     }
   };
 
@@ -494,9 +494,9 @@ export default function SkillsConfig() {
             <header className="p-5 border-b border-slate-100 flex justify-between items-center">
               <div>
                 <div className="text-[10px] font-bold text-primary-600 uppercase tracking-widest bg-primary-50 px-2 py-0.5 rounded w-fit mb-1 border border-primary-100">
-                  Target: {addForm.agentLabel}
+                  目标接收方: {addForm.agentLabel}
                 </div>
-                <h2 className="text-xl font-bold text-slate-800">New Local Skill</h2>
+                <h2 className="text-xl font-bold text-slate-800">新建本地能力集记录</h2>
               </div>
               <button className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors" onClick={() => setAddForm(null)}>
                 <X className="w-5 h-5" />
@@ -548,9 +548,9 @@ export default function SkillsConfig() {
             <header className="p-5 border-b border-slate-100 flex justify-between items-center">
               <div>
                 <div className="text-[10px] font-bold text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded w-fit mb-1 border border-indigo-100">
-                  Registry Sync
+                  网络镜像绑定
                 </div>
-                <h2 className="text-xl font-bold text-slate-800">Add Remote Hook</h2>
+                <h2 className="text-xl font-bold text-slate-800">外层模块挂载向导</h2>
               </div>
               <button className="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-slate-600 transition-colors" onClick={() => setAddRemoteForm(false)}>
                 <X className="w-5 h-5" />

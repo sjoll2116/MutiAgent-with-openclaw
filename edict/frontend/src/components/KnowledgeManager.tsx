@@ -20,7 +20,7 @@ export const KnowledgeManager: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to fetch documents', err);
-      toast('Failed to fetch documents', 'err');
+      toast('获取知识库文档失败', 'err');
     } finally {
       setLoading(false);
     }
@@ -37,7 +37,7 @@ export const KnowledgeManager: React.FC = () => {
       toast('✅ 结构化数据已被清除');
       fetchDocs();
     } catch (err) {
-      toast('❌ Delete failed', 'err');
+      toast('❌ 删除失败', 'err');
     }
   };
 
@@ -116,11 +116,11 @@ export const KnowledgeManager: React.FC = () => {
                   </td>
                   <td className="py-4 px-6">
                     <span className="text-[11px] font-bold text-slate-600 bg-slate-100 px-2 py-1 rounded-md uppercase tracking-wider border border-slate-200">
-                      {doc.file_type || 'Unknown'}
+                      {doc.file_type || '未定义格式'}
                     </span>
                   </td>
                   <td className="py-4 px-6">
-                    <span className="text-xs font-semibold text-slate-600 truncate max-w-[150px] inline-block">{doc.source_agent || 'System'}</span>
+                    <span className="text-xs font-semibold text-slate-600 truncate max-w-[150px] inline-block">{doc.source_agent || '全局系统'}</span>
                   </td>
                   <td className="py-4 px-6 text-xs text-slate-500 font-medium">
                     {new Date(doc.created_at).toLocaleString()}
@@ -129,7 +129,7 @@ export const KnowledgeManager: React.FC = () => {
                     <button 
                       onClick={() => handleDelete(doc.doc_id)}
                       className="p-2 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all border border-transparent hover:border-red-200 shadow-sm hover:shadow"
-                      title="Delete Vector Index"
+                      title="删除该向量索引"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

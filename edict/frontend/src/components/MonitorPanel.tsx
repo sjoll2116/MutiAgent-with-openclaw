@@ -30,9 +30,9 @@ export default function MonitorPanel() {
   const handleWake = async (agentId: string) => {
     try {
       const r = await api.agentWake(agentId);
-      toast(r.message || 'Wake command sent');
+      toast(r.message || '唤醒指令已下达');
       setTimeout(() => loadAgentsStatus(), 30000);
-    } catch { toast('Wake failed', 'err'); }
+    } catch { toast('唤醒失败', 'err'); }
   };
 
   const handleWakeAll = async () => {
@@ -40,12 +40,12 @@ export default function MonitorPanel() {
     const toWake = agentsStatusData.agents.filter(
       (a) => a.id !== 'main' && a.status !== 'running' && a.status !== 'unconfigured'
     );
-    if (!toWake.length) { toast('All Agents are online'); return; }
-    toast(`Waking ${toWake.length} Agents...`);
+    if (!toWake.length) { toast('所有智能体均已在线并就绪'); return; }
+    toast(`正在唤醒 ${toWake.length} 个智能体...`);
     for (const a of toWake) {
       try { await api.agentWake(a.id); } catch { /* ignore */ }
     }
-    toast(`${toWake.length} wake commands sent, refreshing in 30s`);
+    toast(`已发出 ${toWake.length} 个唤醒信号，将在30秒后刷新系统状态`);
     setTimeout(() => loadAgentsStatus(), 30000);
   };
 
@@ -77,21 +77,21 @@ export default function MonitorPanel() {
            <div className="px-6 py-4 border-b border-slate-100 flex flex-wrap items-center justify-between gap-4">
              <div className="flex items-center gap-4">
                <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2">
-                 <Server className="w-5 h-5 text-indigo-500" /> Agent Status
+                 <Server className="w-5 h-5 text-indigo-500" /> 智能体运行态势
                </h3>
                <div className={cn("px-2.5 py-1 text-xs font-semibold rounded-full border", gwStatusColor)}>
-                 Gateway: {gw?.status || 'Unknown'}
+                 主网关: {gw?.status || '状态未知'}
                </div>
              </div>
              
              <div className="flex items-center gap-3">
                {(offline + unconf > 0) && (
                  <button onClick={handleWakeAll} className="btn-secondary flex items-center gap-2 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 hover:border-red-300">
-                   <Zap className="w-4 h-4" /> Wake All Offline
+                   <Zap className="w-4 h-4" /> 批量唤醒离线节点
                  </button>
                )}
                <button onClick={() => loadAgentsStatus()} className="btn-secondary flex items-center gap-2">
-                 <RefreshCcw className="w-4 h-4" /> Refresh
+                 <RefreshCcw className="w-4 h-4" /> 刷新状态
                </button>
              </div>
            </div>
@@ -124,7 +124,7 @@ export default function MonitorPanel() {
                    
                    <div className="text-[10px] text-slate-500 mt-auto flex items-center gap-1">
                      <Clock className="w-3 h-3" />
-                     {a.lastActive ? a.lastActive : 'No Activity'}
+                     {a.lastActive ? a.lastActive : '暂无活动'}
                    </div>
 
                    {canWake && (
@@ -133,7 +133,7 @@ export default function MonitorPanel() {
                          className="px-3 py-1 bg-white border border-primary-200 text-primary-600 text-xs font-medium rounded shadow-sm hover:bg-primary-50 transition-colors"
                          onClick={(e) => { e.stopPropagation(); handleWake(a.id); }}
                        >
-                         ⚡ Wake Up
+                         ⚡ 发起唤醒
                        </button>
                      </div>
                    )}
@@ -143,13 +143,13 @@ export default function MonitorPanel() {
            </div>
 
            <div className="px-6 py-3 border-t border-slate-100 bg-slate-50 flex flex-wrap items-center gap-4 text-xs font-medium text-slate-600">
-             <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500"/> {running} Running</span>
-             <span className="flex items-center gap-1.5"><HelpCircle className="w-4 h-4 text-amber-500"/> {idle} Idle</span>
-             {offline > 0 && <span className="flex items-center gap-1.5"><XCircle className="w-4 h-4 text-red-500"/> {offline} Offline</span>}
-             {unconf > 0 && <span className="flex items-center gap-1.5"><AlertCircle className="w-4 h-4 text-slate-400"/> {unconf} Unconfigured</span>}
+             <span className="flex items-center gap-1.5"><CheckCircle2 className="w-4 h-4 text-emerald-500"/> {running} 运行中</span>
+             <span className="flex items-center gap-1.5"><HelpCircle className="w-4 h-4 text-amber-500"/> {idle} 空闲</span>
+             {offline > 0 && <span className="flex items-center gap-1.5"><XCircle className="w-4 h-4 text-red-500"/> {offline} 离线</span>}
+             {unconf > 0 && <span className="flex items-center gap-1.5"><AlertCircle className="w-4 h-4 text-slate-400"/> {unconf} 未配置</span>}
              
              <span className="ml-auto text-slate-400 tracking-wide">
-               Last checked: {(asData.checkedAt || '').substring(11, 19)}
+               状态更新于: {(asData.checkedAt || '').substring(11, 19)}
              </span>
            </div>
          </div>
@@ -157,7 +157,7 @@ export default function MonitorPanel() {
 
       {/* Duty Grid */}
       <h3 className="text-lg font-bold text-slate-800 flex items-center gap-2 mt-8 mb-4">
-        <Terminal className="w-5 h-5 text-indigo-500" /> Active Orgs & Duties
+        <Terminal className="w-5 h-5 text-indigo-500" /> 活跃部门与所属任务
       </h3>
       
       <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
@@ -169,7 +169,7 @@ export default function MonitorPanel() {
           const hb = off?.heartbeat || { status: 'idle', label: '⚪' };
           
           const dotColor = isBlocked ? 'bg-red-500' : isActive ? 'bg-primary-500' : hb.status === 'active' ? 'bg-emerald-500' : 'bg-slate-300';
-          const statusText = isBlocked ? '⚠️ Blocked' : isActive ? '⚙️ Executing' : hb.status === 'active' ? '🟢 Active' : '⚪ Standby';
+          const statusText = isBlocked ? '⚠️ 异常阻断' : isActive ? '⚙️ 执行中' : hb.status === 'active' ? '🟢 活跃在线' : '⚪ 挂机待命';
           
           return (
             <div key={d.id} className={cn(
@@ -206,7 +206,7 @@ export default function MonitorPanel() {
                            {stateLabel(t)}
                          </span>
                       </div>
-                      <h5 className="text-sm font-semibold text-slate-800 line-clamp-1 mb-1">{t.title || '(No Title)'}</h5>
+                      <h5 className="text-sm font-semibold text-slate-800 line-clamp-1 mb-1">{t.title || '(无标题)'}</h5>
                       
                       {t.now && t.now !== '-' && (
                         <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed">{t.now}</p>
@@ -222,13 +222,13 @@ export default function MonitorPanel() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-slate-400 gap-2 opacity-60">
                     <span className="text-3xl grayscale">🪭</span>
-                    <span className="text-sm font-medium tracking-widest uppercase">Idle</span>
+                    <span className="text-sm font-medium tracking-widest uppercase">静默空闲</span>
                   </div>
                 )}
               </div>
               
               <div className="p-3 border-t border-slate-100 bg-white flex items-center justify-between text-[11px] font-medium text-slate-500">
-                <span className="flex items-center gap-1.5">🤖 {off?.model_short || 'Not Configured'}</span>
+                <span className="flex items-center gap-1.5">🤖 {off?.model_short || '尚未配置基座大模型'}</span>
                 {off?.last_active && <span className="flex items-center gap-1.5"><Clock className="w-3 h-3" /> {off.last_active}</span>}
               </div>
             </div>

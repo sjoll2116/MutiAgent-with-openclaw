@@ -17,10 +17,10 @@ export default function LoginPage({ onLogin }: { onLogin: () => void }) {
             if (res.ok) {
                 onLogin();
             } else {
-                toast(res.error || 'Authentication Failed', 'err');
+                toast(res.error || '认证失败', 'err');
             }
         } catch (err) {
-            toast('Network Error', 'err');
+            toast('网络异常，请重试', 'err');
         } finally {
             setLoading(false);
         }

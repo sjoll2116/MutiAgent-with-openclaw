@@ -93,18 +93,18 @@ export default function TaskModal() {
   };
 
   const handleManualAction = (action: string) => {
-    const reason = prompt(`Reason for ${action}:`);
+    const reason = prompt(`请输入 [${action}] 的操作原因说明:`);
     if (reason !== null) doAction(action, reason);
   };
 
   const doReview = async (action: 'approve' | 'reject') => {
-    const comment = prompt(`${action.toUpperCase()} task ${task.id}:`);
+    const comment = prompt(`任务 [${task.id}] 的审批意见:`);
     if (comment === null) return;
     try {
       const r = await api.reviewAction(task.id, action, comment);
-      if (r.ok) { toast(`✅ Task ${action}ed`); loadAll(); close(); }
-      else toast(r.error || 'Review failed', 'err');
-    } catch { toast('Connection error', 'err'); }
+      if (r.ok) { toast(`✅ 操作已处理`); loadAll(); close(); }
+      else toast(r.error || '审批反馈失败', 'err');
+    } catch { toast('连接异常', 'err'); }
   };
 
   return (
@@ -142,10 +142,10 @@ export default function TaskModal() {
                     "w-2.5 h-2.5 rounded-full",
                     hb.status === 'active' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)] animate-pulse" : "bg-slate-300"
                   )} />
-                  <span className="text-[11px] font-bold text-slate-700 uppercase">{hb.label || 'Standby'}</span>
+                  <span className="text-[11px] font-bold text-slate-700 uppercase">{hb.label || '待命/未知'}</span>
                 </div>
                 <span className="text-[10px] text-slate-500 font-medium uppercase tracking-wider mt-1">
-                  Heartbeat: {hb.status === 'active' ? 'Locked' : 'Stalled'}
+                  心跳态势: {hb.status === 'active' ? '正常通信' : '失联阻滞'}
                 </span>
               </div>
               <button 
@@ -167,7 +167,7 @@ export default function TaskModal() {
                 <div className="p-4 rounded-xl bg-red-50 border border-red-200">
                   <div className="flex items-center gap-2 mb-2">
                     <AlertTriangle className="w-4 h-4 text-red-600" />
-                    <span className="text-xs font-bold uppercase text-red-700 tracking-wider">Self-Healing Diagnosis</span>
+                    <span className="text-xs font-bold uppercase text-red-700 tracking-wider">异常阻滞日志报告</span>
                   </div>
                   <pre className="text-[11px] font-mono text-red-800/80 overflow-x-auto whitespace-pre-wrap leading-relaxed bg-red-100/50 p-3 rounded-lg border border-red-100">
                     {task.last_error}
@@ -178,31 +178,31 @@ export default function TaskModal() {
               {/* Action Hub */}
               <div className="space-y-4">
                 <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                  <Terminal className="w-4 h-4 text-slate-400" /> Orchestrator Controls
+                  <Terminal className="w-4 h-4 text-slate-400" /> 指挥调度控制台操控板
                 </h4>
                 <div className="grid grid-cols-2 gap-3">
                   {['Planning', 'Executing', 'Dispatching', 'PlanReview', 'ResultReview'].includes(task.state) && (
                     <>
                       <button onClick={() => handleManualAction('stop')} className="btn-secondary flex items-center justify-center gap-2">
-                        <Pause className="w-4 h-4" /> Halt
+                        <Pause className="w-4 h-4" /> 流程挂起
                       </button>
                       <button onClick={() => handleManualAction('cancel')} className="btn-secondary border-red-200 text-red-600 hover:bg-red-50 hover:border-red-300 hover:text-red-700 flex items-center justify-center gap-2">
-                        <XCircle className="w-4 h-4" /> Kill
+                        <XCircle className="w-4 h-4" /> 强制终结
                       </button>
                     </>
                   )}
                   {['Blocked', 'Cancelled'].includes(task.state) && (
                     <button onClick={() => doAction('resume')} className="col-span-2 btn-primary flex items-center justify-center gap-2">
-                      <Play className="w-4 h-4" /> Resume Mission
+                      <Play className="w-4 h-4" /> 恢复该项任务
                     </button>
                   )}
                   {['ResultReview', 'PlanReview'].includes(task.state) && (
                     <>
                       <button onClick={() => doReview('approve')} className="px-4 py-2 rounded-lg bg-emerald-50 text-emerald-700 border border-emerald-200 font-medium text-sm hover:bg-emerald-100 transition-colors flex items-center justify-center gap-2">
-                        Approve
+                        准许通过
                       </button>
                       <button onClick={() => doReview('reject')} className="px-4 py-2 rounded-lg bg-red-50 text-red-700 border border-red-200 font-medium text-sm hover:bg-red-100 transition-colors flex items-center justify-center gap-2">
-                        Reject
+                        驳回处理
                       </button>
                     </>
                   )}
@@ -210,16 +210,16 @@ export default function TaskModal() {
                 
                 <button 
                   onClick={async () => {
-                    const comment = prompt("Manual override comment:");
+                    const comment = prompt("请提供手动覆写进度流转阶段的备忘:");
                     if (comment !== null) {
                       const r = await api.advanceState(task.id, comment);
-                      if (r.ok) { toast(`⏩ Advanced Stage manually`); loadAll(); }
-                      else toast(r.error || 'Advance failed', 'err');
+                      if (r.ok) { toast(`⏩ 已手动流转至下一状态阶段`); loadAll(); }
+                      else toast(r.error || '状态覆写失败', 'err');
                     }
                   }}
                   className="w-full px-4 py-2 rounded-lg bg-indigo-50 border border-indigo-200 text-indigo-700 font-medium text-sm hover:bg-indigo-100 transition-colors flex items-center justify-center gap-2"
                 >
-                  <FastForward className="w-4 h-4" /> Force Advance Stage
+                  <FastForward className="w-4 h-4" /> 强制流转下一状态阶段
                 </button>
               </div>
 
@@ -227,22 +227,22 @@ export default function TaskModal() {
               {schedData && (
                 <div className="space-y-4">
                   <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                    <Server className="w-4 h-4 text-slate-400" /> Scheduler Telemetry
+                    <Server className="w-4 h-4 text-slate-400" /> 队列调度器遥测中心
                   </h4>
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                      <div className="text-xs font-semibold text-slate-500 uppercase mb-1">Stall Timer</div>
-                      <div className="text-lg font-bold text-slate-800">{schedData.stalledSec}s</div>
+                      <div className="text-xs font-semibold text-slate-500 uppercase mb-1">执行停滞等待时分</div>
+                      <div className="text-lg font-bold text-slate-800">{schedData.stalledSec}秒</div>
                     </div>
                     <div className="p-4 bg-slate-50 rounded-xl border border-slate-200">
-                      <div className="text-xs font-semibold text-slate-500 uppercase mb-1">Retries</div>
+                      <div className="text-xs font-semibold text-slate-500 uppercase mb-1">循环调度重试计数</div>
                       <div className="text-lg font-bold text-slate-800">{schedData.scheduler?.retryCount || 0}</div>
                     </div>
                   </div>
                   <div className="flex flex-wrap gap-2">
-                    <button onClick={() => api.schedulerRetry(task.id, 'Manual Retry')} className="flex-1 btn-secondary text-xs">Retry</button>
-                    <button onClick={() => api.schedulerEscalate(task.id, 'Escalating')} className="flex-1 btn-secondary text-xs">Escalate</button>
-                    <button onClick={() => api.schedulerRollback(task.id, 'Rollback')} className="flex-1 btn-secondary text-xs border-red-200 hover:bg-red-50 hover:text-red-600">Rollback</button>
+                    <button onClick={() => api.schedulerRetry(task.id, '手动重启重试')} className="flex-1 btn-secondary text-xs">重试调度</button>
+                    <button onClick={() => api.schedulerEscalate(task.id, '故障预警上报')} className="flex-1 btn-secondary text-xs">预警上报</button>
+                    <button onClick={() => api.schedulerRollback(task.id, '降级回滚系统')} className="flex-1 btn-secondary text-xs border-red-200 hover:bg-red-50 hover:text-red-600">请求回滚</button>
                   </div>
                 </div>
               )}
@@ -251,12 +251,12 @@ export default function TaskModal() {
               <div className="space-y-4 pt-4 border-t border-slate-100">
                  <div className="space-y-3">
                     <div className="flex items-center justify-between">
-                       <span className="text-xs text-slate-500 font-medium">Assignee Org</span>
-                       <span className="text-xs text-primary-700 bg-primary-50 border border-primary-100 px-2.5 py-0.5 rounded font-semibold">{task.org || 'UNASSIGNED'}</span>
+                       <span className="text-xs text-slate-500 font-medium">任务分发归属机构</span>
+                       <span className="text-xs text-primary-700 bg-primary-50 border border-primary-100 px-2.5 py-0.5 rounded font-semibold">{task.org || '未指派接手方'}</span>
                     </div>
                     {task.eta && (
                       <div className="flex items-center justify-between">
-                        <span className="text-xs text-slate-500 font-medium">ETA</span>
+                        <span className="text-xs text-slate-500 font-medium">预计耗时耗费估算</span>
                         <span className="text-xs text-slate-800 font-medium bg-slate-100 px-2 py-0.5 rounded">{task.eta}</span>
                       </div>
                     )}
@@ -266,7 +266,7 @@ export default function TaskModal() {
               {/* Task Result / Output */}
               <div className="space-y-3 pt-4 border-t border-slate-100">
                  <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider flex items-center gap-2">
-                   <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Deliverable Output
+                   <CheckCircle2 className="w-4 h-4 text-emerald-500" /> 输出交付物与成果
                  </h4>
                  {task.output ? (
                    <div className="text-xs text-slate-700 bg-slate-50 p-4 rounded-xl border border-slate-200 whitespace-pre-wrap max-h-[32rem] overflow-y-auto break-words shadow-inner font-mono leading-relaxed">
@@ -274,7 +274,7 @@ export default function TaskModal() {
                    </div>
                  ) : (
                    <div className="text-xs text-slate-400 italic bg-slate-50/50 p-4 rounded-xl border-dashed border border-slate-200 text-center">
-                     尚未生成任何交互输出 / No output generated yet.
+                     尚未生成有效输出产物载荷数据。
                    </div>
                  )}
               </div>
@@ -285,9 +285,9 @@ export default function TaskModal() {
               {/* Tabs */}
               <div className="flex px-8 pt-4 border-b border-slate-200 gap-8 bg-white shrink-0 shadow-sm z-10">
                 {[
-                  { id: 'activity', label: 'Evolution Trace', icon: Activity },
-                  { id: 'todos', label: 'Edict Steps', icon: ClipboardList },
-                  { id: 'logs', label: 'Raw Activity', icon: FileText },
+                  { id: 'activity', label: '阶段轨迹总览', icon: Activity },
+                  { id: 'todos', label: '结构化步骤列表', icon: ClipboardList },
+                  { id: 'logs', label: '深层节点监控总线', icon: FileText },
                 ].map(tab => (
                   <button 
                     key={tab.id}
@@ -316,7 +316,7 @@ export default function TaskModal() {
                     >
                       {/* Modern Pipeline Visualization */}
                       <section className="space-y-5">
-                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Evolution Pipeline</h4>
+                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">执行管线流向图志</h4>
                         <div className="flex items-center gap-1.5 overflow-x-auto pb-4 pt-2 px-1 no-scrollbar">
                           {getPipeStatus(task).map((s, i, arr) => (
                             <div key={s.key} className="flex items-center gap-1.5 shrink-0">
@@ -343,9 +343,9 @@ export default function TaskModal() {
 
                       {/* Flow Log Timeline */}
                       <section className="space-y-5">
-                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Collaborative Flow Log</h4>
+                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">分布式作业流转协同日志</h4>
                         <div className="relative border-l-2 border-slate-200 pl-6 ml-3 space-y-8">
-                           {task.flow_log?.length === 0 && <p className="text-sm text-slate-500 italic">No collaborative logs recorded yet.</p>}
+                           {task.flow_log?.length === 0 && <p className="text-sm text-slate-500 italic">尚未探测到任何系统工作流日志。</p>}
                            {task.flow_log?.map((fl, i) => (
                              <div key={i} className="relative">
                                <div className="absolute -left-[31px] top-1.5 w-3 h-3 rounded-full bg-white border-[3px] border-primary-500 shadow-sm" />
@@ -372,11 +372,11 @@ export default function TaskModal() {
                       className="space-y-6"
                     >
                       <div className="flex items-center justify-between">
-                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">Step-by-Step Edicts</h4>
+                        <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider">解析并生成的系统级处理规程</h4>
                       </div>
                       
                       <div className="space-y-3">
-                         {task.todos?.length === 0 && <p className="text-sm text-slate-500 italic text-center py-10">No specific steps defined for this edict.</p>}
+                         {task.todos?.length === 0 && <p className="text-sm text-slate-500 italic text-center py-10">未指派当前操作的具体步骤方案及规范动作。</p>}
                          {task.todos?.map(td => (
                            <div key={td.id} className={cn(
                              "p-5 rounded-2xl border transition-all shadow-subtle",
@@ -408,7 +408,7 @@ export default function TaskModal() {
                              )}
                              {td.dependsOn && td.dependsOn.length > 0 && td.status === 'not-started' && (
                                <div className="mt-3 pl-8 flex flex-wrap gap-2">
-                                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">Awaiting:</span>
+                                 <span className="text-[10px] text-slate-400 font-bold uppercase tracking-widest">阻塞等待前置项:</span>
                                  {td.dependsOn.map(depId => (
                                    <span key={depId} className="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded border border-slate-200">
                                       #{depId}
@@ -428,15 +428,15 @@ export default function TaskModal() {
                       initial={{ opacity: 0, scale: 0.98 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.98 }}
                       className="h-[600px] flex flex-col"
                     >
-                      <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">Raw Swarm Intelligence Logs</h4>
+                      <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider mb-4">核心节点底层调试控制台交互轨迹</h4>
                       <div className="flex-1 bg-slate-900 rounded-2xl border border-slate-800 p-4 font-mono text-[11px] overflow-y-auto space-y-4 no-scrollbar shadow-inner" ref={logRef}>
-                        {activityData?.activity?.length === 0 && <div className="text-slate-500 text-center py-10 opacity-70">No raw activity recorded.</div>}
+                        {activityData?.activity?.length === 0 && <div className="text-slate-500 text-center py-10 opacity-70">未获取到控制台级别的原始回显信息。</div>}
                         {activityData?.activity?.map((a, i) => (
                            <div key={i} className="flex gap-4 group">
                               <div className="w-16 shrink-0 text-right text-slate-500 text-[10px] mt-0.5">{typeof a.at === 'string' ? a.at.substring(11, 19) : ''}</div>
                               <div className="flex-1 space-y-1.5 pb-2 border-b border-white/5">
                                  <div className="flex items-center gap-2">
-                                   <span className="text-primary-400 font-bold uppercase text-[9px]">{a.agent || 'SYSTEM'}</span>
+                                   <span className="text-primary-400 font-bold uppercase text-[9px]">{a.agent || '系统核心守护进程'}</span>
                                    <span className="px-1.5 py-0.5 rounded bg-white/10 text-slate-300 text-[8px] uppercase font-bold">{a.kind}</span>
                                  </div>
                                  <div className="text-slate-300 leading-relaxed max-w-3xl whitespace-pre-wrap break-words">

@@ -40,7 +40,7 @@ export default function ModelConfig() {
     return (
       <div className="flex flex-col items-center justify-center p-20 text-slate-400 opacity-60 bg-white rounded-3xl border border-slate-200 shadow-sm">
         <Server className="w-12 h-12 mb-4" />
-        <p className="text-sm font-semibold uppercase tracking-widest">Waiting for Server...</p>
+        <p className="text-sm font-semibold uppercase tracking-widest">等待服务器响应...</p>
       </div>
     );
   }
@@ -61,18 +61,18 @@ export default function ModelConfig() {
   const applyModel = async (agentId: string) => {
     const model = selMap[agentId];
     if (!model) return;
-    setStatusMap((p) => ({ ...p, [agentId]: { cls: 'pending', text: '⟳ Submitting...' } }));
+    setStatusMap((p) => ({ ...p, [agentId]: { cls: 'pending', text: '⟳ 正在提交...' } }));
     try {
       const r = await api.setModel(agentId, model);
       if (r.ok) {
-        setStatusMap((p) => ({ ...p, [agentId]: { cls: 'ok', text: '✅ Deployed, Gateway restarting (5s)' } }));
-        toast(agentId + ' model updated', 'ok');
+        setStatusMap((p) => ({ ...p, [agentId]: { cls: 'ok', text: '✅ 部署成功，网关重启中 (5秒)' } }));
+        toast(agentId + ' 模型已更新', 'ok');
         setTimeout(() => loadAgentConfig(), 5500);
       } else {
-        setStatusMap((p) => ({ ...p, [agentId]: { cls: 'err', text: '❌ ' + (r.error || 'Error') } }));
+        setStatusMap((p) => ({ ...p, [agentId]: { cls: 'err', text: '❌ ' + (r.error || '未知错误') } }));
       }
     } catch {
-      setStatusMap((p) => ({ ...p, [agentId]: { cls: 'err', text: '❌ Connection failed' } }));
+      setStatusMap((p) => ({ ...p, [agentId]: { cls: 'err', text: '❌ 无法连接' } }));
     }
   };
 
@@ -81,8 +81,8 @@ export default function ModelConfig() {
       <div className="flex items-center gap-3 border-b border-slate-200 pb-4">
         <Cpu className="w-6 h-6 text-indigo-500" />
         <div>
-          <h2 className="text-lg font-bold text-slate-800">Expert Model Configurations</h2>
-          <p className="text-xs text-slate-500 mt-0.5">Assign language models dynamically to agent clusters</p>
+          <h2 className="text-lg font-bold text-slate-800">专家模型配给中心</h2>
+          <p className="text-xs text-slate-500 mt-0.5">为系统内的智能体集群动态指派基座大模型</p>
         </div>
       </div>
 
@@ -108,14 +108,14 @@ export default function ModelConfig() {
               
               <div className="space-y-3 flex-1">
                 <div>
-                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">Current Model</div>
+                  <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5">当前在用模型</div>
                   <div className="text-sm font-semibold text-primary-700 bg-primary-50 px-3 py-1.5 rounded-lg border border-primary-100 line-clamp-1">
                     {ag.model}
                   </div>
                 </div>
 
                 <div>
-                   <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-4">Override Selection</div>
+                   <div className="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 mt-4">覆写配置</div>
                    <select 
                      className="input-field w-full cursor-pointer focus:ring-primary-500/30" 
                      value={sel} 
@@ -138,13 +138,13 @@ export default function ModelConfig() {
                   disabled={!changed} 
                   onClick={() => applyModel(ag.id)}
                 >
-                  Apply Override
+                  应用覆写设定
                 </button>
                 <button 
                   className="p-2 bg-white border border-slate-200 text-slate-500 hover:bg-slate-50 hover:text-slate-700 rounded-lg transition-colors disabled:opacity-50" 
                   disabled={!changed}
                   onClick={() => resetMC(ag.id)}
-                  title="Reset to current"
+                  title="重置为当前模型"
                 >
                   <RotateCcw className="w-5 h-5" />
                 </button>
@@ -168,12 +168,12 @@ export default function ModelConfig() {
       <div className="panel p-6 mt-8 max-w-4xl">
         <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2 mb-4 uppercase tracking-wider">
           <History className="w-4 h-4 text-slate-400" />
-          Model Assignment History
+          模型分配历史记录
         </h3>
         
         <div className="space-y-0 relative border-l border-slate-200 ml-2 pl-4">
           {!changeLog?.length ? (
-            <div className="text-sm text-slate-400 italic py-4">No recent model transitions.</div>
+            <div className="text-sm text-slate-400 italic py-4">近期暂无模型变更记录。</div>
           ) : (
             [...changeLog]
               .reverse()
@@ -193,7 +193,7 @@ export default function ModelConfig() {
                        {e.rolledBack && (
                          <span className="ml-2 inline-flex items-center gap-1 text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-2 py-0.5 rounded uppercase tracking-wider">
                            <XCircle className="w-3 h-3" />
-                           Rolled Back
+                           发生回滚
                          </span>
                        )}
                      </div>

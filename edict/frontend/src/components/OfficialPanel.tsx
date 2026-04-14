@@ -17,11 +17,11 @@ import { useStore } from '../store';
 import { cn } from '../lib/utils';
 
 const CATEGORIES = [
-  { id: 'all', label: 'All Clusters', icon: Users },
-  { id: 'engineering', label: 'Engineering', icon: Target },
-  { id: 'academic', label: 'Academic', icon: Zap },
-  { id: 'marketing', label: 'Marketing', icon: BarChart3 },
-  { id: 'legal', label: 'Legal/Judicial', icon: Activity },
+  { id: 'all', label: '所有集群', icon: Users },
+  { id: 'engineering', label: '工程开发', icon: Target },
+  { id: 'academic', label: '理论学术', icon: Zap },
+  { id: 'marketing', label: '市场营销', icon: BarChart3 },
+  { id: 'legal', label: '法律合规', icon: Activity },
 ];
 
 export default function OfficialPanel() {
@@ -57,7 +57,7 @@ export default function OfficialPanel() {
     return (
       <div className="h-full flex flex-col items-center justify-center text-slate-400 opacity-60">
         <Cpu className="w-12 h-12 mb-4 animate-[spin_3s_linear_infinite]" />
-        <p className="text-sm font-semibold uppercase tracking-widest">Initializing Expert Clusters...</p>
+        <p className="text-sm font-semibold uppercase tracking-widest">正在初始化专家集群...</p>
       </div>
     );
   }
@@ -67,10 +67,10 @@ export default function OfficialPanel() {
       {/* --- KPI Stats --- */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Active Experts', val: officialsData.officials.length, color: 'text-primary-600', bg: 'bg-primary-50', icon: Users },
-          { label: 'Tasks Completed', val: totals.tasks_done, color: 'text-indigo-600', bg: 'bg-indigo-50', icon: Target },
-          { label: 'Total Cost (CNY)', val: `¥${totals.cost_cny}`, color: 'text-emerald-600', bg: 'bg-emerald-50', icon: Coins },
-          { label: 'Top Performer', val: officialsData.top_official || 'None', color: 'text-amber-600', bg: 'bg-amber-50', icon: Trophy },
+          { label: '活跃专家', val: officialsData.officials.length, color: 'text-primary-600', bg: 'bg-primary-50', icon: Users },
+          { label: '完成任务数', val: totals.tasks_done, color: 'text-indigo-600', bg: 'bg-indigo-50', icon: Target },
+          { label: '总消耗 (CNY)', val: `¥${totals.cost_cny}`, color: 'text-emerald-600', bg: 'bg-emerald-50', icon: Coins },
+          { label: '最佳执行者', val: officialsData.top_official || '无', color: 'text-amber-600', bg: 'bg-amber-50', icon: Trophy },
         ].map((kpi, i) => (
           <div key={i} className="panel p-5 flex flex-col items-center text-center">
             <div className={cn("p-2.5 rounded-xl mb-3", kpi.bg)}>
@@ -106,7 +106,7 @@ export default function OfficialPanel() {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
           <input 
             type="text" 
-            placeholder="Search experts..." 
+            placeholder="搜索专家..." 
             value={search}
             onChange={e => setSearch(e.target.value)}
             className="input-field pl-10" 
@@ -150,7 +150,7 @@ export default function OfficialPanel() {
 
                   <div className="text-right shrink-0">
                     <div className="text-base font-bold text-indigo-600">{o.merit_score}</div>
-                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Merit Pts</div>
+                    <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">贡献点</div>
                   </div>
                   
                   <ChevronRight className={cn("w-5 h-5 text-slate-300 transition-transform shrink-0", isActive && "rotate-90 text-primary-500")} />
@@ -180,7 +180,7 @@ export default function OfficialPanel() {
                       ? "bg-emerald-50 border-emerald-200 text-emerald-700 shadow-sm" 
                       : "bg-slate-100 border-slate-200 text-slate-500"
                   )}>
-                    {selectedOfficialData.heartbeat?.label || 'Standby'}
+                    {selectedOfficialData.heartbeat?.label || '待命'}
                   </div>
                 </div>
               </div>
@@ -188,10 +188,10 @@ export default function OfficialPanel() {
               {/* Stats Grid */}
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: 'Tasks Done', val: selectedOfficialData.tasks_done, color: 'text-primary-600' },
-                  { label: 'Active Tasks', val: selectedOfficialData.tasks_active, color: 'text-indigo-600' },
-                  { label: 'Sessions', val: selectedOfficialData.sessions, color: 'text-emerald-600' },
-                  { label: 'Rank', val: selectedOfficialData.rank, color: 'text-amber-600' },
+                  { label: '已完成任务', val: selectedOfficialData.tasks_done, color: 'text-primary-600' },
+                  { label: '进行中任务', val: selectedOfficialData.tasks_active, color: 'text-indigo-600' },
+                  { label: '会话数', val: selectedOfficialData.sessions, color: 'text-emerald-600' },
+                  { label: '职级', val: selectedOfficialData.rank, color: 'text-amber-600' },
                 ].map((stat, i) => (
                   <div key={i} className="bg-slate-50 p-4 rounded-xl border border-slate-100">
                     <div className={cn("text-xl font-bold mb-1", stat.color)}>{stat.val}</div>
@@ -204,12 +204,12 @@ export default function OfficialPanel() {
               <div className="space-y-4 pt-4 border-t border-slate-100">
                 <div className="flex items-center gap-2">
                   <BarChart3 className="w-4 h-4 text-primary-500" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Token Telemetry</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Token 消耗遥测</span>
                 </div>
                 <div className="space-y-4">
                   {[
-                    { l: 'Input', v: selectedOfficialData.tokens_in, color: 'bg-primary-500' },
-                    { l: 'Output', v: selectedOfficialData.tokens_out, color: 'bg-indigo-500' },
+                    { l: '输入', v: selectedOfficialData.tokens_in, color: 'bg-primary-500' },
+                    { l: '输出', v: selectedOfficialData.tokens_out, color: 'bg-indigo-500' },
                   ].map((bar, i) => (
                     <div key={i} className="space-y-1.5">
                       <div className="flex justify-between text-xs font-medium text-slate-600">
@@ -231,7 +231,7 @@ export default function OfficialPanel() {
               <div className="space-y-4 pt-4 border-t border-slate-100">
                  <div className="flex items-center gap-2">
                   <LogHistory className="w-4 h-4 text-indigo-500" />
-                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">Activity History</span>
+                  <span className="text-xs font-bold uppercase tracking-wider text-slate-700">活动历史记录</span>
                 </div>
                 <div className="space-y-3">
                   {selectedOfficialData.participated_edicts?.map(e => (
@@ -254,7 +254,7 @@ export default function OfficialPanel() {
                   ))}
                   {(!selectedOfficialData.participated_edicts || selectedOfficialData.participated_edicts.length === 0) && (
                     <div className="text-center py-8 border border-dashed border-slate-300 rounded-xl bg-slate-50 text-slate-400 text-sm font-medium">
-                      No Records Yet
+                      暂无记录
                     </div>
                   )}
                 </div>
@@ -263,7 +263,7 @@ export default function OfficialPanel() {
           ) : (
             <div className="flex-1 flex flex-col items-center justify-center text-slate-400 opacity-60">
               <Users className="w-16 h-16 mb-4 text-slate-300" strokeWidth={1} />
-              <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">Select an Expert</p>
+              <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">选择一个专家智能体</p>
             </div>
           )}
         </div>

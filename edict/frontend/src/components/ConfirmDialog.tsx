@@ -25,7 +25,7 @@ export default function ConfirmDialog({ title, message, okLabel, okClass, onOk, 
           rows={2}
         />
         <div className="confirm-btns">
-          <button className="btn btn-g" onClick={onCancel}>取消</button>
+          <button className="btn btn-g" onClick={onCancel}>取消操作</button>
           <button className={`btn btn-action ${okClass || ''}`} onClick={() => onOk(reason)}>
             {okLabel}
           </button>

@@ -216,6 +216,17 @@ func handleDispatch(ctx context.Context, msg redis.XMessage, sem chan struct{}) 
 
 	if result.ReturnCode == 0 {
 		log.Printf("✅ Agent '%s' completed task %s", agent, taskID)
+		
+		// 3. 持久化输出到数据库
+		_ = store.WithTasks(func(allTasks []models.Task) ([]models.Task, error) {
+			t := store.FindTask(allTasks, taskID)
+			if t != nil {
+				t.Output = result.Stdout
+				t.UpdatedAt = store.NowISO()
+			}
+			return allTasks, nil
+		})
+
 		// 若有 todoID，先标记对应 Todo 为 completed
 		if todoID != "" {
 			markTodoCompleted(taskID, todoID)

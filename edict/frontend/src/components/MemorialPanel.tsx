@@ -30,24 +30,24 @@ export default function MemorialPanel() {
 
   const exportMemorial = (t: Task) => {
     const fl = t.flow_log || [];
-    let md = `# 📄 Task Memorial · ${t.title}\n\n`;
+    let md = `# 📄 任务总结报告 · ${t.title}\n\n`;
     md += `- **ID**: ${t.id}\n`;
-    md += `- **Status**: ${t.state}\n`;
-    md += `- **Department**: ${t.org}\n`;
+    md += `- **状态**: ${t.state}\n`;
+    md += `- **部门**: ${t.org}\n`;
     if (fl.length) {
-      const startAt = fl[0].at ? fl[0].at.substring(0, 19).replace('T', ' ') : 'Unknown';
-      const endAt = fl[fl.length - 1].at ? fl[fl.length - 1].at.substring(0, 19).replace('T', ' ') : 'Unknown';
-      md += `- **Started At**: ${startAt}\n`;
-      md += `- **Ended At**: ${endAt}\n`;
+      const startAt = fl[0].at ? fl[0].at.substring(0, 19).replace('T', ' ') : '未知';
+      const endAt = fl[fl.length - 1].at ? fl[fl.length - 1].at.substring(0, 19).replace('T', ' ') : '未知';
+      md += `- **开始时间**: ${startAt}\n`;
+      md += `- **结束时间**: ${endAt}\n`;
     }
-    md += `\n## Collaborative Flow Log\n\n`;
+    md += `\n## 协同流转日志\n\n`;
     for (const f of fl) {
       md += `- **${f.from}** → **${f.to}**  \n  ${f.remark}  \n  _${(f.at || '').substring(0, 19)}_\n\n`;
     }
-    if (t.output && t.output !== '-') md += `## Output Artifacts\n\n\`${t.output}\`\n`;
+    if (t.output && t.output !== '-') md += `## 输出产物\n\n\`${t.output}\`\n`;
     navigator.clipboard.writeText(md).then(
-      () => toast('✅ Memorial copied to Markdown', 'ok'),
-      () => toast('Copy failed', 'err')
+      () => toast('✅ 报告已复制为 Markdown', 'ok'),
+      () => toast('复制失败', 'err')
     );
   };
 
@@ -55,11 +55,11 @@ export default function MemorialPanel() {
     <div className="flex flex-col h-full space-y-6">
       {/* Filter */}
       <div className="flex items-center gap-2 pb-2">
-        <span className="text-sm font-semibold text-slate-500 mr-2 flex items-center gap-2"><History className="w-4 h-4"/> Filter:</span>
+        <span className="text-sm font-semibold text-slate-500 mr-2 flex items-center gap-2"><History className="w-4 h-4"/> 筛选:</span>
         {[
-          { key: 'all', label: `All Archives (${mems.length})`, icon: null },
-          { key: 'Completed', label: 'Completed', icon: CheckCircle2 },
-          { key: 'Cancelled', label: 'Cancelled', icon: XCircle },
+          { key: 'all', label: `所有报告 (${mems.length})`, icon: null },
+          { key: 'Completed', label: '已完成', icon: CheckCircle2 },
+          { key: 'Cancelled', label: '已取消', icon: XCircle },
         ].map((f) => (
           <button
             key={f.key}
@@ -82,8 +82,8 @@ export default function MemorialPanel() {
         {!mems.length ? (
           <div className="flex flex-col items-center justify-center p-20 text-slate-400 opacity-70 bg-white rounded-2xl border border-dashed border-slate-200 h-64 mx-auto w-full max-w-2xl mt-10">
             <Archive className="w-12 h-12 mb-4 text-slate-300" strokeWidth={1.5} />
-            <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">No memorials yet</p>
-            <p className="text-xs text-slate-400 mt-1">Edicts automatically archive here once completed.</p>
+            <p className="text-sm font-semibold uppercase tracking-widest text-slate-500">暂无报告</p>
+            <p className="text-xs text-slate-400 mt-1">指令完成后会自动生成报告并归档于此。</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
@@ -118,9 +118,9 @@ export default function MemorialPanel() {
                       <div className="text-[11px] font-semibold text-slate-500 flex items-center gap-2">
                         <span className="uppercase tracking-widest font-mono">{t.id}</span>
                         <span>•</span>
-                        <span>{t.org || 'Unassigned'}</span>
+                        <span>{t.org || '未分配'}</span>
                         <span>•</span>
-                        <span>{fl.length} steps</span>
+                        <span>{fl.length} 步</span>
                       </div>
                     </div>
                   </div>
@@ -256,7 +256,7 @@ function MemorialDetailModal({
                  {t.org}
                </span>
                <span className="text-[11px] font-bold text-slate-500 bg-white border border-slate-200 px-2.5 py-1 rounded-full shadow-sm">
-                 {fl.length} Workflow Steps
+                 {fl.length} 个工作流步骤
                </span>
              </div>
              {depts.length > 0 && (
@@ -283,17 +283,17 @@ function MemorialDetailModal({
           )}
 
           <div className="max-w-2xl w-full mx-auto pb-4">
-            {renderPhase('Original Directive', User, originLog)}
-            {renderPhase('Orchestration & Planning', Map, planLog)}
-            {renderPhase('Security & Compliance Review', ShieldCheck, reviewLog)}
-            {renderPhase('Execution Pipeline', Cog, execLog)}
-            {renderPhase('Final Report', Send, resultLog)}
+            {renderPhase('原始指令', User, originLog)}
+            {renderPhase('编排与规划', Map, planLog)}
+            {renderPhase('安全审查', ShieldCheck, reviewLog)}
+            {renderPhase('执行管道', Cog, execLog)}
+            {renderPhase('最终报告', Send, resultLog)}
           </div>
 
           {t.output && t.output !== '-' && (
             <div className="mt-4 pt-6 border-t border-slate-100">
               <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest mb-3 flex items-center gap-2">
-                <FileText className="w-4 h-4 text-slate-400" /> Artifacts
+                <FileText className="w-4 h-4 text-slate-400" /> 输出产物
               </h3>
               <div className="bg-slate-100 border border-slate-200 p-4 rounded-xl text-xs font-mono text-slate-700 break-all shadow-inner">
                 {t.output}
@@ -304,7 +304,7 @@ function MemorialDetailModal({
         
         <footer className="p-4 border-t border-slate-100 bg-slate-50 rounded-b-xl flex justify-end shrink-0">
           <button className="btn-secondary flex items-center gap-2 border-slate-300" onClick={() => onExport(t)}>
-            <Copy className="w-4 h-4" /> Copy Markdown Report
+            <Copy className="w-4 h-4" /> 复制 Markdown 报告
           </button>
         </footer>
       </motion.div>
